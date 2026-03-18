@@ -1,0 +1,41 @@
+# Environment / Secrets
+.env
+*.env
+.env.*
+.env.local
+.env.production
+.env.docker
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Temp files
+*.tmp
+*.log
+fix_*.js
+revert_*.js
+
+# Node
+node_modules/
+
+# Cache
+*.cache
+
+# Backups & Database Dumps
+Backup/
+*.sql
+
+# SSL/Certbot
+certbot/
+
+# Python
+__pycache__/
+*.pyc
+
+# Temporaries
+temp_extract/

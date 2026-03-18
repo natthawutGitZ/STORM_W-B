@@ -1,0 +1,155 @@
+<script>
+// --- PERMISSIONS SYSTEM ---
+const commandsList = ['embed', 'send', 'event_create', 'join', 'leave']; 
+
+async function loadPermissions() {
+    const container = document.getElementById('permissions-container');
+    if (!container) return; // Not on permissions tab or page
+    
+    try {
+        // We use the proxy which will forward to bot API
+        const response = await fetch('../includes/bot_api_proxy.php?action=get_permissions');
+        const result = await response.json();
+        
+        let perms = {};
+        if (result.success) {
+            perms = result.data.permissions || {};
+        }
+        
+        renderPermissionsUI(perms);
+        
+    } catch (error) {
+        console.error('Error loading permissions:', error);
+        container.innerHTML = '<div style="text-align:center; color:#f04747;">Failed to load permissions. Check bot connection.</div>';
+    }
+}
+
+function renderPermissionsUI(existingPerms) {
+    const container = document.getElementById('permissions-container');
+    container.innerHTML = '';
+    
+    commandsList.forEach(cmd => {
+        const cmdPerms = existingPerms[cmd] || { roles: [], allow_all: false };
+        const selectedRoles = new Set(cmdPerms.roles || []);
+        
+        let roleOptions = '';
+        // autocompleteRoles is available globally in this file
+        autocompleteRoles.forEach(role => {
+            const isSelected = selectedRoles.has(role.id);
+            roleOptions += `
+                <div class="role-option ${isSelected ? 'selected' : ''}" 
+                     data-role-id="${role.id}"
+                     onclick="toggleRoleSelection(this)"
+                     style="
+                        padding: 8px 12px; 
+                        border: 1px solid ${isSelected ? '#5865f2' : 'rgba(255,255,255,0.1)'}; 
+                        border-radius: 6px; 
+                        cursor: pointer; 
+                        display: flex; align-items: center; gap: 8px; 
+                        background: ${isSelected ? 'rgba(88, 101, 242, 0.2)' : 'rgba(0,0,0,0.2)'};
+                        transition: all 0.2s;
+                     ">
+                    <div class="checkmark" style="
+                        width: 18px; height: 18px; 
+                        border: 1px solid ${isSelected ? '#5865f2' : '#72767d'}; 
+                        border-radius: 4px; 
+                        display: flex; align-items: center; justify-content: center; 
+                        background: ${isSelected ? '#5865f2' : 'transparent'};
+                    ">
+                        ${isSelected ? '<i class="fas fa-check" style="font-size: 11px; color: white;"></i>' : ''}
+                    </div>
+                    <span style="color: ${role.color && role.color !== '#000000' ? role.color : '#fff'}; font-weight: 500;">
+                        ${role.name}
+                    </span>
+                </div>
+            `;
+        });
+        
+        const html = `
+            <div class="permission-card" data-command="${cmd}" style="background: rgba(30, 33, 41, 0.5); padding: 20px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="background: #5865f2; padding: 4px 8px; border-radius: 4px; font-family: monospace; font-size: 0.9em;">/${cmd.replace('_', ' ')}</span>
+                    </div>
+                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9em; user-select: none;">
+                        <span style="color: #faa61a;">⚠️ Allow Everyone</span>
+                        <input type="checkbox" class="allow-all-check" ${cmdPerms.allow_all ? 'checked' : ''} style="accent-color: #faa61a;">
+                    </label>
+                </div>
+                
+                <h5 style="margin: 0 0 10px 0; color: #b5bac1; font-size: 0.85em;">ALLOWED ROLES</h5>
+                <div class="role-selector" style="max-height: 250px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; padding-right: 5px;">
+                    ${roleOptions}
+                </div>
+            </div>
+        `;
+        container.innerHTML += html;
+    });
+}
+
+function toggleRoleSelection(el) {
+    el.classList.toggle('selected');
+    const checkmark = el.querySelector('.checkmark');
+    const isSelected = el.classList.contains('selected');
+    
+    el.style.borderColor = isSelected ? '#5865f2' : 'rgba(255,255,255,0.1)';
+    el.style.background = isSelected ? 'rgba(88, 101, 242, 0.2)' : 'rgba(0,0,0,0.2)';
+    
+    checkmark.style.borderColor = isSelected ? '#5865f2' : '#72767d';
+    checkmark.style.background = isSelected ? '#5865f2' : 'transparent';
+    checkmark.innerHTML = isSelected ? '<i class="fas fa-check" style="font-size: 11px; color: white;"></i>' : '';
+}
+
+async function savePermissions() {
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    const statusEl = document.getElementById('permissionsStatus');
+    
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    btn.disabled = true;
+    statusEl.textContent = '';
+    
+    const perms = {};
+    document.querySelectorAll('.permission-card').forEach(card => {
+        const cmd = card.dataset.command;
+        const allowAll = card.querySelector('.allow-all-check').checked;
+        const selectedRoleEls = card.querySelectorAll('.role-option.selected');
+        const roles = Array.from(selectedRoleEls).map(el => el.dataset.roleId);
+        
+        perms[cmd] = {
+            allow_all: allowAll,
+            roles: roles
+        };
+    });
+    
+    try {
+        const response = await fetch('../includes/bot_api_proxy.php?action=save_permissions', {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify(perms)
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            statusEl.textContent = '✓ Permissions Saved!';
+            statusEl.style.color = '#43b581';
+        } else {
+             statusEl.textContent = '✗ Error: ' + (result.error || 'Unknown');
+             statusEl.style.color = '#f04747';
+        }
+    } catch(e) {
+        console.error(e);
+        statusEl.textContent = '✗ Network Error';
+        statusEl.style.color = '#f04747';
+    }
+    
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+    
+    setTimeout(() => { if(statusEl.textContent.includes('Saved')) statusEl.textContent = ''; }, 3000);
+}
+
+// Load permissions when on the tab or on page load (simple approach)
+document.addEventListener('DOMContentLoaded', loadPermissions);
+
+</script>
