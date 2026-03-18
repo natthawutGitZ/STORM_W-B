@@ -487,7 +487,7 @@ class EventsCog(commands.Cog):
                         )
                         embed.set_author(name=member.name, icon_url=member.display_avatar.url if member.display_avatar else None)
                         embed.add_field(name="IDs", value=f"```ini\nUser = {member.id}\nVoice Channel = {after.channel.id}\n```", inline=False)
-                        embed.set_footer(text=f"{self.user.name} • Today at {datetime.now(BANGKOK_TZ).strftime('%H:%M')}", icon_url=self.user.display_avatar.url if self.user.display_avatar else None)
+                        embed.set_footer(text=f"{self.bot.user.name} • Today at {datetime.now(BANGKOK_TZ).strftime('%H:%M')}", icon_url=self.bot.user.display_avatar.url if self.bot.user.display_avatar else None)
                         await log_channel.send(embed=embed)
                         
                     # Left a channel
@@ -498,7 +498,7 @@ class EventsCog(commands.Cog):
                         )
                         embed.set_author(name=member.name, icon_url=member.display_avatar.url if member.display_avatar else None)
                         embed.add_field(name="IDs", value=f"```ini\nUser = {member.id}\nVoice Channel = {before.channel.id}\n```", inline=False)
-                        embed.set_footer(text=f"{self.user.name} • Today at {datetime.now(BANGKOK_TZ).strftime('%H:%M')}", icon_url=self.user.display_avatar.url if self.user.display_avatar else None)
+                        embed.set_footer(text=f"{self.bot.user.name} • Today at {datetime.now(BANGKOK_TZ).strftime('%H:%M')}", icon_url=self.bot.user.display_avatar.url if self.bot.user.display_avatar else None)
                         await log_channel.send(embed=embed)
                         
                     # Switched channels
@@ -509,7 +509,7 @@ class EventsCog(commands.Cog):
                         )
                         embed.set_author(name=member.name, icon_url=member.display_avatar.url if member.display_avatar else None)
                         embed.add_field(name="IDs", value=f"```ini\nUser = {member.id}\nOld = {before.channel.id}\nNew = {after.channel.id}\n```", inline=False)
-                        embed.set_footer(text=f"{self.user.name} • Today at {datetime.now(BANGKOK_TZ).strftime('%H:%M')}", icon_url=self.user.display_avatar.url if self.user.display_avatar else None)
+                        embed.set_footer(text=f"{self.bot.user.name} • Today at {datetime.now(BANGKOK_TZ).strftime('%H:%M')}", icon_url=self.bot.user.display_avatar.url if self.bot.user.display_avatar else None)
                         await log_channel.send(embed=embed)
         except Exception as e:
             print(f"❌ Error sending voice log: {e}")
