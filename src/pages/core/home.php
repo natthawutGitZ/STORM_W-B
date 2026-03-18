@@ -476,7 +476,7 @@ include ROOT_PATH . '/includes/header.php';
 
 <!-- Flashlight Effect -->
 <canvas id="flashlight-canvas" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9999; mix-blend-mode: screen; overflow: hidden;"></canvas>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('flashlight-canvas');
