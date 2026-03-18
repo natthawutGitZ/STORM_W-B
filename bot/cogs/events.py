@@ -1,4 +1,8 @@
 import discord
+import asyncio
+from datetime import timezone, timedelta
+BANGKOK_TZ = timezone(timedelta(hours=7))
+
 from discord.ext import commands
 import aiohttp
 import json
@@ -9,7 +13,7 @@ import redis
 REDIS_HOST = os.getenv('REDIS_HOST', 'redis')
 r = redis.Redis(host=REDIS_HOST, port=6379, db=0, decode_responses=True)
 from datetime import datetime
-from ui.components import RejectReasonModal, RescheduleModal
+from ui.components import WelcomeView, RejectReasonModal, RescheduleModal
 
 class EventsCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -428,6 +432,171 @@ class EventsCog(commands.Cog):
         # For now, store directly to Redis for the PHP API to pick up
         r.lpush('feed_messages_queue', json.dumps(data))
         r.ltrim('feed_messages_queue', 0, 999)  # Keep last 1000 messages in queue
+
+    async def play_welcome_sound_in_channel(self, voice_client):
+        """Play welcome sound in the current voice channel (bot must already be connected)"""
+        try:
+            sound_path = '/app/sounds/welcome.mp3'
+            
+            if not os.path.exists(sound_path):
+                print("⚠️ Welcome sound file not found")
+                return
+            
+            # Check if already playing
+            if voice_client.is_playing():
+                print("⚠️ Already playing audio, skipping")
+                return
+            
+            # Create FFmpeg audio source from local file
+            source = discord.FFmpegPCMAudio(sound_path)
+            
+            # Play the audio
+            voice_client.play(source, after=lambda e: print(f'Player error: {e}') if e else None)
+            print("🔊 Playing welcome sound...")
+            
+            # Wait for audio to finish (non-blocking)
+            while voice_client.is_playing():
+                await asyncio.sleep(0.5)
+            
+            print("✅ Welcome sound finished")
+            # Note: We do NOT disconnect after playing - bot stays in channel
+            
+        except Exception as e:
+            print(f"Error playing welcome sound: {e}")
+    
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, member, before, after):
+        """Called when a member changes voice state (join/leave/mute/etc.)"""
+        # Ignore bot's own changes
+        if member.bot:
+            return
+            
+        # --- Voice Logs System ---
+        try:
+            logs_enabled = r.get('voice_logs_enabled') == 'true'
+            log_channel_id = r.get('voice_logs_channel_id')
+            
+            if logs_enabled and log_channel_id:
+                log_channel = self.bot.get_channel(int(log_channel_id))
+                if log_channel:
+                    # Joined a channel
+                    if before.channel is None and after.channel is not None:
+                        embed = discord.Embed(
+                            description=f"⬇️ {member.mention} joined voice channel 🔊 | **{after.channel.name}**",
+                            color=discord.Color.from_str('#43b581') # Green
+                        )
+                        embed.set_author(name=member.name, icon_url=member.display_avatar.url if member.display_avatar else None)
+                        embed.add_field(name="IDs", value=f"```ini\nUser = {member.id}\nVoice Channel = {after.channel.id}\n```", inline=False)
+                        embed.set_footer(text=f"{self.user.name} • Today at {datetime.now(BANGKOK_TZ).strftime('%H:%M')}", icon_url=self.user.display_avatar.url if self.user.display_avatar else None)
+                        await log_channel.send(embed=embed)
+                        
+                    # Left a channel
+                    elif before.channel is not None and after.channel is None:
+                        embed = discord.Embed(
+                            description=f"⬆️ {member.mention} left voice channel 🔊 | **{before.channel.name}**",
+                            color=discord.Color.from_str('#f04747') # Red
+                        )
+                        embed.set_author(name=member.name, icon_url=member.display_avatar.url if member.display_avatar else None)
+                        embed.add_field(name="IDs", value=f"```ini\nUser = {member.id}\nVoice Channel = {before.channel.id}\n```", inline=False)
+                        embed.set_footer(text=f"{self.user.name} • Today at {datetime.now(BANGKOK_TZ).strftime('%H:%M')}", icon_url=self.user.display_avatar.url if self.user.display_avatar else None)
+                        await log_channel.send(embed=embed)
+                        
+                    # Switched channels
+                    elif before.channel is not None and after.channel is not None and before.channel.id != after.channel.id:
+                        embed = discord.Embed(
+                            description=f"➡️ {member.mention} switched voice channels\nFrom 🔊 | **{before.channel.name}** to 🔊 | **{after.channel.name}**",
+                            color=discord.Color.from_str('#faa61a') # Yellow/Orange
+                        )
+                        embed.set_author(name=member.name, icon_url=member.display_avatar.url if member.display_avatar else None)
+                        embed.add_field(name="IDs", value=f"```ini\nUser = {member.id}\nOld = {before.channel.id}\nNew = {after.channel.id}\n```", inline=False)
+                        embed.set_footer(text=f"{self.user.name} • Today at {datetime.now(BANGKOK_TZ).strftime('%H:%M')}", icon_url=self.user.display_avatar.url if self.user.display_avatar else None)
+                        await log_channel.send(embed=embed)
+        except Exception as e:
+            print(f"❌ Error sending voice log: {e}")
+            
+        # Check if user joined a voice channel (was not in one before, now is)
+        if before.channel is None and after.channel is not None:
+            try:
+                # Check if welcome system is enabled
+                enabled = r.get('welcome_sound_enabled') == 'true'
+                if not enabled:
+                    return
+                
+                # Check target channel filter
+                target_channel_id = r.get('welcome_sound_channel')
+                if target_channel_id and str(after.channel.id) != target_channel_id:
+                    return
+                
+                print(f"🔊 Welcome triggered for {member.display_name} joining {after.channel.name}")
+                
+                # Check if sound file exists
+                sound_path = '/app/sounds/welcome.mp3'
+                has_sound = os.path.exists(sound_path)
+                
+                # --- Play Welcome Sound ---
+                if has_sound:
+                    voice_client = None
+                    was_already_connected = False
+                    
+                    try:
+                        # Check if bot is already in a voice channel in this guild
+                        existing_vc = after.channel.guild.voice_client
+                        if existing_vc and existing_vc.is_connected():
+                            was_already_connected = True
+                            if existing_vc.channel.id != after.channel.id:
+                                await existing_vc.move_to(after.channel)
+                            voice_client = existing_vc
+                        else:
+                            # Auto-join the channel
+                            voice_client = await after.channel.connect()
+                        
+                        # Wait before playing (configurable delay)
+                        delay = int(r.get('welcome_sound_delay') or 2)
+                        if delay > 0:
+                            await asyncio.sleep(delay)
+                        
+                        # Play the welcome sound
+                        await self.play_welcome_sound_in_channel(voice_client)
+                        
+                    except Exception as e:
+                        print(f"❌ Error playing welcome sound: {e}")
+                    finally:
+                        # Disconnect after playing (only if we auto-joined)
+                        if not was_already_connected and voice_client and voice_client.is_connected():
+                            try:
+                                await voice_client.disconnect()
+                                print(f"📴 Disconnected from {after.channel.name} after welcome sound")
+                            except Exception as e:
+                                print(f"⚠️ Error disconnecting: {e}")
+                
+                # --- Send Welcome DM ---
+                message_text = r.get('welcome_message_text')
+                dropdown_json = r.get('welcome_dropdown_options')
+                
+                if message_text or dropdown_json:
+                    try:
+                        options_data = json.loads(dropdown_json) if dropdown_json else []
+                    except:
+                        options_data = []
+    
+                    try:
+                        link_buttons = json.loads(r.get('welcome_link_buttons') or '[]')
+                    except:
+                        link_buttons = []
+                        
+                    view = WelcomeView(options_data, link_buttons) if (options_data or link_buttons) else None
+                    final_text = message_text.replace('{user}', member.mention) if message_text else f"Welcome {member.mention}!"
+                    
+                    try:
+                        await member.send(content=final_text, view=view)
+                        print(f"📨 Sent welcome DM to {member.name}")
+                    except discord.Forbidden:
+                        print(f"❌ Failed to DM {member.name}: DMs disabled")
+                    except Exception as e:
+                        print(f"❌ Error sending welcome DM: {e}")
+                
+            except Exception as e:
+                print(f"Welcome sound error: {e}")
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(EventsCog(bot))
