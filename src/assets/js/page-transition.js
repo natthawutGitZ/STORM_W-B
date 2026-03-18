@@ -8,7 +8,7 @@
     // Skip if Three.js is not loaded
     if (typeof THREE === 'undefined') return;
 
-    const TRANSITION_DURATION = 0.9; // seconds
+    const TRANSITION_DURATION = 0.85; // seconds
     const TRANSITION_EASE = (t) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; // easeInOutCubic
 
     // Vertex shader
@@ -20,45 +20,47 @@
         }
     `;
 
-    // Fragment shader — diagonal wipe with noise
+    // Fragment shader — digital block dissolve
     const fragmentShader = `
         uniform float uProgress;
         uniform vec2 uResolution;
         varying vec2 vUv;
 
-        // Simple noise
-        float hash(vec2 p) {
-            return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
-        }
-
-        float noise(vec2 p) {
-            vec2 i = floor(p);
-            vec2 f = fract(p);
-            f = f * f * (3.0 - 2.0 * f);
-            float a = hash(i);
-            float b = hash(i + vec2(1.0, 0.0));
-            float c = hash(i + vec2(0.0, 1.0));
-            float d = hash(i + vec2(1.0, 1.0));
-            return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+        // Pseudo-random noise
+        float random(vec2 st) {
+            return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
         }
 
         void main() {
             vec2 uv = vUv;
             
-            // Diagonal progress line from top-left to bottom-right
-            float diagonal = (uv.x + uv.y) * 0.5;
+            // Grid settings for digital blocks
+            float gridX = 40.0;
+            float gridY = gridX * (uResolution.y / uResolution.x); // Keep blocks roughly square
+            vec2 grid = vec2(gridX, gridY);
             
-            // Add noise distortion for organic edge
-            float n = noise(uv * 8.0) * 0.15;
+            vec2 id = floor(uv * grid);
             
-            // Edge softness
-            float edge = 0.08;
+            // Random value per block
+            float rand = random(id);
             
-            // Calculate reveal: progress 0 = fully transparent, 1 = fully black
-            float p = uProgress * (1.0 + edge * 2.0 + 0.15) - edge;
-            float alpha = smoothstep(p - edge, p + edge, diagonal + n);
+            // Add a horizontal scan bias so it transitions somewhat left-to-right
+            // along with the random block dissolve
+            float threshold = (id.x / grid.x) * 0.4 + rand * 0.6;
             
-            // Dark color with slight accent tint (matching --primary-color #0a0a0a)
+            // Adjust progress to ensure full coverage
+            float p = uProgress * 1.2 - 0.1;
+            
+            // Block reveal
+            float alpha = step(threshold, p);
+            
+            // Add horizontal glitch lines (scanlines) during transition
+            float scanline = step(0.9, random(vec2(uv.y * 50.0, uProgress)));
+            if (uProgress > 0.0 && uProgress < 1.0 && scanline > 0.0) {
+                alpha = max(alpha, clamp(p * 2.0, 0.0, 0.15)); // Slight glitch glow ahead of transition
+            }
+            
+            // Tactical dark color matching theme
             vec3 color = vec3(0.04, 0.04, 0.04);
             
             gl_FragColor = vec4(color, alpha);
