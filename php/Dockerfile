@@ -18,4 +18,13 @@ COPY custom.ini /usr/local/etc/php/conf.d/custom.ini
 # ตั้ง permission
 RUN chown -R www-data:www-data /var/www/html
 
+# Pass Docker environment variables to PHP via Apache
+RUN echo 'PassEnv GOOGLE_CLIENT_ID' >> /etc/apache2/conf-enabled/passenv.conf \
+    && echo 'PassEnv GOOGLE_CLIENT_SECRET' >> /etc/apache2/conf-enabled/passenv.conf \
+    && echo 'PassEnv DISCORD_BOT_API_URL' >> /etc/apache2/conf-enabled/passenv.conf \
+    && echo 'PassEnv MYSQL_DATABASE' >> /etc/apache2/conf-enabled/passenv.conf \
+    && echo 'PassEnv MYSQL_USER' >> /etc/apache2/conf-enabled/passenv.conf \
+    && echo 'PassEnv MYSQL_PASSWORD' >> /etc/apache2/conf-enabled/passenv.conf \
+    && echo 'PassEnv DOCKER_CONTAINER' >> /etc/apache2/conf-enabled/passenv.conf
+
 WORKDIR /var/www/html
