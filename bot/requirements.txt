@@ -4,4 +4,4 @@ python-dotenv
 psycopg2-binary
 redis
 aioredis
-davey
+PyNaCl
