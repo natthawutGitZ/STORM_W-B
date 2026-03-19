@@ -1825,6 +1825,37 @@ async def handle_test_server_welcome(request):
         print(f"Test server welcome error: {e}")
         return web.json_response({'error': str(e)}, status=500)
 
+async def handle_steam_proxy(request):
+    """Proxy for Steam API requests to bypass local network blocking."""
+    try:
+        url = request.query.get('url')
+        if not url:
+            return web.json_response({'error': 'Missing url parameter'}, status=400)
+            
+        async with aiohttp.ClientSession() as session:
+            if request.method == 'POST':
+                # Forward POST data
+                post_data = await request.read()
+                headers = {'Content-Type': request.headers.get('Content-Type', 'application/x-www-form-urlencoded')}
+                async with session.post(url, data=post_data, headers=headers) as response:
+                    text = await response.text()
+                    return web.Response(text=text, headers={'Content-Type': response.headers.get('Content-Type', 'text/plain')})
+            else:
+                # GET request
+                async with session.get(url) as response:
+                    if response.status == 200:
+                        try:
+                            data = await response.json()
+                            return web.json_response(data)
+                        except:
+                            text = await response.text()
+                            return web.Response(text=text, headers={'Content-Type': response.headers.get('Content-Type', 'application/json')})
+                    else:
+                        return web.json_response({'error': f'Steam API returned {response.status}'}, status=response.status)
+    except Exception as e:
+        print(f"Steam Proxy error: {e}", flush=True)
+        return web.json_response({'error': str(e)}, status=500)
+
 async def start_server(bot):
     try:
         app = web.Application(client_max_size=50 * 1024 * 1024, middlewares=[api_key_middleware])
@@ -1892,6 +1923,10 @@ async def start_server(bot):
         # User Lookup Routes
         app.router.add_get('/users/lookup', handle_lookup_user)
         app.router.add_get('/users/filtered', handle_get_filtered_users)
+        
+        # Steam Proxy
+        app.router.add_get('/proxy/steam', handle_steam_proxy)
+        app.router.add_post('/proxy/steam', handle_steam_proxy)
         
         runner = web.AppRunner(app)
         await runner.setup()

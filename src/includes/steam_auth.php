@@ -10,60 +10,37 @@ class SteamAuth
         $this->domain = $domain;
     }
 
-    private function doCurlWithDoH($url, $postData = null)
+    private function doCurlViaBotProxy($url, $postData = null)
     {
-        $parsed = parse_url($url);
-        $host = $parsed['host'];
-        $port = isset($parsed['port']) ? $parsed['port'] : ($parsed['scheme'] === 'https' ? 443 : 80);
-
-        // Fetch real IP via Cloudflare DoH to bypass ISP poisoning
-        $dohUrl = "https://cloudflare-dns.com/dns-query?name=" . urlencode($host) . "&type=A";
+        // Define bot API URL (same as bot_api.php)
+        $botApiUrl = defined('DISCORD_BOT_API_URL') ? DISCORD_BOT_API_URL : 'http://bot:5000';
         
-        $ch_doh = curl_init($dohUrl);
-        curl_setopt($ch_doh, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch_doh, CURLOPT_HTTPHEADER, ["accept: application/dns-json"]);
-        curl_setopt($ch_doh, CURLOPT_TIMEOUT, 5);
-        $dohResponse = curl_exec($ch_doh);
-        curl_close($ch_doh);
+        $proxyUrl = $botApiUrl . '/proxy/steam?url=' . urlencode($url);
 
-        $ip = null;
-        if ($dohResponse) {
-            $dohData = json_decode($dohResponse, true);
-            if (isset($dohData['Answer']) && is_array($dohData['Answer'])) {
-                foreach ($dohData['Answer'] as $record) {
-                    if ($record['type'] === 1) { // A record
-                        $ip = $record['data'];
-                        break;
-                    }
-                }
-            }
-        }
-
-        $ch = curl_init($url);
+        $ch = curl_init($proxyUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); 
 
-        if ($ip) {
-            curl_setopt($ch, CURLOPT_RESOLVE, ["{$host}:{$port}:{$ip}"]);
+        // Include API key for bot authentication if set
+        $headers = [];
+        if (defined('BOT_API_KEY') && BOT_API_KEY) {
+            $headers[] = 'X-API-Key: ' . BOT_API_KEY;
         }
-
-        curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
 
         if ($postData !== null) {
             curl_setopt($ch, CURLOPT_POST, true);
             curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                "Accept-language: en",
-                "Content-type: application/x-www-form-urlencoded",
-                "Content-Length: " . strlen($postData)
-            ]);
+            $headers[] = "Content-type: application/x-www-form-urlencoded";
+            $headers[] = "Content-Length: " . strlen($postData);
+        }
+
+        if (!empty($headers)) {
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         }
 
         $result = curl_exec($ch);
         if ($result === false) {
-            error_log("Steam Curl Error: " . curl_error($ch));
+            error_log("Steam Proxy Curl Error: " . curl_error($ch));
         }
         curl_close($ch);
 
@@ -101,7 +78,7 @@ class SteamAuth
         }
 
         $data = http_build_query($params);
-        $result = $this->doCurlWithDoH('https://steamcommunity.com/openid/login', $data);
+        $result = $this->doCurlViaBotProxy('https://steamcommunity.com/openid/login', $data);
 
         if ($result && preg_match("#is_valid:true#i", $result)) {
             preg_match('#^https://steamcommunity.com/openid/id/([0-9]{17,25})#', $_GET['openid_claimed_id'], $matches);
@@ -115,7 +92,7 @@ class SteamAuth
     public function getUserInfo($steamid)
     {
         $url = "https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={$this->apikey}&steamids={$steamid}";
-        $json = $this->doCurlWithDoH($url);
+        $json = $this->doCurlViaBotProxy($url);
         
         if (!$json) {
             return null;
