@@ -1,22 +1,41 @@
-/**
- * Initialize all page animations — called on DOMContentLoaded
- * and after Barba.js page transitions.
- */
-window.initPageAnimations = function () {
+document.addEventListener('DOMContentLoaded', () => {
+    // Mobile Menu
+    const menuToggle = document.querySelector('.menu-toggle');
+    const nav = document.querySelector('nav');
+
+    if (menuToggle) {
+        menuToggle.addEventListener('click', () => {
+            nav.classList.toggle('active');
+            menuToggle.style.transform = nav.classList.contains('active') ? 'rotate(90deg)' : 'rotate(0)';
+        });
+    }
+
+    // Header Scroll Effect
+    const header = document.querySelector('header');
+    window.addEventListener('scroll', () => {
+        if (window.scrollY > 50) {
+            header.classList.add('scrolled');
+        } else {
+            header.classList.remove('scrolled');
+        }
+    });
+
     // ===== Modern Bidirectional Scroll Reveal =====
-    const revealElements = document.querySelectorAll('.reveal:not(.observed)');
+    const revealElements = document.querySelectorAll('.reveal');
 
     const revealObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
+                // Add a small delay based on element position for cascade effect
                 const rect = entry.boundingClientRect;
                 const viewportHeight = window.innerHeight;
                 const distFromCenter = Math.abs(rect.top - viewportHeight / 2) / viewportHeight;
-                const extraDelay = distFromCenter * 0.1;
+                const extraDelay = distFromCenter * 0.1; // 0-100ms extra
 
                 setTimeout(() => {
                     entry.target.classList.add('active');
 
+                    // Stagger children with smooth cascade
                     const children = entry.target.querySelectorAll('.reveal-child');
                     children.forEach((child, i) => {
                         child.style.transitionDelay = (i * 0.12 + 0.15) + 's';
@@ -26,6 +45,7 @@ window.initPageAnimations = function () {
                     });
                 }, extraDelay * 1000);
             } else {
+                // Smooth exit — remove active with reset delays
                 entry.target.classList.remove('active');
                 const children = entry.target.querySelectorAll('.reveal-child');
                 children.forEach(child => {
@@ -41,20 +61,19 @@ window.initPageAnimations = function () {
     });
 
     revealElements.forEach(el => {
-        el.classList.add('observed');
         revealObserver.observe(el);
     });
 
     // ===== Parallax Hero Background =====
     const hero = document.querySelector('.hero');
-    if (hero && !hero.dataset.parallaxInit) {
-        hero.dataset.parallaxInit = 'true';
+    if (hero) {
         let ticking = false;
         window.addEventListener('scroll', () => {
             if (!ticking) {
                 requestAnimationFrame(() => {
                     const scrolled = window.scrollY;
                     hero.style.backgroundPositionY = (scrolled * 0.35) + 'px';
+                    // Subtle hero fade on scroll
                     const heroContent = hero.querySelector('.hero-content');
                     if (heroContent) {
                         const opacity = Math.max(0, 1 - scrolled / 600);
@@ -71,8 +90,7 @@ window.initPageAnimations = function () {
 
     // ===== Branch Section Parallax =====
     const branchSections = document.querySelectorAll('.branch-section');
-    if (branchSections.length > 0 && !document.body.dataset.branchParallaxInit) {
-        document.body.dataset.branchParallaxInit = 'true';
+    if (branchSections.length > 0) {
         let branchTicking = false;
         window.addEventListener('scroll', () => {
             if (!branchTicking) {
@@ -94,7 +112,7 @@ window.initPageAnimations = function () {
     }
 
     // ===== Timeline Step Stagger Animation =====
-    const timelineSteps = document.querySelectorAll('.timeline-zigzag > div:not(.timeline-init)');
+    const timelineSteps = document.querySelectorAll('.timeline-zigzag > div');
     if (timelineSteps.length > 0) {
         const timelineObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
@@ -112,7 +130,6 @@ window.initPageAnimations = function () {
         });
 
         timelineSteps.forEach((step, i) => {
-            step.classList.add('timeline-init');
             step.style.opacity = '0';
             step.style.transform = 'translateY(30px)';
             step.style.transition = `opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1) ${i * 0.15}s, 
@@ -121,7 +138,7 @@ window.initPageAnimations = function () {
         });
     }
 
-    // Smooth Scroll for hash links
+    // Smooth Scroll
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function (e) {
             e.preventDefault();
@@ -130,42 +147,12 @@ window.initPageAnimations = function () {
                 target.scrollIntoView({
                     behavior: 'smooth'
                 });
-                const nav = document.querySelector('nav');
-                if (nav && nav.classList.contains('active')) {
+                if (nav.classList.contains('active')) {
                     nav.classList.remove('active');
                 }
             }
         });
     });
-};
-
-document.addEventListener('DOMContentLoaded', () => {
-    // Mobile Menu
-    const menuToggle = document.querySelector('.menu-toggle');
-    const nav = document.querySelector('nav');
-
-    if (menuToggle) {
-        menuToggle.addEventListener('click', () => {
-            nav.classList.toggle('active');
-            menuToggle.style.transform = nav.classList.contains('active') ? 'rotate(90deg)' : 'rotate(0)';
-        });
-    }
-
-    // Header Scroll Effect
-    const header = document.querySelector('header');
-    if (header) {
-        window.addEventListener('scroll', () => {
-            if (window.scrollY > 50) {
-                header.classList.add('scrolled');
-            } else {
-                header.classList.remove('scrolled');
-            }
-        });
-    }
-
-    // Initialize page animations
-    window.initPageAnimations();
 
     console.log('SAC Modern UI Loaded');
 });
-

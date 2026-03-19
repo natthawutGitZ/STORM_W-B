@@ -23,12 +23,9 @@ $steam = new SteamAuth($apiKey, $domain);
 
 // Handle Steam Login
 if (isset($_GET['openid_mode'])) {
-    file_put_contents('/var/www/html/login_debug.txt', "Step 1: openid_mode detected = " . $_GET['openid_mode'] . "\n", FILE_APPEND);
     $steamid = $steam->validate();
-    file_put_contents('/var/www/html/login_debug.txt', "Step 2: validate() returned = " . var_export($steamid, true) . "\n", FILE_APPEND);
     if ($steamid) {
         $userInfo = $steam->getUserInfo($steamid);
-        file_put_contents('/var/www/html/login_debug.txt', "Step 3: getUserInfo() returned = " . var_export($userInfo, true) . "\n", FILE_APPEND);
 
         if ($userInfo) {
             // Check if user exists, if not create

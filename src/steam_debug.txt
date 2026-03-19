@@ -1,3 +1,0 @@
-Requested IP: 23.15.100.115
-Error: Connection timed out after 15002 milliseconds
-Result: 

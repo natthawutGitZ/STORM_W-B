@@ -62,12 +62,9 @@ class SteamAuth
         }
 
         $result = curl_exec($ch);
-        $curlError = curl_error($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         if ($result === false) {
-            error_log("Steam Curl Error: " . $curlError);
+            error_log("Steam Curl Error: " . curl_error($ch));
         }
-        file_put_contents('/var/www/html/login_debug.txt', "doCurlWithDoH: ip=$ip, httpCode=$httpCode, curlError=[$curlError], resultLen=" . strlen($result) . "\n", FILE_APPEND);
         curl_close($ch);
 
         return $result;
@@ -104,17 +101,13 @@ class SteamAuth
         }
 
         $data = http_build_query($params);
-        file_put_contents('/var/www/html/login_debug.txt', "Validate POST data: " . $data . "\n", FILE_APPEND);
         $result = $this->doCurlWithDoH('https://steamcommunity.com/openid/login', $data);
-        file_put_contents('/var/www/html/login_debug.txt', "Validate raw result: [" . var_export($result, true) . "]\n", FILE_APPEND);
 
         if ($result && preg_match("#is_valid:true#i", $result)) {
             preg_match('#^https://steamcommunity.com/openid/id/([0-9]{17,25})#', $_GET['openid_claimed_id'], $matches);
             $steamID64 = is_numeric($matches[1]) ? $matches[1] : 0;
-            file_put_contents('/var/www/html/login_debug.txt', "Validate steamID64: " . $steamID64 . "\n", FILE_APPEND);
             return $steamID64;
         } else {
-            file_put_contents('/var/www/html/login_debug.txt', "Validate FAILED - result was falsy or no is_valid:true\n", FILE_APPEND);
             return false;
         }
     }
