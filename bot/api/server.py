@@ -1735,6 +1735,38 @@ async def handle_set_voice_logs(request):
         print(f"Set voice logs error: {e}")
         return web.json_response({'error': str(e)}, status=500)
 
+async def _download_banner_image(image_url: str):
+    """Download banner image from URL with internal Docker fallback.
+    Returns discord.File or None if download fails.
+    """
+    urls_to_try = [image_url]
+    
+    # If URL is external, add internal Docker fallback (http://web/assets/uploads/...)
+    if '/assets/uploads/' in image_url:
+        path = '/assets/uploads/' + image_url.split('/assets/uploads/')[-1]
+        internal_url = f'http://web{path}'
+        if internal_url != image_url:
+            urls_to_try.append(internal_url)
+    
+    for url in urls_to_try:
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as resp:
+                    if resp.status == 200:
+                        image_data = await resp.read()
+                        filename = image_url.split('/')[-1].split('?')[0]
+                        if not filename or '.' not in filename:
+                            filename = 'banner.png'
+                        print(f"✅ Downloaded banner image: {filename} ({len(image_data)} bytes) from {url}")
+                        return discord.File(io.BytesIO(image_data), filename=filename)
+                    else:
+                        print(f"⚠️ Banner download got status {resp.status} from {url}")
+        except Exception as e:
+            print(f"⚠️ Banner download failed from {url}: {e}")
+    
+    print(f"❌ All banner download attempts failed for: {image_url}")
+    return None
+
 async def handle_test_server_welcome(request):
     self = request.app['bot']
     """Send a test server welcome message"""
@@ -1760,18 +1792,8 @@ async def handle_test_server_welcome(request):
         file_attachment = None
         
         if banner_image:
-            try:
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(banner_image) as resp:
-                        if resp.status == 200:
-                            image_data = await resp.read()
-                            # Get filename from URL or use default
-                            filename = banner_image.split('/')[-1].split('?')[0]
-                            if not filename or '.' not in filename:
-                                filename = 'banner.png'
-                            file_attachment = discord.File(io.BytesIO(image_data), filename=filename)
-            except Exception as img_err:
-                print(f"Failed to download banner image: {img_err}")
+            file_attachment = await _download_banner_image(banner_image)
+            if not file_attachment:
                 # Fallback: add URL to message
                 if message_content:
                     message_content += f"\n{banner_image}"
@@ -1804,8 +1826,12 @@ async def handle_test_server_welcome(request):
             embed.set_footer(text="🔔 This is a TEST welcome message")
             embed.timestamp = datetime.now()
             
-            await channel.send(file=file_attachment)
-            await channel.send(content=message_content or None, embed=embed)
+            if file_attachment:
+                await channel.send(file=file_attachment)
+            if message_content:
+                await channel.send(content=message_content, embed=embed)
+            else:
+                await channel.send(embed=embed)
         else:
             final_content = message_content if message_content else ""
             final_content += "\n\n*🔔 This is a TEST welcome message*"
