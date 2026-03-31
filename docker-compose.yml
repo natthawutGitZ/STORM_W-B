@@ -18,6 +18,8 @@ services:
       MYSQL_USER: appuser
       MYSQL_PASSWORD: apppass
       DOCKER_CONTAINER: "true"
+      GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID}"
+      GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET}"
     # Resource limits for production optimization
     deploy:
       resources:

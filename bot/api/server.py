@@ -1757,14 +1757,14 @@ async def _download_banner_image(image_url: str):
                         filename = image_url.split('/')[-1].split('?')[0]
                         if not filename or '.' not in filename:
                             filename = 'banner.png'
-                        print(f"✅ Downloaded banner image: {filename} ({len(image_data)} bytes) from {url}")
+                        print(f"✅ Downloaded banner image: {filename} ({len(image_data)} bytes) from {url}", flush=True)
                         return discord.File(io.BytesIO(image_data), filename=filename)
                     else:
-                        print(f"⚠️ Banner download got status {resp.status} from {url}")
+                        print(f"⚠️ Banner download got status {resp.status} from {url}", flush=True)
         except Exception as e:
-            print(f"⚠️ Banner download failed from {url}: {e}")
+            print(f"⚠️ Banner download failed from {url}: {e}", flush=True)
     
-    print(f"❌ All banner download attempts failed for: {image_url}")
+    print(f"❌ All banner download attempts failed for: {image_url}", flush=True)
     return None
 
 async def handle_test_server_welcome(request):
@@ -1789,9 +1789,11 @@ async def handle_test_server_welcome(request):
         
         # Download banner image as file attachment
         banner_image = data.get('banner_image', '')
+        print(f"DEBUG: banner_image in payload is '{banner_image}'", flush=True)
         file_attachment = None
         
         if banner_image:
+            print(f"DEBUG: Calling _download_banner_image({banner_image})", flush=True)
             file_attachment = await _download_banner_image(banner_image)
             if not file_attachment:
                 # Fallback: add URL to message

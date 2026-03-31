@@ -54,7 +54,7 @@ if (!isset($GLOBALS['_page_tracked'])) {
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Admin Panel | S.T.O.R.M.</title>
+    <title>Admin Panel | S.T.O.R.M.⚡</title>
 
     <link rel="icon" href="<?php echo $assetsPath; ?>/images/logo.png">
 
