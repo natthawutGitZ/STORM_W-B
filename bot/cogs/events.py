@@ -238,6 +238,39 @@ class EventsCog(commands.Cog):
         except Exception as e:
             print(f"❌ Error sending server leave message: {e}")
 
+
+    async def _download_banner_image(self, image_url: str):
+        """Download banner image from URL with internal Docker fallback.
+        Returns discord.File or None if download fails.
+        """
+        urls_to_try = [image_url]
+        
+        # If URL is external, add internal Docker fallback (http://web/assets/uploads/...)
+        if '/assets/uploads/' in image_url:
+            path = '/assets/uploads/' + image_url.split('/assets/uploads/')[-1]
+            internal_url = f'http://web{path}'
+            if internal_url != image_url:
+                urls_to_try.append(internal_url)
+        
+        for url in urls_to_try:
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as resp:
+                        if resp.status == 200:
+                            image_data = await resp.read()
+                            filename = image_url.split('/')[-1].split('?')[0]
+                            if not filename or '.' not in filename:
+                                filename = 'banner.png'
+                            print(f"✅ Downloaded banner image: {filename} ({len(image_data)} bytes) from {url}")
+                            return discord.File(io.BytesIO(image_data), filename=filename)
+                        else:
+                            print(f"⚠️ Banner download got status {resp.status} from {url}")
+            except Exception as e:
+                print(f"⚠️ Banner download failed from {url}: {e}")
+        
+        print(f"❌ All banner download attempts failed for: {image_url}")
+        return None
+
     @commands.Cog.listener()
     async def on_member_join(self, member):
         """Called when a new member joins the server"""
@@ -269,19 +302,8 @@ class EventsCog(commands.Cog):
             file_attachment = None
         
             if external_image:
-                try:
-                    async with aiohttp.ClientSession() as session:
-                        async with session.get(external_image) as resp:
-                            if resp.status == 200:
-                                image_data = await resp.read()
-                                # Get filename from URL or use default
-                                filename = external_image.split('/')[-1].split('?')[0]
-                                if not filename or '.' not in filename:
-                                    filename = 'banner.png'
-                                file_attachment = discord.File(io.BytesIO(image_data), filename=filename)
-                                print(f"✅ Downloaded banner image: {filename}")
-                except Exception as img_err:
-                    print(f"Failed to download banner image: {img_err}")
+                file_attachment = await self._download_banner_image(external_image)
+                if not file_attachment:
                     # Fallback: add URL to message if download fails
                     if message_content:
                         message_content += f"\n{external_image}"
