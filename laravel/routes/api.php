@@ -7,6 +7,9 @@ use App\Http\Controllers\UserResumeController;
 use App\Http\Controllers\RankController;
 use App\Http\Controllers\AwardController;
 use App\Http\Controllers\PersonnelController;
+use App\Http\Controllers\CampaignController;
+use App\Http\Controllers\MediaController;
+use App\Http\Controllers\DonationController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -30,3 +33,17 @@ Route::get('/awards/{id}', [AwardController::class, 'show']);
 // ─── Positions & Qualifications ──────────────────────────────────────
 Route::get('/positions', [PersonnelController::class, 'positions']);
 Route::get('/qualifications', [PersonnelController::class, 'qualifications']);
+
+// ─── Campaigns ───────────────────────────────────────────────────────
+Route::get('/campaigns', [CampaignController::class, 'index']);
+Route::get('/campaigns/{id}', [CampaignController::class, 'show']);
+
+// ─── Media Gallery ───────────────────────────────────────────────────
+Route::get('/media/albums', [MediaController::class, 'albums']);
+Route::get('/media/albums/{id}', [MediaController::class, 'albumShow']);
+Route::get('/media/categories', [MediaController::class, 'categories']);
+Route::get('/media/recent', [MediaController::class, 'recent']);
+
+// ─── Donations ───────────────────────────────────────────────────────
+Route::get('/donations', [DonationController::class, 'index']);
+Route::get('/donations/stats', [DonationController::class, 'stats']);
