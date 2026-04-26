@@ -80,4 +80,28 @@ class User extends Authenticatable
     {
         return $this->hasMany(FormResponse::class, 'user_id', 'id');
     }
+
+    /**
+     * Get the awards assigned to this user.
+     */
+    public function userAwards()
+    {
+        return $this->hasMany(UserAward::class, 'user_id');
+    }
+
+    /**
+     * Get the positions assigned to this user.
+     */
+    public function userPositions()
+    {
+        return $this->hasMany(UserPosition::class, 'user_id');
+    }
+
+    /**
+     * Get the qualifications assigned to this user.
+     */
+    public function userQualifications()
+    {
+        return $this->hasMany(UserQualification::class, 'user_id');
+    }
 }
