@@ -267,6 +267,44 @@ services:
           memory: 128M
           cpus: '0.25'
 
+  # ---------------------------------------------------------------------------
+  # Laravel App (Strangler Fig Pattern)
+  # ---------------------------------------------------------------------------
+  laravel_web:
+    build: ./laravel
+    container_name: laravel_web
+    restart: unless-stopped
+    expose:
+      - "80"
+    volumes:
+      - ./laravel:/var/www/html
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: "appdb"
+      DB_USERNAME: "appuser"
+      DB_PASSWORD: "apppass"
+    networks:
+      - app-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+          cpus: '0.5'
+
 # =============================================================================
 # Networks
 # =============================================================================
