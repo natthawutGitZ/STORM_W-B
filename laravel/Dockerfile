@@ -15,6 +15,10 @@ RUN apt-get update && apt-get install -y \
     libicu-dev \
     && docker-php-ext-install pdo_mysql mbstring zip exif pcntl bcmath xml intl
 
+# ติดตั้ง Node.js สำหรับรัน Vite (Frontend Build)
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs
+
 # ติดตั้ง Composer (เผื่อใช้งานใน container ภายหลัง)
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 

@@ -4,9 +4,10 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\Auth\SteamLinkController;
 use App\Http\Controllers\Auth\LoginController;
+use Inertia\Inertia;
 
 Route::get('/', function () {
-    return view('welcome');
+    return Inertia::render('Home');
 });
 
 // ─── Authentication Routes ───────────────────────────────────────────
