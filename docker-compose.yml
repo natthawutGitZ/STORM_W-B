@@ -289,6 +289,8 @@ services:
       DB_DATABASE: "appdb"
       DB_USERNAME: "appuser"
       DB_PASSWORD: "apppass"
+      SESSION_DRIVER: "file"
+      CACHE_STORE: "file"
     networks:
       - app-network
     logging:
