@@ -19,6 +19,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Force HTTPS when behind Nginx reverse proxy
+        if (config('app.env') === 'production' || !empty(env('TRUSTED_PROXIES'))) {
+            \Illuminate\Support\Facades\URL::forceScheme('https');
+        }
     }
 }

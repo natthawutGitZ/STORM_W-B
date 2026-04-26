@@ -283,6 +283,8 @@ services:
         condition: service_healthy
     env_file: .env
     environment:
+      APP_URL: "https://strategic-tacticaloperations.space/laravel-api"
+      ASSET_URL: "https://strategic-tacticaloperations.space/laravel-api"
       DB_CONNECTION: mysql
       DB_HOST: db
       DB_PORT: 3306
@@ -291,6 +293,7 @@ services:
       DB_PASSWORD: "apppass"
       SESSION_DRIVER: "file"
       CACHE_STORE: "file"
+      TRUSTED_PROXIES: "*"
     networks:
       - app-network
     logging:

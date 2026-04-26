@@ -12,7 +12,8 @@ RUN apt-get update && apt-get install -y \
     curl \
     libonig-dev \
     libxml2-dev \
-    && docker-php-ext-install pdo_mysql mbstring zip exif pcntl bcmath xml
+    libicu-dev \
+    && docker-php-ext-install pdo_mysql mbstring zip exif pcntl bcmath xml intl
 
 # ติดตั้ง Composer (เผื่อใช้งานใน container ภายหลัง)
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
