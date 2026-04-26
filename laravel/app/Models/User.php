@@ -72,4 +72,12 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    /**
+     * Get the form responses submitted by this user.
+     */
+    public function formResponses()
+    {
+        return $this->hasMany(FormResponse::class, 'user_id', 'id');
+    }
 }
