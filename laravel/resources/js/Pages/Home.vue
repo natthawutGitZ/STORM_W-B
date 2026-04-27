@@ -1,36 +1,144 @@
 <template>
-    <div class="min-h-screen bg-[#0f0f0f] text-gray-100 overflow-x-hidden relative">
-        <Navbar />
+    <div class="min-h-screen bg-[#0f0f0f] text-gray-100 overflow-x-hidden relative selection:bg-amber-500/30">
+        <!-- Flashlight Canvas Effect -->
+        <canvas ref="flashlightCanvas" class="fixed inset-0 w-full h-full pointer-events-none z-0 mix-blend-screen opacity-50"></canvas>
 
-        <!-- Hero Section -->
-        <main class="relative h-screen flex flex-col items-center justify-center text-center px-4">
-            <!-- Background effects -->
-            <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-amber-900/20 via-[#0f0f0f] to-[#0f0f0f] z-0"></div>
+        <!-- Navbar (From Previous Setup) -->
+        <Navbar class="relative z-50" />
+
+        <!-- Main Content -->
+        <main class="relative z-10">
+            <HeroSection />
+            <FaqSection />
             
-            <div class="relative z-10 max-w-4xl mx-auto flex flex-col items-center">
-                <h1 class="text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-500 to-amber-700 tracking-tighter mb-6 uppercase drop-shadow-[0_0_15px_rgba(245,158,11,0.5)]">
-                    Strategic Tactical
-                    <span class="block text-4xl md:text-6xl mt-2 tracking-widest text-white">Operations</span>
-                </h1>
-                
-                <p class="text-xl md:text-2xl text-gray-400 mb-10 max-w-2xl font-light">
-                    The elite task force. Precision, teamwork, and tactical superiority.
-                </p>
+            <BranchSection 
+                title="Delta Force Special Operations Unit"
+                description="The 1st Special Forces Operational Detachment–Delta (1st SFOD-D), commonly known as Delta Force, is a U.S. Army special operations unit operating under the Joint Special Operations Command (JSOC). Its primary missions include counter-terrorism, hostage rescue, direct action, and special reconnaissance, with an emphasis on high-value and time-sensitive targets."
+                image="/assets/images/ground_branch.jpg"
+                align="left"
+            />
+            
+            <BranchSection 
+                title="JOINT TERMINAL ATTACK CONTROLLER"
+                description="Joint Terminal Attack Controller (JTACs) play a critical role in mission success. They manage both ground-to-air communications and air traffic control, ensuring seamless coordination between ground forces and aircraft. Additionally, they oversee close air support missions, directing precise airstrikes to support troops on the ground. This combination of responsibilities ensures effective air-ground integration and enhances operational efficiency."
+                image="/assets/images/jtac.jpg"
+                align="right"
+            />
+            
+            <BranchSection 
+                title="Air Operations Special Missions Unit"
+                description="The 160th Special Operations Aviation Regiment (Airborne), known as the 160th SOAR, is the U.S. Army's premier special operations aviation unit. Its highly trained aviators and crews provide precision helicopter support for special operations forces, conducting attack, assault, and reconnaissance missions. Operating primarily at night and under demanding conditions, the unit—nicknamed the “Night Stalkers” and designated as Task Force Brown within JSOC—specializes in high-speed, low-altitude, and time-sensitive operations."
+                image="/assets/images/air_branch.jpg"
+                align="left"
+            />
 
-                <div class="flex gap-4">
-                    <button class="bg-amber-600 hover:bg-amber-500 text-white px-8 py-3 rounded-full font-bold tracking-wide transition-all duration-300 shadow-[0_0_20px_rgba(217,119,6,0.4)] hover:shadow-[0_0_30px_rgba(217,119,6,0.6)] hover:-translate-y-1">
-                        JOIN THE RANKS
-                    </button>
-                    <button class="border border-white/20 hover:bg-white/10 text-white px-8 py-3 rounded-full font-bold tracking-wide transition-all duration-300">
-                        VIEW ROSTER
-                    </button>
-                </div>
-            </div>
+            <ApplicationProcess />
+            
+            <SocialSection />
         </main>
+        
+        <!-- Footer -->
+        <footer class="relative z-10 border-t border-white/10 bg-[#0a0a0a] py-8 text-center text-gray-500">
+            <p>&copy; 2026 Strategic Tactical Operations & Roleplay Milsim. All rights reserved.</p>
+        </footer>
     </div>
 </template>
 
 <script setup>
-import { Head } from '@inertiajs/vue3'
-import Navbar from '../Components/Navbar.vue'
+import { ref, onMounted, onUnmounted } from 'vue';
+import { Head } from '@inertiajs/vue3';
+import * as THREE from 'three';
+
+// Components
+import Navbar from '../Components/Navbar.vue';
+import HeroSection from '../Components/Home/HeroSection.vue';
+import FaqSection from '../Components/Home/FaqSection.vue';
+import BranchSection from '../Components/Home/BranchSection.vue';
+import ApplicationProcess from '../Components/Home/ApplicationProcess.vue';
+import SocialSection from '../Components/Home/SocialSection.vue';
+
+const flashlightCanvas = ref(null);
+let reqAnimationFrameId = null;
+
+onMounted(() => {
+    // Implement Three.js Flashlight Effect
+    if (!flashlightCanvas.value) return;
+
+    const canvas = flashlightCanvas.value;
+    const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight, false);
+    renderer.setPixelRatio(window.devicePixelRatio || 1);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.z = 100;
+
+    const geometry = new THREE.PlaneGeometry(window.innerWidth * 2, window.innerHeight * 2);
+    const material = new THREE.MeshStandardMaterial({ 
+        color: 0x000000, 
+        roughness: 1, 
+        metalness: 0 
+    });
+    const plane = new THREE.Mesh(geometry, material);
+    scene.add(plane);
+
+    const spotLight = new THREE.SpotLight(0xffe8ba, 2.5);
+    spotLight.position.set(0, 0, 80);
+    spotLight.angle = Math.PI / 8;
+    spotLight.penumbra = 0.8;
+    spotLight.decay = 2;
+    spotLight.distance = 250;
+    
+    scene.add(spotLight);
+    scene.add(spotLight.target);
+
+    let targetX = 0;
+    let targetY = 0;
+    
+    const onMouseMove = (e) => {
+        const ndcX = (e.clientX / window.innerWidth) * 2 - 1;
+        const ndcY = -(e.clientY / window.innerHeight) * 2 + 1;
+        const vec = new THREE.Vector3(ndcX, ndcY, 0.5);
+        vec.unproject(camera);
+        vec.sub(camera.position).normalize();
+        const distance = -camera.position.z / vec.z;
+        const pos = camera.position.clone().add(vec.multiplyScalar(distance));
+        
+        targetX = pos.x;
+        targetY = pos.y;
+    };
+
+    const onResize = () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight, false);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('resize', onResize);
+
+    const animate = () => {
+        reqAnimationFrameId = requestAnimationFrame(animate);
+
+        spotLight.position.x += (targetX - spotLight.position.x) * 0.1;
+        spotLight.position.y += (targetY - spotLight.position.y) * 0.1;
+        spotLight.target.position.set(spotLight.position.x, spotLight.position.y, 0);
+        
+        spotLight.intensity = 2.5 + Math.random() * 0.15;
+
+        renderer.render(scene, camera);
+    };
+    
+    animate();
+
+    // Cleanup
+    onUnmounted(() => {
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('resize', onResize);
+        if (reqAnimationFrameId) {
+            cancelAnimationFrame(reqAnimationFrameId);
+        }
+        renderer.dispose();
+    });
+});
 </script>
