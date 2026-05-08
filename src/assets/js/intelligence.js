@@ -157,33 +157,41 @@ const COLOMBIA_CONFIG = {
     center: [10250, 10250]
 };
 
+// Proper Arma 3 CRS Transformation
+const ArmaCRS = L.extend({}, L.CRS.Simple, {
+    transformation: new L.Transformation(COLOMBIA_CONFIG.factorX, 0, -COLOMBIA_CONFIG.factorY, COLOMBIA_CONFIG.tileSize)
+});
+
 function armaToLatLng(x, y) {
-    return [y * COLOMBIA_CONFIG.factorY, x * COLOMBIA_CONFIG.factorX];
+    // With proper CRS, Lat is Y and Lng is X
+    return [y, x];
 }
 function latLngToArma(latlng) {
-    return { x: Math.round(latlng.lng / COLOMBIA_CONFIG.factorX), y: Math.round(latlng.lat / COLOMBIA_CONFIG.factorY) };
+    return { x: Math.round(latlng.lng), y: Math.round(latlng.lat) };
 }
 
-// ---- ARMA3 TACTICAL ICONS ----
+// ---- ARMA3 TACTICAL ICONS (SVG) ----
 const TACTICAL_ICONS = [
-    { id:'hq',       label:'HQ',       color:'#00aaff', symbol:'⌂' },
-    { id:'infantry', label:'Infantry',  color:'#00ff41', symbol:'⚔' },
-    { id:'armor',    label:'Armor',     color:'#ffab00', symbol:'◆' },
-    { id:'air',      label:'Air',       color:'#00e5ff', symbol:'✈' },
-    { id:'supply',   label:'Supply',    color:'#ffffff', symbol:'📦' },
-    { id:'medical',  label:'Medical',   color:'#ff4444', symbol:'✚' },
-    { id:'danger',   label:'Danger',    color:'#ff1744', symbol:'⚠' },
-    { id:'target',   label:'Target',    color:'#dc143c', symbol:'◎' },
-    { id:'lz',       label:'LZ',        color:'#00ff41', symbol:'H' },
-    { id:'waypoint', label:'Waypoint',  color:'#ffab00', symbol:'▲' }
+    { id:'b_hq',     label:'BLUFOR HQ',      color:'#0066ff', svg:'<rect x="2" y="6" width="20" height="12" fill="none" stroke="currentColor" stroke-width="2"/><line x1="2" y1="6" x2="22" y2="18" stroke="currentColor" stroke-width="2"/><line x1="22" y1="6" x2="2" y2="18" stroke="currentColor" stroke-width="2"/><line x1="2" y1="18" x2="2" y2="22" stroke="currentColor" stroke-width="2"/>' },
+    { id:'b_inf',    label:'BLUFOR Inf',     color:'#0066ff', svg:'<rect x="2" y="6" width="20" height="12" fill="none" stroke="currentColor" stroke-width="2"/><line x1="2" y1="6" x2="22" y2="18" stroke="currentColor" stroke-width="2"/><line x1="22" y1="6" x2="2" y2="18" stroke="currentColor" stroke-width="2"/>' },
+    { id:'b_armor',  label:'BLUFOR Armor',   color:'#0066ff', svg:'<rect x="2" y="6" width="20" height="12" fill="none" stroke="currentColor" stroke-width="2"/><ellipse cx="12" cy="12" rx="6" ry="3" fill="none" stroke="currentColor" stroke-width="2"/>' },
+    { id:'b_air',    label:'BLUFOR Air',     color:'#0066ff', svg:'<rect x="2" y="6" width="20" height="12" fill="none" stroke="currentColor" stroke-width="2"/><path d="M6 18 Q 12 6 18 18" fill="none" stroke="currentColor" stroke-width="2"/>' },
+    { id:'o_hq',     label:'OPFOR HQ',       color:'#ff0000', svg:'<polygon points="12,2 22,12 12,22 2,12" fill="none" stroke="currentColor" stroke-width="2"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/><line x1="12" y1="22" x2="12" y2="26" stroke="currentColor" stroke-width="2"/>' },
+    { id:'o_inf',    label:'OPFOR Inf',      color:'#ff0000', svg:'<polygon points="12,2 22,12 12,22 2,12" fill="none" stroke="currentColor" stroke-width="2"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>' },
+    { id:'o_armor',  label:'OPFOR Armor',    color:'#ff0000', svg:'<polygon points="12,2 22,12 12,22 2,12" fill="none" stroke="currentColor" stroke-width="2"/><ellipse cx="12" cy="12" rx="4" ry="2" fill="none" stroke="currentColor" stroke-width="2"/>' },
+    { id:'mil_destroy', label:'Destroy',     color:'#ff0000', svg:'<circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>' },
+    { id:'mil_lz',   label:'LZ',             color:'#00ff00', svg:'<circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><line x1="8" y1="8" x2="8" y2="16" stroke="currentColor" stroke-width="2"/><line x1="16" y1="8" x2="16" y2="16" stroke="currentColor" stroke-width="2"/><line x1="8" y1="12" x2="16" y2="12" stroke="currentColor" stroke-width="2"/>' },
+    { id:'mil_marker',label:'Marker',        color:'#ffff00', svg:'<circle cx="12" cy="12" r="8" fill="currentColor"/><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/>' }
 ];
 let activeMarkerType = null;
 
 function createTacIcon(icon, size) {
-    size = size || 28;
+    size = size || 32;
     return L.divIcon({
         className: 'tac-icon',
-        html: '<div style="width:'+size+'px;height:'+size+'px;background:rgba(0,0,0,0.7);border:2px solid '+icon.color+';border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:'+(size*0.55)+'px;color:'+icon.color+';font-weight:bold;box-shadow:0 0 8px '+icon.color+'40;">'+icon.symbol+'</div>',
+        html: `<div style="width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;color:${icon.color};filter:drop-shadow(0px 0px 4px rgba(0,0,0,0.8));">
+                <svg width="24" height="24" viewBox="0 0 24 24" style="overflow:visible;">${icon.svg}</svg>
+               </div>`,
         iconSize: [size, size],
         iconAnchor: [size/2, size/2]
     });
@@ -196,15 +204,20 @@ function createGrid(map) {
     var step = 1000, ws = COLOMBIA_CONFIG.worldSize;
     var lineStyle = { color: 'rgba(220,20,60,0.15)', weight: 0.5, dashArray: '2,4' };
     for (var i = 0; i <= ws; i += step) {
+        // Vertical lines (constant X)
         L.polyline([armaToLatLng(i, 0), armaToLatLng(i, ws)], lineStyle).addTo(gridLayer);
+        // Horizontal lines (constant Y)
         L.polyline([armaToLatLng(0, i), armaToLatLng(ws, i)], lineStyle).addTo(gridLayer);
-        if (i % 2000 === 0) {
+        
+        if (i % 2000 === 0 && i !== 0) {
+            // Label for X axis (placed at Y = 200)
             L.marker(armaToLatLng(i, 200), {
-                icon: L.divIcon({ className:'grid-label', html: String(Math.round(i/100)), iconSize:[30,14] }),
+                icon: L.divIcon({ className:'grid-label', html: String(Math.round(i/100)).padStart(2, '0'), iconSize:[30,14] }),
                 interactive: false
             }).addTo(gridLayer);
+            // Label for Y axis (placed at X = 200)
             L.marker(armaToLatLng(200, i), {
-                icon: L.divIcon({ className:'grid-label', html: String(Math.round(i/100)), iconSize:[30,14] }),
+                icon: L.divIcon({ className:'grid-label', html: String(Math.round(i/100)).padStart(2, '0'), iconSize:[30,14] }),
                 interactive: false
             }).addTo(gridLayer);
         }
@@ -217,15 +230,19 @@ L.Control.Coordinates = L.Control.extend({
     options: { position: 'bottomleft' },
     onAdd: function() {
         this._div = L.DomUtil.create('div', 'coord-display');
-        this._div.innerHTML = 'GRID: ---- | ----';
+        this._div.innerHTML = 'GRID: ------ | ------';
         return this._div;
     },
     update: function(latlng) {
         if (!latlng) return;
         var a = latLngToArma(latlng);
+        // Ensure within bounds visually
+        if (a.x < 0 || a.y < 0 || a.x > COLOMBIA_CONFIG.worldSize || a.y > COLOMBIA_CONFIG.worldSize) return;
         var gx = String(Math.floor(a.x / 100)).padStart(3, '0');
         var gy = String(Math.floor(a.y / 100)).padStart(3, '0');
-        this._div.innerHTML = 'GRID: <span class="coord-val">'+gx+'</span> | <span class="coord-val">'+gy+'</span> &nbsp; ['+a.x+', '+a.y+']';
+        var ex = String(a.x % 100).padStart(2, '0');
+        var ey = String(a.y % 100).padStart(2, '0');
+        this._div.innerHTML = 'GRID: <span class="coord-val">'+gx+ex+'</span> | <span class="coord-val">'+gy+ey+'</span> &nbsp; ['+a.x+', '+a.y+']';
     }
 });
 
@@ -237,16 +254,23 @@ async function initIntelMap() {
     drawLayer = L.featureGroup();
 
     mapInst = L.map('intelMap', {
-        crs: L.CRS.Simple,
+        crs: ArmaCRS,
         minZoom: COLOMBIA_CONFIG.minZoom,
         maxZoom: COLOMBIA_CONFIG.maxZoom,
         attributionControl: false
     });
+    
+    // Bounds to prevent panning out of the map
+    var bounds = L.latLngBounds(armaToLatLng(0,0), armaToLatLng(COLOMBIA_CONFIG.worldSize, COLOMBIA_CONFIG.worldSize));
+    mapInst.setMaxBounds(bounds);
+    
     L.tileLayer(COLOMBIA_CONFIG.tileUrl, {
         tileSize: COLOMBIA_CONFIG.tileSize,
         noWrap: true,
+        bounds: bounds,
         maxZoom: COLOMBIA_CONFIG.maxZoom
     }).addTo(mapInst);
+    
     mapInst.setView(armaToLatLng(COLOMBIA_CONFIG.center[0], COLOMBIA_CONFIG.center[1]), COLOMBIA_CONFIG.defaultZoom);
     playerLayer.addTo(mapInst);
     drawLayer.addTo(mapInst);
@@ -301,7 +325,9 @@ function buildTacToolbar() {
     toolbar.id = 'tacToolbar';
     toolbar.className = 'tac-toolbar';
     toolbar.innerHTML = '<div class="tac-title">MARKERS</div>' +
-        TACTICAL_ICONS.map(function(i){ return '<button class="tac-btn" data-type="'+i.id+'" title="'+i.label+'" style="border-color:'+i.color+';color:'+i.color+'">'+i.symbol+'</button>'; }).join('');
+        TACTICAL_ICONS.map(function(i){ 
+            return '<button class="tac-btn" data-type="'+i.id+'" title="'+i.label+'" style="color:'+i.color+'"><svg width="18" height="18" viewBox="0 0 24 24" style="overflow:visible;">'+i.svg+'</svg></button>'; 
+        }).join('');
     document.getElementById('intelMap').parentElement.appendChild(toolbar);
     toolbar.querySelectorAll('.tac-btn').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
