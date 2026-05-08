@@ -184,10 +184,10 @@ function updateGridEdgeLabels() {
     var nw = latLngToArma(bounds.getNorthWest());
     var se = latLngToArma(bounds.getSouthEast());
     var topEl = document.getElementById('gridEdgeTop');
-    var rightEl = document.getElementById('gridEdgeRight');
-    if (!topEl || !rightEl) return;
+    var leftEl = document.getElementById('gridEdgeLeft');
+    if (!topEl || !leftEl) return;
     
-    topEl.innerHTML = ''; rightEl.innerHTML = '';
+    topEl.innerHTML = ''; leftEl.innerHTML = '';
     var step = 1000;
     var startX = Math.floor(nw.x / step) * step;
     var endX = Math.ceil(se.x / step) * step;
@@ -214,10 +214,8 @@ function updateGridEdgeLabels() {
             var el = document.createElement('div');
             el.className = 'grid-edge-label';
             el.style.top = p.y + 'px';
-            el.style.right = '4px';
-            el.style.transform = 'translateY(-50%)';
             el.innerText = String(Math.round(y/100)).padStart(2, '0');
-            rightEl.appendChild(el);
+            leftEl.appendChild(el);
         }
     }
 }

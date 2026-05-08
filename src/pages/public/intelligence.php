@@ -138,7 +138,7 @@ require_once ROOT_PATH . '/includes/db.php';
 
       <!-- GRID EDGE LABELS -->
       <div class="grid-edge grid-edge-top" id="gridEdgeTop"></div>
-      <div class="grid-edge grid-edge-right" id="gridEdgeRight"></div>
+      <div class="grid-edge grid-edge-left" id="gridEdgeLeft"></div>
 
       <!-- MAP -->
       <div id="intelMap" style="width:100%; height:100%; background:#000;"></div>
