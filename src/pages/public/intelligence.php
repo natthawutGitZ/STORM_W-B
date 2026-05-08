@@ -16,6 +16,8 @@ require_once ROOT_PATH . '/includes/db.php';
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+<!-- Milsymbol -->
+<script src="https://cdn.jsdelivr.net/npm/milsymbol@2.0.0/dist/milsymbol.js"></script>
 </head>
 <body>
 <div class="scanline"></div>
@@ -197,6 +199,9 @@ require_once ROOT_PATH . '/includes/db.php';
         </div>
         <div class="form-row">
           <div class="form-col"><label>Scale</label><input type="number" id="natoScale" value="100" min="10" max="500"></div>
+          <div class="form-col" style="justify-content:center; align-items:center;">
+             <div id="natoPreview" style="background:#f5f5f5; border:1px solid #ccc; width:80px; height:80px; display:flex; align-items:center; justify-content:center; border-radius:4px;"></div>
+          </div>
         </div>
       </div>
       <div class="map-modal-footer">

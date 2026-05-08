@@ -309,6 +309,7 @@ async function initIntelMap() {
 
         if (tool === 'natoSymbol') {
             pendingLayer = layer;
+            updateNatoPreview();
             openMapModal('modalNatoSymbol');
         } else if (tool === 'basicSymbol') {
             pendingLayer = layer;
@@ -355,16 +356,85 @@ function finalizeLayer(layer) {
     pendingLayer = null;
 }
 
+// --- SIDC Generation & Preview ---
+const NATO_MAPPING = {
+    aff: { pending:'0', unknown:'1', assumedFriend:'2', friend:'3', neutral:'4', suspect:'5', hostile:'6' },
+    set: { 'Land unit':'10', 'Air':'01', 'Sea surface':'30', 'Equipment':'15' },
+    sym: { 'Unspecified':'000000', 'Infantry':'121100', 'Armor':'120500', 'Artillery':'120600', 'Reconnaissance':'120501', 'Engineer':'120700', 'Air Defense':'120100', 'Signal':'121000', 'Medical':'121500', 'Supply':'121600', 'Command and Control':'121104' },
+    status: { 'Present':'0', 'Planned':'1', 'Anticipated':'1' },
+    echelon: { 'Unspecified':'00', 'Team':'11', 'Squad':'12', 'Section':'13', 'Platoon':'14', 'Company':'15', 'Battalion':'16', 'Regiment':'17', 'Brigade':'18', 'Division':'21', 'Corps':'22' }
+};
+
+function generateSIDC() {
+    var affKey = document.querySelector('.aff-btn.active').dataset.aff;
+    var setKey = document.getElementById('natoSymbolSet').value;
+    var symKey = document.getElementById('natoSymbolType').value;
+    var statusKey = document.getElementById('natoStatus').value;
+    var echKey = document.getElementById('natoEchelon').value;
+    
+    var identity = NATO_MAPPING.aff[affKey] || '0';
+    var symbolSet = NATO_MAPPING.set[setKey] || '10';
+    var status = NATO_MAPPING.status[statusKey] || '0';
+    var echelon = NATO_MAPPING.echelon[echKey] || '00';
+    var entity = NATO_MAPPING.sym[symKey] || '000000';
+    
+    return '10' + '0' + identity + symbolSet + status + '0' + echelon + entity + '00' + '00';
+}
+
+function updateNatoPreview() {
+    var sidc = generateSIDC();
+    var desig = document.getElementById('natoDesignation').value;
+    var info = document.getElementById('natoAdditional').value;
+    var scale = parseInt(document.getElementById('natoScale').value) || 100;
+    
+    // Check if ms exists
+    if (typeof ms !== 'undefined') {
+        var sym = new ms.Symbol(sidc, {
+            size: scale * 0.3,
+            uniqueDesignation: desig,
+            additionalInformation: info
+        });
+        document.getElementById('natoPreview').innerHTML = '';
+        document.getElementById('natoPreview').appendChild(sym.asDOM());
+    }
+}
+
+// Bind change events to update preview
+['natoSymbolSet', 'natoSymbolType', 'natoStatus', 'natoEchelon', 'natoDesignation', 'natoAdditional', 'natoScale'].forEach(id => {
+    document.getElementById(id).addEventListener('input', updateNatoPreview);
+});
+document.querySelectorAll('.aff-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.aff-btn').forEach(b=>b.classList.remove('active'));
+        this.classList.add('active');
+        updateNatoPreview();
+    });
+});
+
 // Bind Modal Save Buttons
 document.getElementById('natoInsertBtn').onclick = function() {
     if(!pendingLayer) return;
-    pendingLayer.feature.properties.affiliation = document.querySelector('.aff-btn.active').dataset.aff;
-    pendingLayer.feature.properties.symbolType = document.getElementById('natoSymbolType').value;
-    pendingLayer.feature.properties.text = document.getElementById('natoDesignation').value;
+    var sidc = generateSIDC();
+    var desig = document.getElementById('natoDesignation').value;
+    var info = document.getElementById('natoAdditional').value;
+    var scale = parseInt(document.getElementById('natoScale').value) || 100;
+
+    pendingLayer.feature.properties.sidc = sidc;
+    pendingLayer.feature.properties.modifiers = {
+        uniqueDesignation: desig,
+        additionalInformation: info,
+        size: scale * 0.3
+    };
     
-    // Apply styling based on selection (mocked visual for now)
-    var color = document.querySelector('.aff-btn.active').style.getPropertyValue('--aff-color') || '#000';
-    pendingLayer.setIcon(L.divIcon({className:'nato-icon', html:`<div style="background:${color};border:2px solid #000;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;">${pendingLayer.feature.properties.text || 'X'}</div>`}));
+    if (typeof ms !== 'undefined') {
+        var sym = new ms.Symbol(sidc, pendingLayer.feature.properties.modifiers);
+        pendingLayer.setIcon(L.divIcon({
+            className: 'nato-icon',
+            html: sym.asSVG(),
+            iconSize: [sym.width, sym.height],
+            iconAnchor: [sym.getAnchor().x, sym.getAnchor().y]
+        }));
+    }
     
     finalizeLayer(pendingLayer);
     closeMapModal('modalNatoSymbol');
@@ -459,6 +529,18 @@ async function pollDrawings() {
                     pointToLayer: function(f, latlng) {
                         var tool = f.properties.toolType;
                         if (tool === 'natoSymbol') {
+                            if (f.properties.sidc && typeof ms !== 'undefined') {
+                                var sym = new ms.Symbol(f.properties.sidc, f.properties.modifiers || {});
+                                return L.marker(latlng, {
+                                    icon: L.divIcon({
+                                        className: 'nato-icon',
+                                        html: sym.asSVG(),
+                                        iconSize: [sym.width, sym.height],
+                                        iconAnchor: [sym.getAnchor().x, sym.getAnchor().y]
+                                    })
+                                });
+                            }
+                            // Fallback
                             var c = f.properties.color || '#80e0ff';
                             return L.marker(latlng, {icon: L.divIcon({className:'nato-icon', html:`<div style="background:${c};border:2px solid #000;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;">${f.properties.text || 'X'}</div>`})});
                         } else if (tool === 'basicSymbol') {
