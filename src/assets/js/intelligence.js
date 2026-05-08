@@ -205,19 +205,42 @@ L.Control.Coordinates = L.Control.extend({
     options: { position: 'bottomleft' },
     onAdd: function() {
         this._div = L.DomUtil.create('div', 'coord-display');
-        this._div.innerHTML = 'GRID: ------ | ------';
+        this._div.innerHTML = 'GRID: ---- | ----';
         return this._div;
     },
     update: function(latlng) {
         if (!latlng) return;
         var a = latLngToArma(latlng);
-        // Ensure within bounds visually
         if (a.x < 0 || a.y < 0 || a.x > COLOMBIA_CONFIG.worldSize || a.y > COLOMBIA_CONFIG.worldSize) return;
-        var gx = String(Math.floor(a.x / 100)).padStart(3, '0');
-        var gy = String(Math.floor(a.y / 100)).padStart(3, '0');
-        var ex = String(a.x % 100).padStart(2, '0');
-        var ey = String(a.y % 100).padStart(2, '0');
-        this._div.innerHTML = 'GRID: <span class="coord-val">'+gx+ex+'</span> | <span class="coord-val">'+gy+ey+'</span> &nbsp; ['+a.x+', '+a.y+']';
+        var gx = String(Math.floor(a.x / 10)).padStart(4, '0').slice(-4);
+        var gy = String(Math.floor(a.y / 10)).padStart(4, '0').slice(-4);
+        this._div.innerHTML = 'GRID: <span class="coord-val">'+gx+'</span> | <span class="coord-val">'+gy+'</span>';
+    }
+});
+
+// ---- FULLSCREEN CONTROL ----
+L.Control.Fullscreen = L.Control.extend({
+    options: { position: 'topright' },
+    onAdd: function() {
+        var btn = L.DomUtil.create('button', 'leaflet-bar leaflet-control');
+        btn.innerHTML = '<i class="fas fa-expand"></i>';
+        btn.style.width = '32px';
+        btn.style.height = '32px';
+        btn.style.cursor = 'pointer';
+        btn.style.backgroundColor = 'var(--bg3)';
+        btn.style.color = 'var(--green)';
+        btn.style.border = '1px solid var(--border)';
+        btn.style.fontSize = '14px';
+        btn.onclick = function(e) {
+            e.stopPropagation();
+            var mapEl = document.getElementById('intelMap');
+            if (!document.fullscreenElement) {
+                if(mapEl.requestFullscreen) mapEl.requestFullscreen();
+            } else {
+                if(document.exitFullscreen) document.exitFullscreen();
+            }
+        };
+        return btn;
     }
 });
 
@@ -254,22 +277,52 @@ async function initIntelMap() {
     var coordCtrl = new L.Control.Coordinates();
     coordCtrl.addTo(mapInst);
     mapInst.on('mousemove', function(e) { coordCtrl.update(e.latlng); });
+    
+    mapInst.addControl(new L.Control.Fullscreen());
 
     drawControl = new L.Control.Draw({
         position: 'topleft',
         edit: { featureGroup: drawLayer, remove: true, edit: true },
         draw: {
-            polyline: { shapeOptions: { color:'#dc143c', weight:3 } },
-            polygon: { shapeOptions: { color:'#dc143c', fillOpacity:0.15 } },
-            marker: true, circle: false, circlemarker: false,
-            rectangle: { shapeOptions: { color:'#ffab00', weight:2, fillOpacity:0.1 } }
+            polyline: { shapeOptions: { color:'#00ff41', weight:3 } },
+            polygon: { shapeOptions: { color:'#00ff41', fillOpacity:0.15 } },
+            marker: true, 
+            circle: false, 
+            circlemarker: { shapeOptions: { color:'#00ff41', weight:2, radius:6, fillOpacity:0.8 } },
+            rectangle: { shapeOptions: { color:'#00ff41', weight:2, fillOpacity:0.1 } }
         }
     });
     mapInst.addControl(drawControl);
 
     mapInst.on(L.Draw.Event.CREATED, async function(e) {
-        drawLayer.addLayer(e.layer);
-        await saveDrawing(e.layer.toGeoJSON());
+        var layer = e.layer;
+        var isMarker = (e.layerType === 'marker' || e.layerType === 'circlemarker');
+        
+        layer.feature = layer.feature || { type: 'Feature', properties: {}, geometry: {} };
+        if (e.layerType === 'circlemarker') layer.feature.properties.isCircleMarker = true;
+
+        if (isMarker) {
+            var text = prompt('Enter marker text (optional):');
+            if (text) {
+                layer.feature.properties.text = text;
+                layer.bindTooltip(text, { permanent: true, direction: 'right', className: 'marker-text' });
+            }
+            if (layer.dragging) layer.dragging.enable();
+            layer.on('dragend', function() { clearAndResaveAll(); });
+            layer.on('dblclick', function(ev) {
+                ev.originalEvent.stopPropagation();
+                var newText = prompt('Edit marker text:', layer.feature.properties.text || '');
+                if (newText !== null) {
+                    layer.feature.properties.text = newText;
+                    if (newText) layer.bindTooltip(newText, { permanent: true, direction: 'right', className: 'marker-text' });
+                    else layer.unbindTooltip();
+                    clearAndResaveAll();
+                }
+            });
+        }
+        
+        drawLayer.addLayer(layer);
+        await saveDrawing(layer.toGeoJSON());
     });
     mapInst.on(L.Draw.Event.DELETED, async function() { await clearAndResaveAll(); });
     mapInst.on(L.Draw.Event.EDITED, async function() { await clearAndResaveAll(); });
@@ -341,9 +394,30 @@ async function pollDrawings() {
             drawLayer.clearLayers();
             d.data.features.forEach(function(feature) {
                 L.geoJSON(feature, {
-                    style: { color:'#dc143c', weight:2, fillOpacity:0.1 },
+                    style: { color:'#00ff41', weight:2, fillOpacity:0.1 },
+                    pointToLayer: function(f, latlng) {
+                        return (f.properties && f.properties.isCircleMarker) ? L.circleMarker(latlng, { color:'#00ff41', weight:2, radius:6, fillOpacity:0.8 }) : L.marker(latlng);
+                    },
                     onEachFeature: function(f, l) {
-                        if (f.properties && f.properties.user_id) l.bindPopup('Drawn by: '+esc(f.properties.user_id));
+                        if (f.geometry.type === 'Point') {
+                            if (l.dragging) {
+                                l.dragging.enable();
+                                l.on('dragend', function() { clearAndResaveAll(); });
+                            }
+                            if (f.properties && f.properties.text) {
+                                l.bindTooltip(f.properties.text, { permanent: true, direction: 'right', className: 'marker-text' });
+                            }
+                            l.on('dblclick', function(ev) {
+                                ev.originalEvent.stopPropagation();
+                                var newText = prompt('Edit marker text:', f.properties.text || '');
+                                if (newText !== null) {
+                                    f.properties.text = newText;
+                                    if (newText) l.bindTooltip(newText, { permanent: true, direction: 'right', className: 'marker-text' });
+                                    else l.unbindTooltip();
+                                    clearAndResaveAll();
+                                }
+                            });
+                        }
                         drawLayer.addLayer(l);
                     }
                 });
@@ -354,8 +428,7 @@ async function pollDrawings() {
 }
 
 async function saveDrawing(geojson) {
-    var userId = localStorage.getItem('s2_callsign') || prompt('Enter your Callsign:') || 'Anonymous';
-    localStorage.setItem('s2_callsign', userId);
+    var userId = 'S2';
     await fetch('api/mission_plan.php', {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ action:'save', map:currentMap, geojson:geojson, user_id:userId })
@@ -367,7 +440,7 @@ async function clearAndResaveAll() {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ action:'clear', map:currentMap, password:'S2' })
     });
-    var userId = localStorage.getItem('s2_callsign') || 'Anonymous';
+    var userId = 'S2';
     var layers = [];
     drawLayer.eachLayer(function(layer) { layers.push(layer); });
     for (var i = 0; i < layers.length; i++) {

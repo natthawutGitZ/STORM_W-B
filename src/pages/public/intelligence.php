@@ -97,10 +97,6 @@ require_once ROOT_PATH . '/includes/db.php';
   <!-- TAB: INTELLIGENCE MAP -->
   <section class="tab-content" id="tab-sorties" style="padding:0;">
     <div class="panel full-panel" style="border:none; border-radius:0;">
-      <div class="panel-header" style="position:absolute; top:10px; right:10px; z-index:1000; background:rgba(14,14,14,0.85); border:1px solid var(--border); border-radius:4px; padding:8px 12px; backdrop-filter:blur(4px);">
-        <div class="panel-title" style="margin-bottom:6px;"><i class="fas fa-map"></i> COLOMBIA (UMB)</div>
-        <button class="btn-s2" style="margin-top:8px; padding:6px;" onclick="clearMapDrawings()"><i class="fas fa-trash"></i> CLEAR MAP</button>
-      </div>
       <div class="panel-body" style="overflow:hidden;">
         <div id="intelMap" style="width:100%; height:100%; background:#000;"></div>
       </div>
