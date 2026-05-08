@@ -35,6 +35,7 @@ $r = [
     'qualifications' => 'pages/public/qualifications.php',
     'qualification_detail' => 'pages/public/qualification_detail.php',
     'donate' => 'pages/public/donate.php',
+    'intelligence' => 'pages/public/intelligence.php',
     'media' => 'pages/public/media.php',
     'chain' => 'pages/public/chain.php',
     'Unit_Structure' => 'pages/public/Unit_Structure.php',
