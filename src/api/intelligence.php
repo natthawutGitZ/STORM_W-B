@@ -37,22 +37,7 @@ try {
         `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
-    // Seed sample data if empty
-    $c = $pdo->query("SELECT COUNT(*) FROM intel_operations")->fetchColumn();
-    if ($c == 0) {
-        $pdo->exec("INSERT INTO intel_operations (codename,status,priority,brief,commander) VALUES
-            ('IRON VANGUARD','ACTIVE','CRITICAL','Secure northern perimeter and establish FOB Alpha.','CDR. Reaper'),
-            ('SILENT DAGGER','COMPLETED','HIGH','Infiltrate enemy comms relay and extract intel package.','CPT. Phantom'),
-            ('CRIMSON TIDE','PENDING','MEDIUM','Coordinate naval blockade for supply interdiction.','ADM. Storm')");
-        $pdo->exec("INSERT INTO intel_reports (title,classification,content,source) VALUES
-            ('Enemy Force Disposition Update','SECRET','Hostile forces repositioning along grid reference 4427. Estimated battalion-strength element.','SIGINT'),
-            ('Supply Route Compromised','CONFIDENTIAL','Main supply route ALPHA is under surveillance. Recommend alternate route BRAVO.','HUMINT'),
-            ('Cyber Threat Advisory','TOP SECRET','Advanced persistent threat detected targeting C2 infrastructure. Immediate patching required.','CYBER')");
-        $pdo->exec("INSERT INTO intel_sorties (callsign,mission_type,location,status,personnel) VALUES
-            ('EAGLE-6','RECON','Grid 4427-NE','DEPLOYED',4),
-            ('SHADOW-2','STRIKE','Sector BRAVO','STANDBY',8),
-            ('VIPER-1','EXTRACTION','LZ DELTA','RTB',6)");
-    }
+
 } catch (PDOException $e) {}
 
 $method = $_SERVER['REQUEST_METHOD'];

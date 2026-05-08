@@ -6,7 +6,7 @@ require_once ROOT_PATH . '/includes/db.php';
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OPS HUB | S.T.O.R.M. Intelligence</title>
+<title>OPS HUB | Operation Stormsurge</title>
 <link rel="icon" href="assets/images/logo.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
@@ -20,7 +20,7 @@ require_once ROOT_PATH . '/includes/db.php';
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo">
     <img src="assets/images/logo.png" alt="STORM" onerror="this.style.display='none'">
-    <span>S.T.O.R.M.</span>
+    <span>STORMSURGE</span>
   </div>
   <nav class="sidebar-nav">
     <a class="nav-item active" data-tab="opshub"><i class="fas fa-crosshairs"></i><span>OPS HUB</span></a>
