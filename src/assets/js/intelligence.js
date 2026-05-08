@@ -68,19 +68,6 @@ async function loadIntel(){
   const f=document.getElementById('intelListFull');if(f)f.innerHTML=html;
 }
 
-async function loadSorties(){
-  const r=await fetch(API+'?action=list&type=sorties'),d=await r.json();
-  if(!d.success)return;
-  document.getElementById('sortieCount').textContent=d.data.length;
-  const el=document.getElementById('sortieList');
-  if(!d.data.length){el.innerHTML='<div class="empty">NO ACTIVE SORTIES</div>';return;}
-  el.innerHTML=d.data.map(o=>renderItem('sorties',o,`
-    <div class="item-row"><span class="item-name">${esc(o.callsign)}</span><span class="tag tag-${o.status.toLowerCase()}">${o.status}</span></div>
-    <div class="item-desc">${esc(o.mission_type)} — ${esc(o.location||'Unknown AO')}</div>
-    <div class="item-meta"><span><i class="fas fa-users"></i>${o.personnel} PAX</span><span><i class="fas fa-clock"></i>${timeAgo(o.updated_at)}</span></div>
-  `)).join('');
-}
-
 function renderItem(type,o,inner){
   const actions=s2Authed?`<div class="item-actions"><button class="btn-icon" onclick="event.stopPropagation();openEditModal('${type}',${o.id})"><i class="fas fa-pen"></i></button><button class="btn-icon del" onclick="event.stopPropagation();deleteItem('${type}',${o.id})"><i class="fas fa-trash"></i></button></div>`:'';
   return `<div class="item" ondblclick="openEditModal('${type}',${o.id})">${inner}${actions}</div>`;
@@ -89,8 +76,7 @@ function renderItem(type,o,inner){
 // CRUD forms
 const FORMS={
   operations:[{k:'codename',l:'Codename',t:'text'},{k:'status',l:'Status',t:'select',opts:['ACTIVE','COMPLETED','FAILED','PENDING']},{k:'priority',l:'Priority',t:'select',opts:['CRITICAL','HIGH','MEDIUM','LOW']},{k:'brief',l:'Brief',t:'textarea'},{k:'commander',l:'Commander',t:'text'}],
-  reports:[{k:'title',l:'Title',t:'text'},{k:'classification',l:'Classification',t:'select',opts:['TOP SECRET','SECRET','CONFIDENTIAL','UNCLASSIFIED']},{k:'content',l:'Content',t:'textarea'},{k:'source',l:'Source',t:'select',opts:['HUMINT','SIGINT','CYBER','OSINT','GEOINT']}],
-  sorties:[{k:'callsign',l:'Callsign',t:'text'},{k:'mission_type',l:'Mission Type',t:'select',opts:['RECON','STRIKE','EXTRACTION','PATROL','ESCORT']},{k:'location',l:'Location',t:'text'},{k:'status',l:'Status',t:'select',opts:['DEPLOYED','RTB','STANDBY','MIA']},{k:'personnel',l:'Personnel',t:'number'}]
+  reports:[{k:'title',l:'Title',t:'text'},{k:'classification',l:'Classification',t:'select',opts:['TOP SECRET','SECRET','CONFIDENTIAL','UNCLASSIFIED']},{k:'content',l:'Content',t:'textarea'},{k:'source',l:'Source',t:'select',opts:['HUMINT','SIGINT','CYBER','OSINT','GEOINT']}]
 };
 
 function buildForm(type,data){
@@ -151,13 +137,14 @@ loadAll();
 // INTELLIGENCE MAP & MISSION PLANNING
 // ==========================================
 let mapInst = null;
-let playerLayer = new L.LayerGroup();
-let drawLayer = new L.FeatureGroup();
+let playerLayer = null;
+let drawLayer = null;
 let currentMap = 'colombia';
 let drawControl = null;
+let gridLayer = null;
+let playerPollTimer = null;
+let drawPollTimer = null;
 
-// Colombia (UMB) map config from PLANOPS Atlas
-// factorX/Y = 0.01575, tileSize = 323, layerId = 118
 const COLOMBIA_CONFIG = {
     tileUrl: 'https://atlas.plan-ops.fr/data/1/maps/118/118/{z}/{x}/{y}.webp',
     tileSize: 323,
@@ -171,147 +158,270 @@ const COLOMBIA_CONFIG = {
 };
 
 function armaToLatLng(x, y) {
-    // Convert Arma3 world coords to Leaflet LatLng using PLANOPS scale factors
     return [y * COLOMBIA_CONFIG.factorY, x * COLOMBIA_CONFIG.factorX];
 }
+function latLngToArma(latlng) {
+    return { x: Math.round(latlng.lng / COLOMBIA_CONFIG.factorX), y: Math.round(latlng.lat / COLOMBIA_CONFIG.factorY) };
+}
+
+// ---- ARMA3 TACTICAL ICONS ----
+const TACTICAL_ICONS = [
+    { id:'hq',       label:'HQ',       color:'#00aaff', symbol:'⌂' },
+    { id:'infantry', label:'Infantry',  color:'#00ff41', symbol:'⚔' },
+    { id:'armor',    label:'Armor',     color:'#ffab00', symbol:'◆' },
+    { id:'air',      label:'Air',       color:'#00e5ff', symbol:'✈' },
+    { id:'supply',   label:'Supply',    color:'#ffffff', symbol:'📦' },
+    { id:'medical',  label:'Medical',   color:'#ff4444', symbol:'✚' },
+    { id:'danger',   label:'Danger',    color:'#ff1744', symbol:'⚠' },
+    { id:'target',   label:'Target',    color:'#dc143c', symbol:'◎' },
+    { id:'lz',       label:'LZ',        color:'#00ff41', symbol:'H' },
+    { id:'waypoint', label:'Waypoint',  color:'#ffab00', symbol:'▲' }
+];
+let activeMarkerType = null;
+
+function createTacIcon(icon, size) {
+    size = size || 28;
+    return L.divIcon({
+        className: 'tac-icon',
+        html: '<div style="width:'+size+'px;height:'+size+'px;background:rgba(0,0,0,0.7);border:2px solid '+icon.color+';border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:'+(size*0.55)+'px;color:'+icon.color+';font-weight:bold;box-shadow:0 0 8px '+icon.color+'40;">'+icon.symbol+'</div>',
+        iconSize: [size, size],
+        iconAnchor: [size/2, size/2]
+    });
+}
+
+// ---- GRID OVERLAY ----
+function createGrid(map) {
+    if (gridLayer) map.removeLayer(gridLayer);
+    gridLayer = L.layerGroup();
+    var step = 1000, ws = COLOMBIA_CONFIG.worldSize;
+    var lineStyle = { color: 'rgba(220,20,60,0.15)', weight: 0.5, dashArray: '2,4' };
+    for (var i = 0; i <= ws; i += step) {
+        L.polyline([armaToLatLng(i, 0), armaToLatLng(i, ws)], lineStyle).addTo(gridLayer);
+        L.polyline([armaToLatLng(0, i), armaToLatLng(ws, i)], lineStyle).addTo(gridLayer);
+        if (i % 2000 === 0) {
+            L.marker(armaToLatLng(i, 200), {
+                icon: L.divIcon({ className:'grid-label', html: String(Math.round(i/100)), iconSize:[30,14] }),
+                interactive: false
+            }).addTo(gridLayer);
+            L.marker(armaToLatLng(200, i), {
+                icon: L.divIcon({ className:'grid-label', html: String(Math.round(i/100)), iconSize:[30,14] }),
+                interactive: false
+            }).addTo(gridLayer);
+        }
+    }
+    gridLayer.addTo(map);
+}
+
+// ---- MOUSE COORDINATE DISPLAY ----
+L.Control.Coordinates = L.Control.extend({
+    options: { position: 'bottomleft' },
+    onAdd: function() {
+        this._div = L.DomUtil.create('div', 'coord-display');
+        this._div.innerHTML = 'GRID: ---- | ----';
+        return this._div;
+    },
+    update: function(latlng) {
+        if (!latlng) return;
+        var a = latLngToArma(latlng);
+        var gx = String(Math.floor(a.x / 100)).padStart(3, '0');
+        var gy = String(Math.floor(a.y / 100)).padStart(3, '0');
+        this._div.innerHTML = 'GRID: <span class="coord-val">'+gx+'</span> | <span class="coord-val">'+gy+'</span> &nbsp; ['+a.x+', '+a.y+']';
+    }
+});
 
 async function initIntelMap() {
-    if (mapInst) {
-        mapInst.remove();
-        mapInst = null;
-    }
-    
+    if (mapInst) { mapInst.remove(); mapInst = null; }
+    if (playerPollTimer) clearTimeout(playerPollTimer);
+    if (drawPollTimer) clearTimeout(drawPollTimer);
+    playerLayer = L.layerGroup();
+    drawLayer = L.featureGroup();
+
     mapInst = L.map('intelMap', {
         crs: L.CRS.Simple,
         minZoom: COLOMBIA_CONFIG.minZoom,
         maxZoom: COLOMBIA_CONFIG.maxZoom,
         attributionControl: false
     });
-    
     L.tileLayer(COLOMBIA_CONFIG.tileUrl, {
         tileSize: COLOMBIA_CONFIG.tileSize,
         noWrap: true,
         maxZoom: COLOMBIA_CONFIG.maxZoom
     }).addTo(mapInst);
-    
-    // Set view to center of Colombia map
-    const centerLatLng = armaToLatLng(COLOMBIA_CONFIG.center[0], COLOMBIA_CONFIG.center[1]);
-    mapInst.setView(centerLatLng, COLOMBIA_CONFIG.defaultZoom);
-    
+    mapInst.setView(armaToLatLng(COLOMBIA_CONFIG.center[0], COLOMBIA_CONFIG.center[1]), COLOMBIA_CONFIG.defaultZoom);
     playerLayer.addTo(mapInst);
     drawLayer.addTo(mapInst);
-    
-    // Setup Drawing Tools
-    if (drawControl) mapInst.removeControl(drawControl);
+    createGrid(mapInst);
+
+    var coordCtrl = new L.Control.Coordinates();
+    coordCtrl.addTo(mapInst);
+    mapInst.on('mousemove', function(e) { coordCtrl.update(e.latlng); });
+
     drawControl = new L.Control.Draw({
-        edit: { featureGroup: drawLayer },
-        draw: { circle: false, circlemarker: false, rectangle: false }
+        position: 'topleft',
+        edit: { featureGroup: drawLayer, remove: true, edit: true },
+        draw: {
+            polyline: { shapeOptions: { color:'#dc143c', weight:3 } },
+            polygon: { shapeOptions: { color:'#dc143c', fillOpacity:0.15 } },
+            marker: true, circle: false, circlemarker: false,
+            rectangle: { shapeOptions: { color:'#ffab00', weight:2, fillOpacity:0.1 } }
+        }
     });
     mapInst.addControl(drawControl);
-    
-    // Draw Events
+    buildTacToolbar();
+
     mapInst.on(L.Draw.Event.CREATED, async function(e) {
-        const layer = e.layer;
-        drawLayer.addLayer(layer);
-        await saveDrawing(layer.toGeoJSON());
+        drawLayer.addLayer(e.layer);
+        await saveDrawing(e.layer.toGeoJSON());
     });
-    
-    // Trigger initial polls
+    mapInst.on(L.Draw.Event.DELETED, async function() { await clearAndResaveAll(); });
+    mapInst.on(L.Draw.Event.EDITED, async function() { await clearAndResaveAll(); });
+
+    mapInst.on('click', function(e) {
+        if (!activeMarkerType) return;
+        var icon = TACTICAL_ICONS.find(function(i){ return i.id === activeMarkerType; });
+        if (!icon) return;
+        var marker = L.marker(e.latlng, { icon: createTacIcon(icon) });
+        var ap = latLngToArma(e.latlng);
+        marker.bindPopup('<b>'+icon.label+'</b><br>Grid: '+ap.x+', '+ap.y);
+        marker.feature = { type:'Feature', properties:{ tacIcon: icon.id, label: icon.label }, geometry:{ type:'Point', coordinates:[e.latlng.lng, e.latlng.lat] } };
+        drawLayer.addLayer(marker);
+        saveDrawing(marker.feature);
+        activeMarkerType = null;
+        document.querySelectorAll('.tac-btn').forEach(function(b){ b.classList.remove('active'); });
+    });
+
     pollPlayers();
     pollDrawings();
 }
 
-document.getElementById('mapSelector')?.addEventListener('change', async (e) => {
-    currentMap = e.target.value;
-    await initIntelMap();
-});
+function buildTacToolbar() {
+    var existing = document.getElementById('tacToolbar');
+    if (existing) existing.remove();
+    var toolbar = document.createElement('div');
+    toolbar.id = 'tacToolbar';
+    toolbar.className = 'tac-toolbar';
+    toolbar.innerHTML = '<div class="tac-title">MARKERS</div>' +
+        TACTICAL_ICONS.map(function(i){ return '<button class="tac-btn" data-type="'+i.id+'" title="'+i.label+'" style="border-color:'+i.color+';color:'+i.color+'">'+i.symbol+'</button>'; }).join('');
+    document.getElementById('intelMap').parentElement.appendChild(toolbar);
+    toolbar.querySelectorAll('.tac-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var type = this.dataset.type;
+            if (activeMarkerType === type) {
+                activeMarkerType = null;
+                this.classList.remove('active');
+            } else {
+                activeMarkerType = type;
+                document.querySelectorAll('.tac-btn').forEach(function(b){ b.classList.remove('active'); });
+                this.classList.add('active');
+            }
+        });
+    });
+}
 
-// --- PLAYER TRACKING (MOCK API) ---
+// --- PLAYER TRACKING ---
 let playerMarkers = {};
 async function pollPlayers() {
     try {
-        const r = await fetch(`api/mock_players.php?map=${currentMap}`);
-        const d = await r.json();
+        var r = await fetch('api/mock_players.php?map='+currentMap);
+        var d = await r.json();
         if (d.success) {
-            const currentIds = new Set(d.data.map(p => p.id));
-            // Remove old
-            Object.keys(playerMarkers).forEach(id => {
-                if (!currentIds.has(parseInt(id))) {
-                    playerLayer.removeLayer(playerMarkers[id]);
-                    delete playerMarkers[id];
-                }
+            var currentIds = new Set(d.data.map(function(p){ return p.id; }));
+            Object.keys(playerMarkers).forEach(function(id) {
+                if (!currentIds.has(parseInt(id))) { playerLayer.removeLayer(playerMarkers[id]); delete playerMarkers[id]; }
             });
-            // Update/Add new
-            d.data.forEach(p => {
-                const latlng = armaToLatLng(p.x, p.y);
+            d.data.forEach(function(p) {
+                var latlng = armaToLatLng(p.x, p.y);
                 if (playerMarkers[p.id]) {
                     playerMarkers[p.id].setLatLng(latlng);
                 } else {
-                    const m = L.marker(latlng, {
-                        icon: L.divIcon({ className: 'player-marker', iconSize: [12,12] })
-                    });
-                    m.bindTooltip(p.name, { permanent: true, direction: 'right', className: 'player-tooltip' });
+                    var m = L.marker(latlng, { icon: L.divIcon({ className:'player-marker', iconSize:[12,12] }) });
+                    m.bindTooltip(p.name, { permanent:true, direction:'right', className:'player-tooltip' });
                     playerMarkers[p.id] = m;
                     playerLayer.addLayer(m);
                 }
             });
         }
-    } catch (e) { console.error('Poll Error:', e); }
-    setTimeout(pollPlayers, 2000); // 2s polling
+    } catch(e) { console.error('Poll:', e); }
+    playerPollTimer = setTimeout(pollPlayers, 2000);
 }
 
 // --- MISSION PLANNING SYNC ---
 async function pollDrawings() {
     try {
-        const r = await fetch(`api/mission_plan.php?map=${currentMap}`);
-        const d = await r.json();
-        if (d.success) {
-            drawLayer.clearLayers(); // Simple reset for demo, in production we'd merge
-            L.geoJSON(d.data, {
-                onEachFeature: function(feature, layer) {
-                    // Optional: bind popup with user_id
-                    if(feature.properties && feature.properties.user_id) {
-                        layer.bindPopup(`Drawn by: ${esc(feature.properties.user_id)}`);
+        var r = await fetch('api/mission_plan.php?map='+currentMap);
+        var d = await r.json();
+        if (d.success && d.data.features) {
+            drawLayer.clearLayers();
+            d.data.features.forEach(function(feature) {
+                if (feature.properties && feature.properties.tacIcon) {
+                    var icon = TACTICAL_ICONS.find(function(i){ return i.id === feature.properties.tacIcon; });
+                    if (icon && feature.geometry.type === 'Point') {
+                        var ll = [feature.geometry.coordinates[1], feature.geometry.coordinates[0]];
+                        var m = L.marker(ll, { icon: createTacIcon(icon) });
+                        m.bindPopup('<b>'+icon.label+'</b>');
+                        m.feature = feature;
+                        drawLayer.addLayer(m);
                     }
-                    drawLayer.addLayer(layer);
+                } else {
+                    L.geoJSON(feature, {
+                        style: { color:'#dc143c', weight:2, fillOpacity:0.1 },
+                        onEachFeature: function(f, l) {
+                            if (f.properties && f.properties.user_id) l.bindPopup('Drawn by: '+esc(f.properties.user_id));
+                            drawLayer.addLayer(l);
+                        }
+                    });
                 }
             });
         }
     } catch(e) {}
-    setTimeout(pollDrawings, 5000); // 5s sync poll
+    drawPollTimer = setTimeout(pollDrawings, 5000);
 }
 
 async function saveDrawing(geojson) {
-    // Optionally ask for Callsign/User ID, defaulting to Anonymous
-    const userId = localStorage.getItem('s2_callsign') || prompt('Enter your Callsign:') || 'Anonymous';
+    var userId = localStorage.getItem('s2_callsign') || prompt('Enter your Callsign:') || 'Anonymous';
     localStorage.setItem('s2_callsign', userId);
-    
     await fetch('api/mission_plan.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'save', map: currentMap, geojson, user_id: userId })
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ action:'save', map:currentMap, geojson:geojson, user_id:userId })
     });
+}
+
+async function clearAndResaveAll() {
+    await fetch('api/mission_plan.php', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ action:'clear', map:currentMap, password:'S2' })
+    });
+    var userId = localStorage.getItem('s2_callsign') || 'Anonymous';
+    var layers = [];
+    drawLayer.eachLayer(function(layer) { layers.push(layer); });
+    for (var i = 0; i < layers.length; i++) {
+        var gj = null;
+        if (layers[i].feature) gj = layers[i].feature;
+        else if (layers[i].toGeoJSON) gj = layers[i].toGeoJSON();
+        if (!gj) continue;
+        await fetch('api/mission_plan.php', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ action:'save', map:currentMap, geojson:gj, user_id:userId })
+        });
+    }
 }
 
 async function clearMapDrawings() {
     if(!s2Authed) { showAuthModal(); return; }
     if(!confirm('⚠ CONFIRM CLEAR ALL DRAWINGS FOR THIS MAP?')) return;
-    const r = await fetch('api/mission_plan.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'clear', map: currentMap, password: 'S2' })
+    var r = await fetch('api/mission_plan.php', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ action:'clear', map:currentMap, password:'S2' })
     });
-    const d = await r.json();
+    var d = await r.json();
     if(d.success) { drawLayer.clearLayers(); } else { alert(d.error); }
 }
 
-// Hook map init into tabs
-document.querySelectorAll('[data-tab="sorties"]').forEach(el => {
-    el.addEventListener('click', () => {
-        if (!mapInst) {
-            setTimeout(initIntelMap, 300);
-        } else {
-            setTimeout(() => mapInst.invalidateSize(), 300);
-        }
+// Hook map init
+document.querySelectorAll('[data-tab="sorties"]').forEach(function(el) {
+    el.addEventListener('click', function() {
+        if (!mapInst) { setTimeout(initIntelMap, 300); }
+        else { setTimeout(function(){ mapInst.invalidateSize(); }, 300); }
     });
 });
