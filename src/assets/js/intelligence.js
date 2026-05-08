@@ -170,32 +170,7 @@ function latLngToArma(latlng) {
     return { x: Math.round(latlng.lng), y: Math.round(latlng.lat) };
 }
 
-// ---- ARMA3 TACTICAL ICONS (SVG) ----
-const TACTICAL_ICONS = [
-    { id:'b_hq',     label:'BLUFOR HQ',      color:'#0066ff', svg:'<rect x="2" y="6" width="20" height="12" fill="none" stroke="currentColor" stroke-width="2"/><line x1="2" y1="6" x2="22" y2="18" stroke="currentColor" stroke-width="2"/><line x1="22" y1="6" x2="2" y2="18" stroke="currentColor" stroke-width="2"/><line x1="2" y1="18" x2="2" y2="22" stroke="currentColor" stroke-width="2"/>' },
-    { id:'b_inf',    label:'BLUFOR Inf',     color:'#0066ff', svg:'<rect x="2" y="6" width="20" height="12" fill="none" stroke="currentColor" stroke-width="2"/><line x1="2" y1="6" x2="22" y2="18" stroke="currentColor" stroke-width="2"/><line x1="22" y1="6" x2="2" y2="18" stroke="currentColor" stroke-width="2"/>' },
-    { id:'b_armor',  label:'BLUFOR Armor',   color:'#0066ff', svg:'<rect x="2" y="6" width="20" height="12" fill="none" stroke="currentColor" stroke-width="2"/><ellipse cx="12" cy="12" rx="6" ry="3" fill="none" stroke="currentColor" stroke-width="2"/>' },
-    { id:'b_air',    label:'BLUFOR Air',     color:'#0066ff', svg:'<rect x="2" y="6" width="20" height="12" fill="none" stroke="currentColor" stroke-width="2"/><path d="M6 18 Q 12 6 18 18" fill="none" stroke="currentColor" stroke-width="2"/>' },
-    { id:'o_hq',     label:'OPFOR HQ',       color:'#ff0000', svg:'<polygon points="12,2 22,12 12,22 2,12" fill="none" stroke="currentColor" stroke-width="2"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/><line x1="12" y1="22" x2="12" y2="26" stroke="currentColor" stroke-width="2"/>' },
-    { id:'o_inf',    label:'OPFOR Inf',      color:'#ff0000', svg:'<polygon points="12,2 22,12 12,22 2,12" fill="none" stroke="currentColor" stroke-width="2"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>' },
-    { id:'o_armor',  label:'OPFOR Armor',    color:'#ff0000', svg:'<polygon points="12,2 22,12 12,22 2,12" fill="none" stroke="currentColor" stroke-width="2"/><ellipse cx="12" cy="12" rx="4" ry="2" fill="none" stroke="currentColor" stroke-width="2"/>' },
-    { id:'mil_destroy', label:'Destroy',     color:'#ff0000', svg:'<circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>' },
-    { id:'mil_lz',   label:'LZ',             color:'#00ff00', svg:'<circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><line x1="8" y1="8" x2="8" y2="16" stroke="currentColor" stroke-width="2"/><line x1="16" y1="8" x2="16" y2="16" stroke="currentColor" stroke-width="2"/><line x1="8" y1="12" x2="16" y2="12" stroke="currentColor" stroke-width="2"/>' },
-    { id:'mil_marker',label:'Marker',        color:'#ffff00', svg:'<circle cx="12" cy="12" r="8" fill="currentColor"/><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/>' }
-];
-let activeMarkerType = null;
 
-function createTacIcon(icon, size) {
-    size = size || 32;
-    return L.divIcon({
-        className: 'tac-icon',
-        html: `<div style="width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;color:${icon.color};filter:drop-shadow(0px 0px 4px rgba(0,0,0,0.8));">
-                <svg width="24" height="24" viewBox="0 0 24 24" style="overflow:visible;">${icon.svg}</svg>
-               </div>`,
-        iconSize: [size, size],
-        iconAnchor: [size/2, size/2]
-    });
-}
 
 // ---- GRID OVERLAY ----
 function createGrid(map) {
@@ -291,7 +266,6 @@ async function initIntelMap() {
         }
     });
     mapInst.addControl(drawControl);
-    buildTacToolbar();
 
     mapInst.on(L.Draw.Event.CREATED, async function(e) {
         drawLayer.addLayer(e.layer);
@@ -299,20 +273,6 @@ async function initIntelMap() {
     });
     mapInst.on(L.Draw.Event.DELETED, async function() { await clearAndResaveAll(); });
     mapInst.on(L.Draw.Event.EDITED, async function() { await clearAndResaveAll(); });
-
-    mapInst.on('click', function(e) {
-        if (!activeMarkerType) return;
-        var icon = TACTICAL_ICONS.find(function(i){ return i.id === activeMarkerType; });
-        if (!icon) return;
-        var marker = L.marker(e.latlng, { icon: createTacIcon(icon) });
-        var ap = latLngToArma(e.latlng);
-        marker.bindPopup('<b>'+icon.label+'</b><br>Grid: '+ap.x+', '+ap.y);
-        marker.feature = { type:'Feature', properties:{ tacIcon: icon.id, label: icon.label }, geometry:{ type:'Point', coordinates:[e.latlng.lng, e.latlng.lat] } };
-        drawLayer.addLayer(marker);
-        saveDrawing(marker.feature);
-        activeMarkerType = null;
-        document.querySelectorAll('.tac-btn').forEach(function(b){ b.classList.remove('active'); });
-    });
 
     pollPlayers();
     pollDrawings();
@@ -380,24 +340,13 @@ async function pollDrawings() {
         if (d.success && d.data.features) {
             drawLayer.clearLayers();
             d.data.features.forEach(function(feature) {
-                if (feature.properties && feature.properties.tacIcon) {
-                    var icon = TACTICAL_ICONS.find(function(i){ return i.id === feature.properties.tacIcon; });
-                    if (icon && feature.geometry.type === 'Point') {
-                        var ll = [feature.geometry.coordinates[1], feature.geometry.coordinates[0]];
-                        var m = L.marker(ll, { icon: createTacIcon(icon) });
-                        m.bindPopup('<b>'+icon.label+'</b>');
-                        m.feature = feature;
-                        drawLayer.addLayer(m);
+                L.geoJSON(feature, {
+                    style: { color:'#dc143c', weight:2, fillOpacity:0.1 },
+                    onEachFeature: function(f, l) {
+                        if (f.properties && f.properties.user_id) l.bindPopup('Drawn by: '+esc(f.properties.user_id));
+                        drawLayer.addLayer(l);
                     }
-                } else {
-                    L.geoJSON(feature, {
-                        style: { color:'#dc143c', weight:2, fillOpacity:0.1 },
-                        onEachFeature: function(f, l) {
-                            if (f.properties && f.properties.user_id) l.bindPopup('Drawn by: '+esc(f.properties.user_id));
-                            drawLayer.addLayer(l);
-                        }
-                    });
-                }
+                });
             });
         }
     } catch(e) {}
