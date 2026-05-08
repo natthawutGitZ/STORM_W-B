@@ -179,11 +179,11 @@ async function loadMapScript(mapName) {
         script.onload = resolve;
         script.onerror = () => {
             console.error(`Failed to load ${mapName}.js`);
-            // Fallback config if script fails (Use altis tiles as visual placeholder since jetelain lacks colombia)
+            // Fallback config if script fails (Use PLANOPS Atlas tiles for Colombia)
             Arma3Map.Maps[mapName] = {
                 CRS: L.CRS.Simple,
-                tilePattern: `https://jetelain.github.io/Arma3Map/maps/altis/{z}/{x}/{y}.png`,
-                maxZoom: 5, minZoom: 0, defaultZoom: 2, center: [10000, 10000]
+                tilePattern: `https://plan-ops.fr/tiles/${mapName}/{z}/{x}/{y}.png`,
+                maxZoom: 6, minZoom: 0, defaultZoom: 3, center: [10250, 10250], worldSize: 20480
             };
             resolve();
         };
@@ -211,7 +211,7 @@ async function initIntelMap() {
     // Fix tileUrl if it starts with /maps
     if (tileUrl.startsWith('/maps')) tileUrl = 'https://jetelain.github.io/Arma3Map' + tileUrl;
     
-    L.tileLayer(tileUrl, { noWrap: true, bounds: config.worldSize ? [[0,0], [config.worldSize, config.worldSize]] : undefined }).addTo(mapInst);
+    L.tileLayer(tileUrl, { noWrap: true, tms: tileUrl.includes('plan-ops'), bounds: config.worldSize ? [[0,0], [config.worldSize, config.worldSize]] : undefined }).addTo(mapInst);
     
     mapInst.setView(armaToLatLng(config.center[0], config.center[1]), config.defaultZoom || 3);
     
