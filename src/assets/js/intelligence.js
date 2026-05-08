@@ -153,7 +153,7 @@ loadAll();
 let mapInst = null;
 let playerLayer = new L.LayerGroup();
 let drawLayer = new L.FeatureGroup();
-let currentMap = 'altis';
+let currentMap = 'colombia';
 let drawControl = null;
 
 // Mock MGRS_CRS for Arma3Map compatibility
@@ -323,6 +323,12 @@ async function clearMapDrawings() {
 }
 
 // Hook map init into tabs
-document.querySelector('[data-tab="sorties"]').addEventListener('click', () => {
-    if (!mapInst) setTimeout(initIntelMap, 300);
+document.querySelectorAll('[data-tab="sorties"]').forEach(el => {
+    el.addEventListener('click', () => {
+        if (!mapInst) {
+            setTimeout(initIntelMap, 300);
+        } else {
+            setTimeout(() => mapInst.invalidateSize(), 300);
+        }
+    });
 });
