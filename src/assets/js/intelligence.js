@@ -156,64 +156,47 @@ let drawLayer = new L.FeatureGroup();
 let currentMap = 'colombia';
 let drawControl = null;
 
-// Mock MGRS_CRS for Arma3Map compatibility
-window.Arma3Map = { Maps: {} };
-window.MGRS_CRS = function(a, b, c) {
-    return L.extend({}, L.CRS.Simple, {
-        transformation: new L.Transformation(a, 0, -b, c)
-    });
+// Colombia (UMB) map config from PLANOPS Atlas
+// factorX/Y = 0.01575, tileSize = 323, layerId = 118
+const COLOMBIA_CONFIG = {
+    tileUrl: 'https://atlas.plan-ops.fr/data/1/maps/118/118/{z}/{x}/{y}.webp',
+    tileSize: 323,
+    maxZoom: 6,
+    minZoom: 0,
+    defaultZoom: 2,
+    factorX: 0.01575,
+    factorY: 0.01575,
+    worldSize: 20480,
+    center: [10250, 10250]
 };
 
 function armaToLatLng(x, y) {
-    // In Arma CRS, X is Lng, Y is Lat. 
-    // Usually mapUtils.js does map.unproject([x, y], map.getMaxZoom())
-    // For standard Leaflet Simple CRS with transformation, LatLng is [y, x] but depending on signs.
-    return [y, x];
-}
-
-async function loadMapScript(mapName) {
-    return new Promise((resolve, reject) => {
-        if (Arma3Map.Maps[mapName]) return resolve();
-        const script = document.createElement('script');
-        script.src = `https://jetelain.github.io/Arma3Map/maps/${mapName}.js`;
-        script.onload = resolve;
-        script.onerror = () => {
-            console.error(`Failed to load ${mapName}.js`);
-            // Fallback config if script fails (Use PLANOPS Atlas tiles for Colombia)
-            Arma3Map.Maps[mapName] = {
-                CRS: L.CRS.Simple,
-                tilePattern: `https://plan-ops.fr/tiles/${mapName}/{z}/{x}/{y}.png`,
-                maxZoom: 6, minZoom: 0, defaultZoom: 3, center: [10250, 10250], worldSize: 20480
-            };
-            resolve();
-        };
-        document.head.appendChild(script);
-    });
+    // Convert Arma3 world coords to Leaflet LatLng using PLANOPS scale factors
+    return [y * COLOMBIA_CONFIG.factorY, x * COLOMBIA_CONFIG.factorX];
 }
 
 async function initIntelMap() {
-    await loadMapScript(currentMap);
-    const config = Arma3Map.Maps[currentMap];
-    
     if (mapInst) {
         mapInst.remove();
+        mapInst = null;
     }
     
     mapInst = L.map('intelMap', {
-        crs: config.CRS || L.CRS.Simple,
-        minZoom: config.minZoom || 0,
-        maxZoom: config.maxZoom || 6,
+        crs: L.CRS.Simple,
+        minZoom: COLOMBIA_CONFIG.minZoom,
+        maxZoom: COLOMBIA_CONFIG.maxZoom,
         attributionControl: false
     });
     
-    // Add Tiles
-    let tileUrl = config.tilePattern || `https://jetelain.github.io/Arma3Map/maps/${currentMap}/{z}/{x}/{y}.png`;
-    // Fix tileUrl if it starts with /maps
-    if (tileUrl.startsWith('/maps')) tileUrl = 'https://jetelain.github.io/Arma3Map' + tileUrl;
+    L.tileLayer(COLOMBIA_CONFIG.tileUrl, {
+        tileSize: COLOMBIA_CONFIG.tileSize,
+        noWrap: true,
+        maxZoom: COLOMBIA_CONFIG.maxZoom
+    }).addTo(mapInst);
     
-    L.tileLayer(tileUrl, { noWrap: true, tms: tileUrl.includes('plan-ops'), bounds: config.worldSize ? [[0,0], [config.worldSize, config.worldSize]] : undefined }).addTo(mapInst);
-    
-    mapInst.setView(armaToLatLng(config.center[0], config.center[1]), config.defaultZoom || 3);
+    // Set view to center of Colombia map
+    const centerLatLng = armaToLatLng(COLOMBIA_CONFIG.center[0], COLOMBIA_CONFIG.center[1]);
+    mapInst.setView(centerLatLng, COLOMBIA_CONFIG.defaultZoom);
     
     playerLayer.addTo(mapInst);
     drawLayer.addTo(mapInst);
