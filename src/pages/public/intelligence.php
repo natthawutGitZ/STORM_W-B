@@ -19,7 +19,6 @@ require_once ROOT_PATH . '/includes/db.php';
 <!-- SIDEBAR -->
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo">
-    <img src="assets/images/logo.png" alt="STORM" onerror="this.style.display='none'">
     <span>STORMSURGE</span>
   </div>
   <nav class="sidebar-nav">
