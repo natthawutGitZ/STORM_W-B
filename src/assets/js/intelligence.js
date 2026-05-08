@@ -177,7 +177,13 @@ function createGrid(map) {
     if (gridLayer) map.removeLayer(gridLayer);
     gridLayer = L.layerGroup();
     var step = 1000, ws = COLOMBIA_CONFIG.worldSize;
-    var lineStyle = { color: 'rgba(220,20,60,0.15)', weight: 0.5, dashArray: '2,4' };
+    var lineStyle = { color: 'rgba(0,255,65,0.15)', weight: 0.5, dashArray: '2,4' };
+    var axisStyle = { color: 'rgba(0,255,65,0.8)', weight: 2 };
+    
+    // Left axis line (x=0) and Top axis line (y=ws)
+    L.polyline([armaToLatLng(0, 0), armaToLatLng(0, ws)], axisStyle).addTo(gridLayer);
+    L.polyline([armaToLatLng(0, ws), armaToLatLng(ws, ws)], axisStyle).addTo(gridLayer);
+
     for (var i = 0; i <= ws; i += step) {
         // Vertical lines (constant X)
         L.polyline([armaToLatLng(i, 0), armaToLatLng(i, ws)], lineStyle).addTo(gridLayer);
@@ -185,12 +191,12 @@ function createGrid(map) {
         L.polyline([armaToLatLng(0, i), armaToLatLng(ws, i)], lineStyle).addTo(gridLayer);
         
         if (i % 2000 === 0 && i !== 0) {
-            // Label for X axis (placed at Y = 200)
-            L.marker(armaToLatLng(i, 200), {
+            // Label for X axis (placed at Top: y=ws+200? Actually place it just outside or on the top line)
+            L.marker(armaToLatLng(i, ws - 200), {
                 icon: L.divIcon({ className:'grid-label', html: String(Math.round(i/100)).padStart(2, '0'), iconSize:[30,14] }),
                 interactive: false
             }).addTo(gridLayer);
-            // Label for Y axis (placed at X = 200)
+            // Label for Y axis (placed at Left: x=200)
             L.marker(armaToLatLng(200, i), {
                 icon: L.divIcon({ className:'grid-label', html: String(Math.round(i/100)).padStart(2, '0'), iconSize:[30,14] }),
                 interactive: false
@@ -281,7 +287,7 @@ async function initIntelMap() {
     mapInst.addControl(new L.Control.Fullscreen());
 
     drawControl = new L.Control.Draw({
-        position: 'topleft',
+        position: 'topright',
         edit: { featureGroup: drawLayer, remove: true, edit: true },
         draw: {
             polyline: { shapeOptions: { color:'#00ff41', weight:3 } },

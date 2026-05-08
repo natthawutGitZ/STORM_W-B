@@ -138,10 +138,14 @@ body.sidebar-collapsed .main{margin-left:0}
 
 
 /* LEAFLET DRAW OVERRIDES */
-.leaflet-draw-toolbar a{background-color:var(--bg3) !important;color:var(--red) !important;border:1px solid var(--border) !important}
-.leaflet-draw-toolbar a:hover{background-color:var(--bg4) !important}
-.leaflet-draw-actions a{background-color:var(--bg3) !important;color:var(--text) !important;border:1px solid var(--border) !important;font-family:var(--mono) !important;font-size:.7rem !important}
-.leaflet-draw-actions a:hover{background-color:var(--red-dim) !important}
+.leaflet-draw.leaflet-control { display:flex; flex-direction:row; gap:4px; margin-top:10px !important; margin-right:10px !important; }
+.leaflet-draw-section { display:flex; flex-direction:row; }
+.leaflet-draw-toolbar { display:flex; flex-direction:row; margin:0 !important; }
+.leaflet-draw-toolbar a { display:block; border-radius:2px !important; border-bottom:1px solid var(--border) !important; background-color:var(--bg3) !important; color:var(--green) !important; border:1px solid var(--border) !important; width:30px; height:30px; line-height:30px; }
+.leaflet-draw-toolbar a:hover { background-color:var(--bg4) !important; color:#fff !important; }
+.leaflet-draw-actions { left:auto !important; right:100% !important; margin-right:4px !important; display:flex; flex-direction:row; }
+.leaflet-draw-actions a { background-color:var(--bg3) !important; color:var(--text) !important; border:1px solid var(--border) !important; font-family:var(--mono) !important; font-size:.7rem !important; border-radius:2px !important; padding:0 8px; }
+.leaflet-draw-actions a:hover { background-color:var(--theme-dim) !important; }
 
 /* CUSTOM MARKER TEXT */
 .marker-text { background: transparent; border: none; box-shadow: none; color: var(--text); font-family: var(--mono); font-weight: bold; font-size: 0.9rem; text-shadow: 1px 1px 2px #000; }
