@@ -36,7 +36,7 @@ function verifyAuth(){
 function closeModal(id){document.getElementById(id).classList.remove('show');}
 
 // Data loading
-async function loadAll(){await Promise.all([loadOps(),loadIntel(),loadSorties()]);}
+async function loadAll(){await Promise.all([loadOps(),loadIntel()]);}
 
 async function loadOps(){
   const r=await fetch(API+'?action=list&type=operations'),d=await r.json();
@@ -179,10 +179,10 @@ async function loadMapScript(mapName) {
         script.onload = resolve;
         script.onerror = () => {
             console.error(`Failed to load ${mapName}.js`);
-            // Fallback config if script fails
+            // Fallback config if script fails (Use altis tiles as visual placeholder since jetelain lacks colombia)
             Arma3Map.Maps[mapName] = {
                 CRS: L.CRS.Simple,
-                tilePattern: `https://jetelain.github.io/Arma3Map/maps/${mapName}/{z}/{x}/{y}.png`,
+                tilePattern: `https://jetelain.github.io/Arma3Map/maps/altis/{z}/{x}/{y}.png`,
                 maxZoom: 5, minZoom: 0, defaultZoom: 2, center: [10000, 10000]
             };
             resolve();
