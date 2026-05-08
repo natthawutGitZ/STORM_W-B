@@ -11,6 +11,11 @@ require_once ROOT_PATH . '/includes/db.php';
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/intelligence.css">
+<!-- Leaflet CSS & JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 </head>
 <body>
 <div class="scanline"></div>
@@ -24,7 +29,7 @@ require_once ROOT_PATH . '/includes/db.php';
   <nav class="sidebar-nav">
     <a class="nav-item active" data-tab="opshub"><i class="fas fa-crosshairs"></i><span>OPS HUB</span></a>
     <a class="nav-item" data-tab="intel"><i class="fas fa-file-shield"></i><span>INTEL</span></a>
-    <a class="nav-item" data-tab="sorties"><i class="fas fa-jet-fighter"></i><span>SORTIES</span></a>
+    <a class="nav-item" data-tab="sorties"><i class="fas fa-map"></i><span>INTELLIGENCE MAP</span></a>
   </nav>
   <div class="sidebar-ops" id="sidebarOps">
     <div class="sidebar-ops-title"><i class="fas fa-layer-group"></i> ACTIVE OPS</div>
@@ -44,7 +49,7 @@ require_once ROOT_PATH . '/includes/db.php';
     <div class="topbar-tabs">
       <button class="tab-btn active" data-tab="opshub">OPS HUB</button>
       <button class="tab-btn" data-tab="intel">INTEL FEED</button>
-      <button class="tab-btn" data-tab="sorties">TACTICAL MAP</button>
+      <button class="tab-btn" data-tab="sorties">INTELLIGENCE MAP</button>
     </div>
     <div class="topbar-right">
       <div class="threat-level"><span class="threat-label">THREAT:</span><span class="threat-val" id="threatLvl">ELEVATED</span></div>
@@ -89,14 +94,20 @@ require_once ROOT_PATH . '/includes/db.php';
     </div>
   </section>
 
-  <!-- TAB: SORTIES -->
-  <section class="tab-content" id="tab-sorties">
-    <div class="panel full-panel">
-      <div class="panel-header">
-        <div class="panel-title"><i class="fas fa-jet-fighter"></i> ACTIVE SORTIES</div>
-        <div class="panel-controls"><span class="badge" id="sortieCount">0</span><button class="btn-add" onclick="openCreateModal('sorties')"><i class="fas fa-plus"></i></button></div>
+  <!-- TAB: INTELLIGENCE MAP -->
+  <section class="tab-content" id="tab-sorties" style="padding:0;">
+    <div class="panel full-panel" style="border:none; border-radius:0;">
+      <div class="panel-header" style="position:absolute; top:10px; right:10px; z-index:1000; background:rgba(14,14,14,0.85); border:1px solid var(--border); border-radius:4px; padding:8px 12px; backdrop-filter:blur(4px);">
+        <div class="panel-title" style="margin-bottom:6px;"><i class="fas fa-map"></i> MAP SELECTOR</div>
+        <select id="mapSelector" style="background:var(--bg); color:var(--text); border:1px solid var(--border); padding:6px; font-family:var(--mono); font-size:0.8rem; width:100%; outline:none;">
+          <option value="altis">ALTIS</option>
+          <option value="colombia">COLOMBIA (UMB)</option>
+        </select>
+        <button class="btn-s2" style="margin-top:8px; padding:6px;" onclick="clearMapDrawings()"><i class="fas fa-trash"></i> CLEAR MAP</button>
       </div>
-      <div class="panel-body" id="sortieList"></div>
+      <div class="panel-body" style="overflow:hidden;">
+        <div id="intelMap" style="width:100%; height:100%; background:#000;"></div>
+      </div>
     </div>
   </section>
 </main>

@@ -146,3 +146,183 @@ function timeAgo(dt){
 }
 
 loadAll();
+
+// ==========================================
+// INTELLIGENCE MAP & MISSION PLANNING
+// ==========================================
+let mapInst = null;
+let playerLayer = new L.LayerGroup();
+let drawLayer = new L.FeatureGroup();
+let currentMap = 'altis';
+let drawControl = null;
+
+// Mock MGRS_CRS for Arma3Map compatibility
+window.Arma3Map = { Maps: {} };
+window.MGRS_CRS = function(a, b, c) {
+    return L.extend({}, L.CRS.Simple, {
+        transformation: new L.Transformation(a, 0, -b, c)
+    });
+};
+
+function armaToLatLng(x, y) {
+    // In Arma CRS, X is Lng, Y is Lat. 
+    // Usually mapUtils.js does map.unproject([x, y], map.getMaxZoom())
+    // For standard Leaflet Simple CRS with transformation, LatLng is [y, x] but depending on signs.
+    return [y, x];
+}
+
+async function loadMapScript(mapName) {
+    return new Promise((resolve, reject) => {
+        if (Arma3Map.Maps[mapName]) return resolve();
+        const script = document.createElement('script');
+        script.src = `https://jetelain.github.io/Arma3Map/maps/${mapName}.js`;
+        script.onload = resolve;
+        script.onerror = () => {
+            console.error(`Failed to load ${mapName}.js`);
+            // Fallback config if script fails
+            Arma3Map.Maps[mapName] = {
+                CRS: L.CRS.Simple,
+                tilePattern: `https://jetelain.github.io/Arma3Map/maps/${mapName}/{z}/{x}/{y}.png`,
+                maxZoom: 5, minZoom: 0, defaultZoom: 2, center: [10000, 10000]
+            };
+            resolve();
+        };
+        document.head.appendChild(script);
+    });
+}
+
+async function initIntelMap() {
+    await loadMapScript(currentMap);
+    const config = Arma3Map.Maps[currentMap];
+    
+    if (mapInst) {
+        mapInst.remove();
+    }
+    
+    mapInst = L.map('intelMap', {
+        crs: config.CRS || L.CRS.Simple,
+        minZoom: config.minZoom || 0,
+        maxZoom: config.maxZoom || 6,
+        attributionControl: false
+    });
+    
+    // Add Tiles
+    let tileUrl = config.tilePattern || `https://jetelain.github.io/Arma3Map/maps/${currentMap}/{z}/{x}/{y}.png`;
+    // Fix tileUrl if it starts with /maps
+    if (tileUrl.startsWith('/maps')) tileUrl = 'https://jetelain.github.io/Arma3Map' + tileUrl;
+    
+    L.tileLayer(tileUrl, { noWrap: true, bounds: config.worldSize ? [[0,0], [config.worldSize, config.worldSize]] : undefined }).addTo(mapInst);
+    
+    mapInst.setView(armaToLatLng(config.center[0], config.center[1]), config.defaultZoom || 3);
+    
+    playerLayer.addTo(mapInst);
+    drawLayer.addTo(mapInst);
+    
+    // Setup Drawing Tools
+    if (drawControl) mapInst.removeControl(drawControl);
+    drawControl = new L.Control.Draw({
+        edit: { featureGroup: drawLayer },
+        draw: { circle: false, circlemarker: false, rectangle: false }
+    });
+    mapInst.addControl(drawControl);
+    
+    // Draw Events
+    mapInst.on(L.Draw.Event.CREATED, async function(e) {
+        const layer = e.layer;
+        drawLayer.addLayer(layer);
+        await saveDrawing(layer.toGeoJSON());
+    });
+    
+    // Trigger initial polls
+    pollPlayers();
+    pollDrawings();
+}
+
+document.getElementById('mapSelector')?.addEventListener('change', async (e) => {
+    currentMap = e.target.value;
+    await initIntelMap();
+});
+
+// --- PLAYER TRACKING (MOCK API) ---
+let playerMarkers = {};
+async function pollPlayers() {
+    try {
+        const r = await fetch(`api/mock_players.php?map=${currentMap}`);
+        const d = await r.json();
+        if (d.success) {
+            const currentIds = new Set(d.data.map(p => p.id));
+            // Remove old
+            Object.keys(playerMarkers).forEach(id => {
+                if (!currentIds.has(parseInt(id))) {
+                    playerLayer.removeLayer(playerMarkers[id]);
+                    delete playerMarkers[id];
+                }
+            });
+            // Update/Add new
+            d.data.forEach(p => {
+                const latlng = armaToLatLng(p.x, p.y);
+                if (playerMarkers[p.id]) {
+                    playerMarkers[p.id].setLatLng(latlng);
+                } else {
+                    const m = L.marker(latlng, {
+                        icon: L.divIcon({ className: 'player-marker', iconSize: [12,12] })
+                    });
+                    m.bindTooltip(p.name, { permanent: true, direction: 'right', className: 'player-tooltip' });
+                    playerMarkers[p.id] = m;
+                    playerLayer.addLayer(m);
+                }
+            });
+        }
+    } catch (e) { console.error('Poll Error:', e); }
+    setTimeout(pollPlayers, 2000); // 2s polling
+}
+
+// --- MISSION PLANNING SYNC ---
+async function pollDrawings() {
+    try {
+        const r = await fetch(`api/mission_plan.php?map=${currentMap}`);
+        const d = await r.json();
+        if (d.success) {
+            drawLayer.clearLayers(); // Simple reset for demo, in production we'd merge
+            L.geoJSON(d.data, {
+                onEachFeature: function(feature, layer) {
+                    // Optional: bind popup with user_id
+                    if(feature.properties && feature.properties.user_id) {
+                        layer.bindPopup(`Drawn by: ${esc(feature.properties.user_id)}`);
+                    }
+                    drawLayer.addLayer(layer);
+                }
+            });
+        }
+    } catch(e) {}
+    setTimeout(pollDrawings, 5000); // 5s sync poll
+}
+
+async function saveDrawing(geojson) {
+    // Optionally ask for Callsign/User ID, defaulting to Anonymous
+    const userId = localStorage.getItem('s2_callsign') || prompt('Enter your Callsign:') || 'Anonymous';
+    localStorage.setItem('s2_callsign', userId);
+    
+    await fetch('api/mission_plan.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'save', map: currentMap, geojson, user_id: userId })
+    });
+}
+
+async function clearMapDrawings() {
+    if(!s2Authed) { showAuthModal(); return; }
+    if(!confirm('⚠ CONFIRM CLEAR ALL DRAWINGS FOR THIS MAP?')) return;
+    const r = await fetch('api/mission_plan.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'clear', map: currentMap, password: 'S2' })
+    });
+    const d = await r.json();
+    if(d.success) { drawLayer.clearLayers(); } else { alert(d.error); }
+}
+
+// Hook map init into tabs
+document.querySelector('[data-tab="sorties"]').addEventListener('click', () => {
+    if (!mapInst) setTimeout(initIntelMap, 300);
+});
