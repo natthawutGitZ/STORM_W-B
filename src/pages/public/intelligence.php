@@ -96,12 +96,204 @@ require_once ROOT_PATH . '/includes/db.php';
 
   <!-- TAB: INTELLIGENCE MAP -->
   <section class="tab-content" id="tab-sorties" style="padding:0;">
-    <div class="panel full-panel" style="border:none; border-radius:0;">
-      <div class="panel-body" style="overflow:hidden;">
-        <div id="intelMap" style="width:100%; height:100%; background:#000;"></div>
+    <div class="map-editor-wrap">
+      <!-- LEFT TOOLBAR -->
+      <div class="map-toolbar map-toolbar-left" id="mapToolbarLeft">
+        <div class="toolbar-group">
+          <button class="map-tool-btn" id="toolZoomIn" title="Zoom In"><i class="fas fa-plus"></i></button>
+          <button class="map-tool-btn" id="toolZoomOut" title="Zoom Out"><i class="fas fa-minus"></i></button>
+        </div>
+        <div class="toolbar-group">
+          <button class="map-tool-btn active" id="toolPan" data-tool="pan" title="Pan"><i class="fas fa-hand-paper"></i></button>
+          <button class="map-tool-btn" id="toolSelect" data-tool="select" title="Select"><i class="fas fa-arrow-pointer"></i></button>
+        </div>
+        <div class="toolbar-group">
+          <button class="map-tool-btn" id="toolNatoSymbol" data-tool="natoSymbol" title="NATO APP-6 Symbol"><i class="fas fa-vector-square"></i></button>
+          <button class="map-tool-btn" id="toolBasicSymbol" data-tool="basicSymbol" title="Basic Symbol"><i class="fas fa-circle" style="color:#4488ff"></i></button>
+        </div>
+        <div class="toolbar-group">
+          <button class="map-tool-btn" id="toolLine" data-tool="line" title="Line"><i class="fas fa-slash"></i></button>
+          <button class="map-tool-btn" id="toolArea" data-tool="area" title="Area"><i class="fas fa-draw-polygon"></i></button>
+        </div>
+        <div class="toolbar-group">
+          <button class="map-tool-btn" id="toolPoint" data-tool="point" title="Point"><i class="fas fa-circle-dot"></i></button>
+          <button class="map-tool-btn" id="toolFlag" data-tool="flag" title="Flag / Label"><i class="fas fa-flag"></i></button>
+        </div>
       </div>
+
+      <!-- RIGHT TOOLBAR -->
+      <div class="map-toolbar map-toolbar-right" id="mapToolbarRight">
+        <div class="toolbar-group">
+          <button class="map-tool-btn" id="toolLayers" title="Layers"><i class="fas fa-layer-group"></i></button>
+          <button class="map-tool-btn" id="toolExport" title="Export"><i class="fas fa-file-export"></i></button>
+          <button class="map-tool-btn" id="toolFullscreen" title="Fullscreen"><i class="fas fa-expand"></i></button>
+        </div>
+        <div class="toolbar-group">
+          <button class="map-tool-btn" id="toolSearch" title="Search Grid"><i class="fas fa-search"></i></button>
+        </div>
+      </div>
+
+      <!-- COORD DISPLAY (top-right) -->
+      <div class="map-coord-display" id="mapCoordDisplay">0000 - 0000</div>
+
+      <!-- GRID EDGE LABELS -->
+      <div class="grid-edge grid-edge-top" id="gridEdgeTop"></div>
+      <div class="grid-edge grid-edge-right" id="gridEdgeRight"></div>
+
+      <!-- MAP -->
+      <div id="intelMap" style="width:100%; height:100%; background:#000;"></div>
     </div>
   </section>
+
+  <!-- MODAL: NATO SYMBOL -->
+  <div class="map-modal-overlay" id="modalNatoSymbol">
+    <div class="map-modal">
+      <div class="map-modal-header">
+        <span id="natoModalTitle">NATO APP-6 (D) Symbol</span>
+        <button class="map-modal-close" onclick="closeMapModal('modalNatoSymbol')">&times;</button>
+      </div>
+      <div class="map-modal-body">
+        <div class="affiliation-row" id="affiliationRow">
+          <button class="aff-btn" data-aff="pending" style="--aff-color:#ffff00" title="Pending">
+            <svg width="20" height="20"><circle cx="10" cy="10" r="8" fill="none" stroke="#ffff00" stroke-width="2" stroke-dasharray="3,2"/></svg>
+            <span>Pending</span>
+          </button>
+          <button class="aff-btn" data-aff="unknown" style="--aff-color:#ffff00" title="Unknown">
+            <svg width="20" height="20"><rect x="2" y="2" width="16" height="16" rx="2" fill="none" stroke="#ffff00" stroke-width="2"/></svg>
+            <span>Unknown</span>
+          </button>
+          <button class="aff-btn" data-aff="assumedFriend" style="--aff-color:#80e0ff" title="Assumed Friend">
+            <svg width="20" height="20"><rect x="2" y="2" width="16" height="16" fill="none" stroke="#80e0ff" stroke-width="2" stroke-dasharray="3,2"/></svg>
+            <span>Assumed</span>
+          </button>
+          <button class="aff-btn active" data-aff="friend" style="--aff-color:#80e0ff" title="Friend">
+            <svg width="20" height="20"><rect x="2" y="2" width="16" height="16" fill="#80e0ff" stroke="#80e0ff" stroke-width="2"/></svg>
+            <span>Friend</span>
+          </button>
+          <button class="aff-btn" data-aff="neutral" style="--aff-color:#00ff00" title="Neutral">
+            <svg width="20" height="20"><rect x="2" y="2" width="16" height="16" fill="#00ff00" stroke="#00ff00" stroke-width="2"/></svg>
+            <span>Neutral</span>
+          </button>
+          <button class="aff-btn" data-aff="suspect" style="--aff-color:#ff0000" title="Suspect">
+            <svg width="20" height="20"><polygon points="10,1 19,19 1,19" fill="none" stroke="#ff0000" stroke-width="2" stroke-dasharray="3,2"/></svg>
+            <span>Suspect</span>
+          </button>
+          <button class="aff-btn" data-aff="hostile" style="--aff-color:#ff0000" title="Hostile">
+            <svg width="20" height="20"><polygon points="10,2 19,18 1,18" fill="#ff0000" stroke="#ff0000" stroke-width="2"/></svg>
+            <span>Hostile</span>
+          </button>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label>Symbol set</label><select id="natoSymbolSet"><option>Land unit</option><option>Air</option><option>Sea surface</option><option>Equipment</option></select></div>
+          <div class="form-col"><label>Symbol</label><select id="natoSymbolType"><option>Unspecified</option><option>Infantry</option><option>Armor</option><option>Artillery</option><option>Reconnaissance</option><option>Engineer</option><option>Air Defense</option><option>Signal</option><option>Medical</option><option>Supply</option><option>Command and Control</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label>Status</label><select id="natoStatus"><option>Present</option><option>Planned</option><option>Anticipated</option></select></div>
+          <div class="form-col"><label>Echelon</label><select id="natoEchelon"><option>Unspecified</option><option>Team</option><option>Squad</option><option>Section</option><option>Platoon</option><option>Company</option><option>Battalion</option><option>Regiment</option><option>Brigade</option><option>Division</option><option>Corps</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label>Unique Designation</label><input type="text" id="natoDesignation" placeholder="e.g. 1-2 INF"></div>
+          <div class="form-col"><label>Additional Info</label><input type="text" id="natoAdditional" placeholder=""></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label>Scale</label><input type="number" id="natoScale" value="100" min="10" max="500"></div>
+        </div>
+      </div>
+      <div class="map-modal-footer">
+        <button class="mbtn mbtn-cancel" onclick="closeMapModal('modalNatoSymbol')">Cancel</button>
+        <button class="mbtn mbtn-insert" id="natoInsertBtn">Insert</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: BASIC SYMBOL -->
+  <div class="map-modal-overlay" id="modalBasicSymbol">
+    <div class="map-modal">
+      <div class="map-modal-header">
+        <span>Basic symbol</span>
+        <button class="map-modal-close" onclick="closeMapModal('modalBasicSymbol')">&times;</button>
+      </div>
+      <div class="map-modal-body">
+        <div class="form-row">
+          <div class="form-col"><label>Shape</label><select id="basicShape"><option value="mil_dot">● mil_dot</option><option value="mil_circle">○ mil_circle</option><option value="mil_cross">✕ mil_cross</option><option value="mil_square">□ mil_square</option><option value="mil_triangle">△ mil_triangle</option><option value="mil_diamond">◇ mil_diamond</option></select></div>
+          <div class="form-col"><label>Color</label>
+            <div class="color-picker-wrap">
+              <button class="color-btn active" data-color="#000000" style="background:#000;border:2px solid #fff" title="Black"></button>
+              <button class="color-btn" data-color="#ff0000" style="background:#ff0000" title="Red"></button>
+              <button class="color-btn" data-color="#0066ff" style="background:#0066ff" title="Blue"></button>
+              <button class="color-btn" data-color="#00cc00" style="background:#00cc00" title="Green"></button>
+              <button class="color-btn" data-color="#ffff00" style="background:#ffff00" title="Yellow"></button>
+              <button class="color-btn" data-color="#ffffff" style="background:#fff" title="White"></button>
+            </div>
+          </div>
+          <div class="form-col"><label>Rotation (mil)</label><input type="number" id="basicRotation" value="0"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col" style="flex:1"><label>Label</label><input type="text" id="basicLabel" placeholder="Label text"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label>Scale</label><input type="number" id="basicScale" value="100" min="10" max="500"></div>
+        </div>
+      </div>
+      <div class="map-modal-footer">
+        <button class="mbtn mbtn-cancel" onclick="closeMapModal('modalBasicSymbol')">Cancel</button>
+        <button class="mbtn mbtn-insert" id="basicInsertBtn">Insert</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: LINE / AREA PROPERTIES -->
+  <div class="map-modal-overlay" id="modalLineProps">
+    <div class="map-modal">
+      <div class="map-modal-header">
+        <span id="lineModalTitle">Line</span>
+        <button class="map-modal-close" onclick="closeMapModal('modalLineProps')">&times;</button>
+      </div>
+      <div class="map-modal-body">
+        <div class="form-row">
+          <div class="form-col"><label>Color</label>
+            <div class="color-picker-wrap" id="lineColorPicker">
+              <button class="color-btn active" data-color="#000000" style="background:#000;border:2px solid #fff" title="Black"></button>
+              <button class="color-btn" data-color="#ff0000" style="background:#ff0000" title="Red"></button>
+              <button class="color-btn" data-color="#0066ff" style="background:#0066ff" title="Blue"></button>
+              <button class="color-btn" data-color="#00cc00" style="background:#00cc00" title="Green"></button>
+              <button class="color-btn" data-color="#ffff00" style="background:#ffff00" title="Yellow"></button>
+              <button class="color-btn" data-color="#ffffff" style="background:#fff" title="White"></button>
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label>Weight</label><input type="number" id="lineWeight" value="3" min="1" max="10"></div>
+          <div class="form-col"><label>Label</label><input type="text" id="lineLabel" placeholder=""></div>
+        </div>
+      </div>
+      <div class="map-modal-footer">
+        <button class="mbtn mbtn-delete" id="lineDeleteBtn" style="display:none">Delete</button>
+        <button class="mbtn mbtn-cancel" onclick="cancelLineDraw()">Cancel</button>
+        <button class="mbtn mbtn-insert" id="lineSaveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SEARCH GRID -->
+  <div class="map-modal-overlay" id="modalSearch">
+    <div class="map-modal" style="max-width:340px">
+      <div class="map-modal-header">
+        <span>Go to Grid</span>
+        <button class="map-modal-close" onclick="closeMapModal('modalSearch')">&times;</button>
+      </div>
+      <div class="map-modal-body">
+        <div class="form-row">
+          <div class="form-col"><label>X (Easting)</label><input type="number" id="searchX" placeholder="e.g. 8000"></div>
+          <div class="form-col"><label>Y (Northing)</label><input type="number" id="searchY" placeholder="e.g. 6000"></div>
+        </div>
+      </div>
+      <div class="map-modal-footer">
+        <button class="mbtn mbtn-cancel" onclick="closeMapModal('modalSearch')">Cancel</button>
+        <button class="mbtn mbtn-insert" id="searchGoBtn">Go</button>
+      </div>
+    </div>
+  </div>
 </main>
 
 <!-- AUTH MODAL -->

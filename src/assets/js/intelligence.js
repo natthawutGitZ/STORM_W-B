@@ -140,7 +140,6 @@ let mapInst = null;
 let playerLayer = null;
 let drawLayer = null;
 let currentMap = 'colombia';
-let drawControl = null;
 let gridLayer = null;
 let playerPollTimer = null;
 let drawPollTimer = null;
@@ -157,99 +156,106 @@ const COLOMBIA_CONFIG = {
     center: [10250, 10250]
 };
 
-// Proper Arma 3 CRS Transformation
 const ArmaCRS = L.extend({}, L.CRS.Simple, {
     transformation: new L.Transformation(COLOMBIA_CONFIG.factorX, 0, -COLOMBIA_CONFIG.factorY, COLOMBIA_CONFIG.tileSize)
 });
 
-function armaToLatLng(x, y) {
-    // With proper CRS, Lat is Y and Lng is X
-    return [y, x];
-}
-function latLngToArma(latlng) {
-    return { x: Math.round(latlng.lng), y: Math.round(latlng.lat) };
-}
+function armaToLatLng(x, y) { return [y, x]; }
+function latLngToArma(latlng) { return { x: Math.round(latlng.lng), y: Math.round(latlng.lat) }; }
 
-
-
-// ---- GRID OVERLAY ----
+// ---- GRID LINES ----
 function createGrid(map) {
     if (gridLayer) map.removeLayer(gridLayer);
     gridLayer = L.layerGroup();
     var step = 1000, ws = COLOMBIA_CONFIG.worldSize;
-    var lineStyle = { color: 'rgba(0,255,65,0.15)', weight: 0.5, dashArray: '2,4' };
-    var axisStyle = { color: 'rgba(0,255,65,0.8)', weight: 2 };
+    var lineStyle = { color: 'rgba(0,0,0,0.15)', weight: 1, dashArray: '4,4' };
     
-    // Left axis line (x=0) and Top axis line (y=ws)
-    L.polyline([armaToLatLng(0, 0), armaToLatLng(0, ws)], axisStyle).addTo(gridLayer);
-    L.polyline([armaToLatLng(0, ws), armaToLatLng(ws, ws)], axisStyle).addTo(gridLayer);
-
     for (var i = 0; i <= ws; i += step) {
-        // Vertical lines (constant X)
         L.polyline([armaToLatLng(i, 0), armaToLatLng(i, ws)], lineStyle).addTo(gridLayer);
-        // Horizontal lines (constant Y)
         L.polyline([armaToLatLng(0, i), armaToLatLng(ws, i)], lineStyle).addTo(gridLayer);
-        
-        if (i % 2000 === 0 && i !== 0) {
-            // Label for X axis (placed at Top: y=ws+200? Actually place it just outside or on the top line)
-            L.marker(armaToLatLng(i, ws - 200), {
-                icon: L.divIcon({ className:'grid-label', html: String(Math.round(i/100)).padStart(2, '0'), iconSize:[30,14] }),
-                interactive: false
-            }).addTo(gridLayer);
-            // Label for Y axis (placed at Left: x=200)
-            L.marker(armaToLatLng(200, i), {
-                icon: L.divIcon({ className:'grid-label', html: String(Math.round(i/100)).padStart(2, '0'), iconSize:[30,14] }),
-                interactive: false
-            }).addTo(gridLayer);
-        }
     }
     gridLayer.addTo(map);
 }
 
-// ---- MOUSE COORDINATE DISPLAY ----
-L.Control.Coordinates = L.Control.extend({
-    options: { position: 'bottomleft' },
-    onAdd: function() {
-        this._div = L.DomUtil.create('div', 'coord-display');
-        this._div.innerHTML = 'GRID: ---- | ----';
-        return this._div;
-    },
-    update: function(latlng) {
-        if (!latlng) return;
-        var a = latLngToArma(latlng);
-        if (a.x < 0 || a.y < 0 || a.x > COLOMBIA_CONFIG.worldSize || a.y > COLOMBIA_CONFIG.worldSize) return;
-        var gx = String(Math.floor(a.x / 10)).padStart(4, '0').slice(-4);
-        var gy = String(Math.floor(a.y / 10)).padStart(4, '0').slice(-4);
-        this._div.innerHTML = 'GRID: <span class="coord-val">'+gx+'</span> | <span class="coord-val">'+gy+'</span>';
-    }
-});
+// ---- GRID EDGE LABELS (PLANOPS Style) ----
+function updateGridEdgeLabels() {
+    if (!mapInst) return;
+    var bounds = mapInst.getBounds();
+    var nw = latLngToArma(bounds.getNorthWest());
+    var se = latLngToArma(bounds.getSouthEast());
+    var topEl = document.getElementById('gridEdgeTop');
+    var rightEl = document.getElementById('gridEdgeRight');
+    if (!topEl || !rightEl) return;
+    
+    topEl.innerHTML = ''; rightEl.innerHTML = '';
+    var step = 1000;
+    var startX = Math.floor(nw.x / step) * step;
+    var endX = Math.ceil(se.x / step) * step;
+    var startY = Math.floor(nw.y / step) * step;
+    var endY = Math.ceil(se.y / step) * step;
 
-// ---- FULLSCREEN CONTROL ----
-L.Control.Fullscreen = L.Control.extend({
-    options: { position: 'topright' },
-    onAdd: function() {
-        var btn = L.DomUtil.create('button', 'leaflet-bar leaflet-control');
-        btn.innerHTML = '<i class="fas fa-expand"></i>';
-        btn.style.width = '32px';
-        btn.style.height = '32px';
-        btn.style.cursor = 'pointer';
-        btn.style.backgroundColor = 'var(--bg3)';
-        btn.style.color = 'var(--green)';
-        btn.style.border = '1px solid var(--border)';
-        btn.style.fontSize = '14px';
-        btn.onclick = function(e) {
-            e.stopPropagation();
-            var mapEl = document.getElementById('intelMap');
-            if (!document.fullscreenElement) {
-                if(mapEl.requestFullscreen) mapEl.requestFullscreen();
-            } else {
-                if(document.exitFullscreen) document.exitFullscreen();
-            }
-        };
-        return btn;
+    for (var x = startX; x <= endX; x += step) {
+        var ll = armaToLatLng(x, nw.y);
+        var p = mapInst.latLngToContainerPoint(ll);
+        if (p.x >= 0 && p.x <= mapInst.getSize().x) {
+            var el = document.createElement('div');
+            el.className = 'grid-edge-label';
+            el.style.left = p.x + 'px';
+            el.style.bottom = '2px';
+            el.style.transform = 'translateX(-50%)';
+            el.innerText = String(Math.round(x/100)).padStart(2, '0');
+            topEl.appendChild(el);
+        }
     }
-});
+    for (var y = startY; y <= endY; y += step) {
+        var ll = armaToLatLng(nw.x, y);
+        var p = mapInst.latLngToContainerPoint(ll);
+        if (p.y >= 0 && p.y <= mapInst.getSize().y) {
+            var el = document.createElement('div');
+            el.className = 'grid-edge-label';
+            el.style.top = p.y + 'px';
+            el.style.right = '4px';
+            el.style.transform = 'translateY(-50%)';
+            el.innerText = String(Math.round(y/100)).padStart(2, '0');
+            rightEl.appendChild(el);
+        }
+    }
+}
 
+// ---- CUSTOM UI STATE ----
+let currentDrawAction = null;
+let activeToolBtn = null;
+let pendingLayer = null;
+
+function setTool(toolName, btnEl) {
+    if (currentDrawAction) { currentDrawAction.disable(); currentDrawAction = null; }
+    document.querySelectorAll('.map-tool-btn').forEach(b => b.classList.remove('active'));
+    if (btnEl) btnEl.classList.add('active');
+    
+    if (toolName === 'pan') {
+        // Default Leaflet behavior
+    } else if (toolName === 'line') {
+        currentDrawAction = new L.Draw.Polyline(mapInst, { shapeOptions: { color:'#000000', weight:3 }});
+        currentDrawAction.enable();
+    } else if (toolName === 'area') {
+        currentDrawAction = new L.Draw.Polygon(mapInst, { shapeOptions: { color:'#000000', weight:2, fillOpacity:0.2 }});
+        currentDrawAction.enable();
+    } else if (toolName === 'natoSymbol') {
+        currentDrawAction = new L.Draw.Marker(mapInst, { icon: L.divIcon({className:'nato-icon', html:'<i class="fas fa-vector-square" style="color:#0066ff;font-size:24px;"></i>'}) });
+        currentDrawAction.enable();
+    } else if (toolName === 'basicSymbol') {
+        currentDrawAction = new L.Draw.Marker(mapInst, { icon: L.divIcon({className:'basic-symbol-icon', html:'<i class="fas fa-circle" style="color:#000;font-size:16px;"></i>'}) });
+        currentDrawAction.enable();
+    } else if (toolName === 'point') {
+        currentDrawAction = new L.Draw.Marker(mapInst);
+        currentDrawAction.enable();
+    } else if (toolName === 'flag') {
+        currentDrawAction = new L.Draw.Marker(mapInst, { icon: L.divIcon({className:'basic-symbol-icon', html:'<i class="fas fa-flag" style="color:#ff0000;font-size:20px;"></i>'}) });
+        currentDrawAction.enable();
+    }
+}
+
+// ---- INIT MAP ----
 async function initIntelMap() {
     if (mapInst) { mapInst.remove(); mapInst = null; }
     if (playerPollTimer) clearTimeout(playerPollTimer);
@@ -258,111 +264,162 @@ async function initIntelMap() {
     drawLayer = L.featureGroup();
 
     mapInst = L.map('intelMap', {
-        crs: ArmaCRS,
-        minZoom: COLOMBIA_CONFIG.minZoom,
-        maxZoom: COLOMBIA_CONFIG.maxZoom,
-        attributionControl: false
+        crs: ArmaCRS, minZoom: COLOMBIA_CONFIG.minZoom, maxZoom: COLOMBIA_CONFIG.maxZoom,
+        attributionControl: false, zoomControl: false
     });
     
-    // Bounds to prevent panning out of the map
     var bounds = L.latLngBounds(armaToLatLng(0,0), armaToLatLng(COLOMBIA_CONFIG.worldSize, COLOMBIA_CONFIG.worldSize));
     mapInst.setMaxBounds(bounds);
-    
-    L.tileLayer(COLOMBIA_CONFIG.tileUrl, {
-        tileSize: COLOMBIA_CONFIG.tileSize,
-        noWrap: true,
-        bounds: bounds,
-        maxZoom: COLOMBIA_CONFIG.maxZoom
-    }).addTo(mapInst);
-    
+    L.tileLayer(COLOMBIA_CONFIG.tileUrl, { tileSize: COLOMBIA_CONFIG.tileSize, noWrap: true, bounds: bounds, maxZoom: COLOMBIA_CONFIG.maxZoom }).addTo(mapInst);
     mapInst.setView(armaToLatLng(COLOMBIA_CONFIG.center[0], COLOMBIA_CONFIG.center[1]), COLOMBIA_CONFIG.defaultZoom);
+    
     playerLayer.addTo(mapInst);
     drawLayer.addTo(mapInst);
     createGrid(mapInst);
 
-    var coordCtrl = new L.Control.Coordinates();
-    coordCtrl.addTo(mapInst);
-    mapInst.on('mousemove', function(e) { coordCtrl.update(e.latlng); });
-    
-    mapInst.addControl(new L.Control.Fullscreen());
-
-    drawControl = new L.Control.Draw({
-        position: 'topright',
-        edit: { featureGroup: drawLayer, remove: true, edit: true },
-        draw: {
-            polyline: { shapeOptions: { color:'#00ff41', weight:3 } },
-            polygon: { shapeOptions: { color:'#00ff41', fillOpacity:0.15 } },
-            marker: true, 
-            circle: false, 
-            circlemarker: { shapeOptions: { color:'#00ff41', weight:2, radius:6, fillOpacity:0.8 } },
-            rectangle: { shapeOptions: { color:'#00ff41', weight:2, fillOpacity:0.1 } }
+    // Coord display update
+    mapInst.on('mousemove', function(e) {
+        var a = latLngToArma(e.latlng);
+        if (a.x >= 0 && a.y >= 0 && a.x <= COLOMBIA_CONFIG.worldSize && a.y <= COLOMBIA_CONFIG.worldSize) {
+            document.getElementById('mapCoordDisplay').innerHTML = String(Math.floor(a.x / 10)).padStart(4, '0') + ' - ' + String(Math.floor(a.y / 10)).padStart(4, '0');
         }
     });
-    mapInst.addControl(drawControl);
 
+    mapInst.on('move', updateGridEdgeLabels);
+    mapInst.on('zoom', updateGridEdgeLabels);
+    updateGridEdgeLabels();
+
+    // Toolbar Listeners
+    document.querySelectorAll('.map-tool-btn[data-tool]').forEach(btn => {
+        btn.addEventListener('click', function() { setTool(this.dataset.tool, this); });
+    });
+    document.getElementById('toolZoomIn').onclick = () => mapInst.zoomIn();
+    document.getElementById('toolZoomOut').onclick = () => mapInst.zoomOut();
+    document.getElementById('toolFullscreen').onclick = () => {
+        var mapEl = document.querySelector('.map-editor-wrap');
+        if (!document.fullscreenElement) { if(mapEl.requestFullscreen) mapEl.requestFullscreen(); } 
+        else { if(document.exitFullscreen) document.exitFullscreen(); }
+    };
+
+    // Draw Created
     mapInst.on(L.Draw.Event.CREATED, async function(e) {
         var layer = e.layer;
-        var isMarker = (e.layerType === 'marker' || e.layerType === 'circlemarker');
-        
         layer.feature = layer.feature || { type: 'Feature', properties: {}, geometry: {} };
-        if (e.layerType === 'circlemarker') layer.feature.properties.isCircleMarker = true;
+        
+        var tool = document.querySelector('.map-tool-btn.active').dataset.tool;
+        layer.feature.properties.toolType = tool;
 
-        if (isMarker) {
-            var text = prompt('Enter marker text (optional):');
+        if (tool === 'natoSymbol') {
+            pendingLayer = layer;
+            openMapModal('modalNatoSymbol');
+        } else if (tool === 'basicSymbol') {
+            pendingLayer = layer;
+            openMapModal('modalBasicSymbol');
+        } else if (tool === 'line' || tool === 'area') {
+            pendingLayer = layer;
+            openMapModal('modalLineProps');
+        } else {
+            // point, flag
+            var text = prompt('Enter label:');
             if (text) {
                 layer.feature.properties.text = text;
                 layer.bindTooltip(text, { permanent: true, direction: 'right', className: 'marker-text' });
             }
-            if (layer.dragging) layer.dragging.enable();
-            layer.on('dragend', function() { clearAndResaveAll(); });
-            layer.on('dblclick', function(ev) {
-                ev.originalEvent.stopPropagation();
-                var newText = prompt('Edit marker text:', layer.feature.properties.text || '');
-                if (newText !== null) {
-                    layer.feature.properties.text = newText;
-                    if (newText) layer.bindTooltip(newText, { permanent: true, direction: 'right', className: 'marker-text' });
-                    else layer.unbindTooltip();
-                    clearAndResaveAll();
-                }
-            });
+            finalizeLayer(layer);
         }
         
-        drawLayer.addLayer(layer);
-        await saveDrawing(layer.toGeoJSON());
+        // Reset tool to pan after draw (PLANOPS style)
+        setTool('pan', document.getElementById('toolPan'));
     });
-    mapInst.on(L.Draw.Event.DELETED, async function() { await clearAndResaveAll(); });
-    mapInst.on(L.Draw.Event.EDITED, async function() { await clearAndResaveAll(); });
 
     pollPlayers();
     pollDrawings();
 }
 
-function buildTacToolbar() {
-    var existing = document.getElementById('tacToolbar');
-    if (existing) existing.remove();
-    var toolbar = document.createElement('div');
-    toolbar.id = 'tacToolbar';
-    toolbar.className = 'tac-toolbar';
-    toolbar.innerHTML = '<div class="tac-title">MARKERS</div>' +
-        TACTICAL_ICONS.map(function(i){ 
-            return '<button class="tac-btn" data-type="'+i.id+'" title="'+i.label+'" style="color:'+i.color+'"><svg width="18" height="18" viewBox="0 0 24 24" style="overflow:visible;">'+i.svg+'</svg></button>'; 
-        }).join('');
-    document.getElementById('intelMap').parentElement.appendChild(toolbar);
-    toolbar.querySelectorAll('.tac-btn').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            var type = this.dataset.type;
-            if (activeMarkerType === type) {
-                activeMarkerType = null;
-                this.classList.remove('active');
-            } else {
-                activeMarkerType = type;
-                document.querySelectorAll('.tac-btn').forEach(function(b){ b.classList.remove('active'); });
-                this.classList.add('active');
-            }
-        });
-    });
+// ---- MODAL LOGIC ----
+function openMapModal(id) { document.getElementById(id).classList.add('show'); }
+function closeMapModal(id) { 
+    document.getElementById(id).classList.remove('show'); 
+    if (pendingLayer && id !== 'modalSearch') {
+        // If cancelled, don't add to map
+        pendingLayer = null;
+    }
 }
+function cancelLineDraw() { closeMapModal('modalLineProps'); }
+
+function finalizeLayer(layer) {
+    if (layer.dragging && layer.setLatLng) {
+        layer.dragging.enable();
+        layer.on('dragend', function() { clearAndResaveAll(); });
+    }
+    drawLayer.addLayer(layer);
+    saveDrawing(layer.toGeoJSON());
+    pendingLayer = null;
+}
+
+// Bind Modal Save Buttons
+document.getElementById('natoInsertBtn').onclick = function() {
+    if(!pendingLayer) return;
+    pendingLayer.feature.properties.affiliation = document.querySelector('.aff-btn.active').dataset.aff;
+    pendingLayer.feature.properties.symbolType = document.getElementById('natoSymbolType').value;
+    pendingLayer.feature.properties.text = document.getElementById('natoDesignation').value;
+    
+    // Apply styling based on selection (mocked visual for now)
+    var color = document.querySelector('.aff-btn.active').style.getPropertyValue('--aff-color') || '#000';
+    pendingLayer.setIcon(L.divIcon({className:'nato-icon', html:`<div style="background:${color};border:2px solid #000;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;">${pendingLayer.feature.properties.text || 'X'}</div>`}));
+    
+    finalizeLayer(pendingLayer);
+    closeMapModal('modalNatoSymbol');
+};
+
+document.getElementById('basicInsertBtn').onclick = function() {
+    if(!pendingLayer) return;
+    var shape = document.getElementById('basicShape').value;
+    var color = document.querySelector('#modalBasicSymbol .color-btn.active').dataset.color;
+    var text = document.getElementById('basicLabel').value;
+    
+    pendingLayer.feature.properties.color = color;
+    pendingLayer.feature.properties.shape = shape;
+    pendingLayer.feature.properties.text = text;
+    
+    var shapeHtml = '<i class="fas fa-circle" style="color:'+color+';font-size:16px;"></i>';
+    if(shape==='mil_square') shapeHtml = '<i class="fas fa-square" style="color:'+color+';font-size:16px;"></i>';
+    
+    pendingLayer.setIcon(L.divIcon({className:'basic-symbol-icon', html:shapeHtml}));
+    if(text) pendingLayer.bindTooltip(text, { permanent: true, direction: 'right', className: 'marker-text' });
+    
+    finalizeLayer(pendingLayer);
+    closeMapModal('modalBasicSymbol');
+};
+
+document.getElementById('lineSaveBtn').onclick = function() {
+    if(!pendingLayer) return;
+    var color = document.querySelector('#modalLineProps .color-btn.active').dataset.color;
+    var weight = document.getElementById('lineWeight').value;
+    pendingLayer.setStyle({ color: color, weight: weight });
+    pendingLayer.feature.properties.color = color;
+    finalizeLayer(pendingLayer);
+    closeMapModal('modalLineProps');
+};
+
+// Selection Helpers
+document.querySelectorAll('.aff-btn').forEach(btn => {
+    btn.onclick = function() { document.querySelectorAll('.aff-btn').forEach(b=>b.classList.remove('active')); this.classList.add('active'); }
+});
+document.querySelectorAll('.color-btn').forEach(btn => {
+    btn.onclick = function() { this.parentElement.querySelectorAll('.color-btn').forEach(b=>b.classList.remove('active')); this.classList.add('active'); }
+});
+
+// Search
+document.getElementById('toolSearch').onclick = () => openMapModal('modalSearch');
+document.getElementById('searchGoBtn').onclick = () => {
+    var x = parseInt(document.getElementById('searchX').value);
+    var y = parseInt(document.getElementById('searchY').value);
+    if (!isNaN(x) && !isNaN(y)) {
+        mapInst.setView(armaToLatLng(x, y), 5);
+        closeMapModal('modalSearch');
+    }
+};
 
 // --- PLAYER TRACKING ---
 let playerMarkers = {};
@@ -387,7 +444,7 @@ async function pollPlayers() {
                 }
             });
         }
-    } catch(e) { console.error('Poll:', e); }
+    } catch(e) { }
     playerPollTimer = setTimeout(pollPlayers, 2000);
 }
 
@@ -400,29 +457,26 @@ async function pollDrawings() {
             drawLayer.clearLayers();
             d.data.features.forEach(function(feature) {
                 L.geoJSON(feature, {
-                    style: { color:'#00ff41', weight:2, fillOpacity:0.1 },
+                    style: function(f) { return { color: f.properties.color || '#000', weight: 3 }; },
                     pointToLayer: function(f, latlng) {
-                        return (f.properties && f.properties.isCircleMarker) ? L.circleMarker(latlng, { color:'#00ff41', weight:2, radius:6, fillOpacity:0.8 }) : L.marker(latlng);
+                        var tool = f.properties.toolType;
+                        if (tool === 'natoSymbol') {
+                            var c = f.properties.color || '#80e0ff';
+                            return L.marker(latlng, {icon: L.divIcon({className:'nato-icon', html:`<div style="background:${c};border:2px solid #000;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;">${f.properties.text || 'X'}</div>`})});
+                        } else if (tool === 'basicSymbol') {
+                            var cc = f.properties.color || '#000';
+                            return L.marker(latlng, {icon: L.divIcon({className:'basic-symbol-icon', html:`<i class="fas fa-circle" style="color:${cc};font-size:16px;"></i>`})});
+                        } else {
+                            return L.marker(latlng);
+                        }
                     },
                     onEachFeature: function(f, l) {
-                        if (f.geometry.type === 'Point') {
-                            if (l.dragging) {
-                                l.dragging.enable();
-                                l.on('dragend', function() { clearAndResaveAll(); });
-                            }
-                            if (f.properties && f.properties.text) {
-                                l.bindTooltip(f.properties.text, { permanent: true, direction: 'right', className: 'marker-text' });
-                            }
-                            l.on('dblclick', function(ev) {
-                                ev.originalEvent.stopPropagation();
-                                var newText = prompt('Edit marker text:', f.properties.text || '');
-                                if (newText !== null) {
-                                    f.properties.text = newText;
-                                    if (newText) l.bindTooltip(newText, { permanent: true, direction: 'right', className: 'marker-text' });
-                                    else l.unbindTooltip();
-                                    clearAndResaveAll();
-                                }
-                            });
+                        if (f.geometry.type === 'Point' && l.dragging) {
+                            l.dragging.enable();
+                            l.on('dragend', function() { clearAndResaveAll(); });
+                        }
+                        if (f.properties && f.properties.text && f.properties.toolType !== 'natoSymbol') {
+                            l.bindTooltip(f.properties.text, { permanent: true, direction: 'right', className: 'marker-text' });
                         }
                         drawLayer.addLayer(l);
                     }
@@ -434,48 +488,23 @@ async function pollDrawings() {
 }
 
 async function saveDrawing(geojson) {
-    var userId = 'S2';
-    await fetch('api/mission_plan.php', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ action:'save', map:currentMap, geojson:geojson, user_id:userId })
-    });
+    await fetch('api/mission_plan.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'save', map:currentMap, geojson:geojson, user_id:'S2' }) });
 }
 
 async function clearAndResaveAll() {
-    await fetch('api/mission_plan.php', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ action:'clear', map:currentMap, password:'S2' })
-    });
-    var userId = 'S2';
-    var layers = [];
-    drawLayer.eachLayer(function(layer) { layers.push(layer); });
+    await fetch('api/mission_plan.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'clear', map:currentMap, password:'S2' }) });
+    var layers = []; drawLayer.eachLayer(l => layers.push(l));
     for (var i = 0; i < layers.length; i++) {
-        var gj = null;
-        if (layers[i].feature) gj = layers[i].feature;
-        else if (layers[i].toGeoJSON) gj = layers[i].toGeoJSON();
-        if (!gj) continue;
-        await fetch('api/mission_plan.php', {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ action:'save', map:currentMap, geojson:gj, user_id:userId })
-        });
+        var gj = layers[i].feature || layers[i].toGeoJSON();
+        if (gj) await saveDrawing(gj);
     }
-}
-
-async function clearMapDrawings() {
-    if(!s2Authed) { showAuthModal(); return; }
-    if(!confirm('⚠ CONFIRM CLEAR ALL DRAWINGS FOR THIS MAP?')) return;
-    var r = await fetch('api/mission_plan.php', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ action:'clear', map:currentMap, password:'S2' })
-    });
-    var d = await r.json();
-    if(d.success) { drawLayer.clearLayers(); } else { alert(d.error); }
 }
 
 // Hook map init
 document.querySelectorAll('[data-tab="sorties"]').forEach(function(el) {
     el.addEventListener('click', function() {
         if (!mapInst) { setTimeout(initIntelMap, 300); }
-        else { setTimeout(function(){ mapInst.invalidateSize(); }, 300); }
+        else { setTimeout(function(){ mapInst.invalidateSize(); updateGridEdgeLabels(); }, 300); }
     });
 });
+
