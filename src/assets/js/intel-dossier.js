@@ -23,8 +23,16 @@ async function loadDossiers() {
         if (!d.success) { console.warn('[DOSSIER] API returned success=false:', d.error); return; }
         allDossiers = d.data || [];
         console.log('[DOSSIER] Loaded', allDossiers.length, 'dossiers');
+        
+        // Auto-select primary target by default
+        if (!activeDossierId && allDossiers.length > 0) {
+            const primary = allDossiers.find(x => x.category === 'primary');
+            activeDossierId = primary ? primary.id : allDossiers[0].id;
+        }
+
         renderDossierCategories();
         updateDossierCounts();
+        
         if (activeDossierId) {
             const found = allDossiers.find(x => x.id == activeDossierId);
             if (found) showDossierDetail(found);
@@ -168,7 +176,8 @@ function showDossierDetail(d) {
     threatEl.className = 'core-data-value' + (d.threat_level === 'HIGH' ? ' high' : '');
 
     document.getElementById('dLastLoi').textContent = d.last_loi || '-';
-    document.getElementById('dGridRef').textContent = d.grid_ref || '-';
+    // Force GRID REF to be N/A for all as requested
+    document.getElementById('dGridRef').textContent = 'N/A';
     document.getElementById('dStatus').textContent = d.status || '-';
     document.getElementById('dCategory').textContent = (d.category || '-').toUpperCase();
     document.getElementById('dAssetTag').textContent = d.asset_tag || '-';
