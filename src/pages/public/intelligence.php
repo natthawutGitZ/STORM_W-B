@@ -153,7 +153,39 @@ require_once ROOT_PATH . '/includes/db.php';
   <section class="tab-content" id="tab-intel">
     <div class="dossier-layout">
 
-      <!-- ASSET DOSSIER LIST (Formerly Middle Panel) -->
+      <!-- LEFT PANEL — Operations Stats -->
+      <div class="dossier-left">
+        <div class="dossier-left-header">
+          <div class="op-label">OPERATION</div>
+          <div class="op-title" id="dossierOpTitle">OPERATION ARKERIAN FREEDOM</div>
+        </div>
+
+        <div class="dossier-stats">
+          <div class="dossier-stat-row">
+            <span class="stat-name"><i class="fas fa-file-shield"></i> INTEL Overall</span>
+            <span class="stat-badge red" id="dossierIntelCount">0 HUMINT</span>
+          </div>
+          <div class="dossier-stat-row">
+            <span class="stat-name"><i class="fas fa-tasks"></i> TASKING Overall</span>
+            <span class="stat-badge amber" id="dossierTaskCount">0 ACTIVE</span>
+          </div>
+          <div class="dossier-stat-row">
+            <span class="stat-name"><i class="fas fa-route"></i> MVT Overall</span>
+            <span class="stat-badge green">—</span>
+          </div>
+          <div class="dossier-stat-row">
+            <span class="stat-name"><i class="fas fa-users"></i> Operator Roster</span>
+            <span class="stat-badge green">—</span>
+          </div>
+        </div>
+
+        <div class="dossier-left-footer">
+          <button class="ghost-btn" id="btnGhostTerminal"><i class="fas fa-terminal"></i> GHOST TERMINAL</button>
+          <div class="version-tag">COMMAND OPS CONSOLE V8.9</div>
+        </div>
+      </div>
+
+      <!-- ASSET DOSSIER LIST (Middle Panel) -->
       <div class="dossier-middle">
         <div class="dossier-middle-header">
           <h3>ASSET DOSSIERS</h3>
