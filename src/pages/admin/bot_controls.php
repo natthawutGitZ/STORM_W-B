@@ -926,6 +926,8 @@ $activeTab = $_GET['tab'] ?? 'embed';
             onclick="openTab(event, 'tab-permissions')"><i class="fas fa-user-shield"></i> Permissions</button>
         <button class="tab-btn <?php echo $activeTab === 'tickets' ? 'active' : ''; ?>"
             onclick="openTab(event, 'tab-tickets')"><i class="fas fa-ticket-alt"></i> Tickets</button>
+        <button class="tab-btn <?php echo $activeTab === 'roles' ? 'active' : ''; ?>"
+            onclick="openTab(event, 'tab-roles')"><i class="fas fa-id-badge"></i> Role Panels</button>
     </div>
 
     <!-- TAB 1: EMBED BUILDER -->
@@ -1037,6 +1039,11 @@ $activeTab = $_GET['tab'] ?? 'embed';
 
                 .swal2-popup.modern-alert .swal2-checkbox input {
                     accent-color: #5865F2 !important;
+                }
+
+                /* Ensure SweetAlert appears above custom modals */
+                .swal2-container {
+                    z-index: 99999 !important;
                 }
 
                 /* Modern Toast Notifications */
@@ -1227,12 +1234,12 @@ $activeTab = $_GET['tab'] ?? 'embed';
                 }
 
                 .c-btn-confirm {
-                    background: var(--accent-color);
-                    color: #000;
+                    background: #5865F2;
+                    color: #fff;
                 }
 
                 .c-btn-confirm:hover {
-                    background: var(--accent-hover);
+                    background: #4752c4;
                     transform: translateY(-1px);
                 }
 
@@ -3646,6 +3653,88 @@ $activeTab = $_GET['tab'] ?? 'embed';
                     <button class="c-btn c-btn-cancel" onclick="closePanelEditor()">Cancel</button>
                     <button class="c-btn c-btn-confirm" onclick="savePanel()"><i class="fas fa-save"></i> Save
                         Panel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 7: ROLE PANELS -->
+    <div id="tab-roles" class="tab-content <?php echo $activeTab === 'roles' ? 'active' : ''; ?>">
+        <div class="glass-panel" style="margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <div>
+                    <h3 style="margin: 0;"><i class="fas fa-id-badge" style="color: #5865F2;"></i> Role Assignment Panels</h3>
+                    <p style="color: #b5bac1; margin: 5px 0 0; font-size: 0.85em;">สร้างปุ่มรับยศให้สมาชิกกดรับ/ถอดยศได้เอง ระบบจะส่ง Embed พร้อมปุ่มไปยังห้องที่เลือก</p>
+                </div>
+                <button class="btn primary" onclick="showRolePanelEditor()">
+                    <i class="fas fa-plus"></i> New Panel
+                </button>
+            </div>
+
+            <div id="rolePanelsList">
+                <div style="text-align: center; color: #b5bac1; padding: 40px;">
+                    <i class="fas fa-circle-notch fa-spin"></i> Loading role panels...
+                </div>
+            </div>
+        </div>
+
+        <!-- Role Panel Editor Modal -->
+        <div id="rolePanelEditorOverlay" class="custom-modal-overlay">
+            <div class="custom-modal" style="max-width: 680px;">
+                <div class="custom-modal-header">
+                    <h4 class="custom-modal-title" id="rolePanelEditorTitle"><i class="fas fa-id-badge"></i> New Role Panel</h4>
+                </div>
+                <div class="custom-modal-body" style="max-height: 70vh; overflow-y: auto;">
+                    <input type="hidden" id="rpEditPanelId">
+
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="color: #b5bac1; font-size: 0.85rem; display: block; margin-bottom: 5px;">Panel Title</label>
+                        <input type="text" id="rpTitle" class="modern-input" placeholder="🎖️ Role Selection" style="width: 100%;">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="color: #b5bac1; font-size: 0.85rem; display: block; margin-bottom: 5px;">Description</label>
+                        <textarea id="rpDescription" class="modern-input" rows="3" placeholder="Click a button below to get/remove a role." style="width: 100%;"></textarea>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div class="form-group">
+                            <label style="color: #b5bac1; font-size: 0.85rem; display: block; margin-bottom: 5px;"><i class="fas fa-hashtag"></i> Target Channel</label>
+                            <select id="rpChannelId" class="modern-input" style="width: 100%;">
+                                <option value="">-- Select Channel --</option>
+                                <?php foreach ($channels as $c): ?>
+                                    <?php if ($c['type'] === 'text' || $c['type'] == 0): ?>
+                                        <option value="<?php echo $c['id']; ?>"># <?php echo htmlspecialchars($c['name']); ?></option>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label style="color: #b5bac1; font-size: 0.85rem; display: block; margin-bottom: 5px;"><i class="fas fa-palette"></i> Embed Color</label>
+                            <input type="color" id="rpEmbedColor" class="modern-input" value="#5865F2" style="width: 100%; height: 38px;">
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="color: #b5bac1; font-size: 0.85rem; display: block; margin-bottom: 5px;"><i class="fas fa-exchange-alt"></i> Mode</label>
+                        <select id="rpMode" class="modern-input" style="width: 100%;">
+                            <option value="toggle">Toggle (กดเพิ่ม/กดถอด)</option>
+                            <option value="give">Give Only (กดรับเท่านั้น ถอดไม่ได้)</option>
+                        </select>
+                    </div>
+
+                    <!-- Buttons Config -->
+                    <div style="margin-bottom: 15px;">
+                        <label style="color: #b5bac1; font-size: 0.85rem; display: block; margin-bottom: 8px;"><i class="fas fa-th-large"></i> Role Buttons</label>
+                        <div id="rpButtonsList" style="display: flex; flex-direction: column; gap: 10px;"></div>
+                        <button type="button" class="btn secondary sm" onclick="addRolePanelButton()" style="margin-top: 10px;">
+                            <i class="fas fa-plus"></i> Add Button
+                        </button>
+                    </div>
+                </div>
+                <div class="custom-modal-footer">
+                    <button class="c-btn c-btn-cancel" onclick="closeRolePanelEditor()">Cancel</button>
+                    <button class="c-btn c-btn-confirm" onclick="saveRolePanel()"><i class="fas fa-save"></i> Save Panel</button>
                 </div>
             </div>
         </div>
@@ -7121,7 +7210,291 @@ function renderFeedRoleOptions($roles, $includeNoneOption = true)
             if(typeof loadServerLeaveSettings === 'function') loadServerLeaveSettings();
             if(typeof loadVoiceLogsSettings === 'function') loadVoiceLogsSettings();
         }
+        const rolesTab = document.getElementById('tab-roles');
+        if (rolesTab && rolesTab.classList.contains('active')) {
+            loadRolePanels();
+        }
     });
+
+    // ====== ROLE PANELS TAB ======
+
+    const rpAvailableRoles = <?php echo json_encode($roles); ?>;
+
+    async function loadRolePanels() {
+        const container = document.getElementById('rolePanelsList');
+        if (!container) return;
+        container.innerHTML = '<div style="text-align:center; color:#b5bac1; padding:30px;"><i class="fas fa-circle-notch fa-spin"></i> Loading...</div>';
+
+        try {
+            const resp = await fetch('../includes/bot_api_proxy.php?endpoint=/role-panels&method=GET');
+            const data = await resp.json();
+
+            if (!data.success || !data.panels || !data.panels.length) {
+                container.innerHTML = '<div style="text-align:center; color:#72767d; padding:40px;"><i class="fas fa-id-badge" style="font-size:1.5rem; margin-bottom:10px; display:block; opacity:0.3;"></i>No role panels yet. Click <b>New Panel</b> to create one.</div>';
+                return;
+            }
+
+            let html = '<div style="display:grid; gap:12px;">';
+            data.panels.forEach(p => {
+                const buttons = (typeof p.buttons === 'string' ? JSON.parse(p.buttons) : p.buttons) || [];
+                const btnPreview = buttons.map(b => {
+                    const colors = { blue: '#5865F2', blurple: '#5865F2', green: '#43b581', red: '#ed4245', grey: '#4f545c', gray: '#4f545c' };
+                    const bg = colors[b.color] || '#5865F2';
+                    return `<span style="display:inline-block; background:${bg}; color:#fff; padding:4px 12px; border-radius:3px; font-size:0.8rem; font-weight:500;">${escHtml(b.emoji || '')} ${escHtml(b.label || 'Button')}</span>`;
+                }).join(' ');
+                const modeLabel = p.mode === 'give' ? 'Give Only' : 'Toggle';
+                const sentBadge = p.message_id ? `<span style="padding:2px 8px; border-radius:10px; font-size:0.7rem; font-weight:600; background:rgba(67,181,129,0.15); color:#43b581;">LIVE</span>` : `<span style="padding:2px 8px; border-radius:10px; font-size:0.7rem; font-weight:600; background:rgba(255,255,255,0.08); color:#72767d;">DRAFT</span>`;
+
+                html += `
+                <div style="background:rgba(0,0,0,0.15); border-radius:8px; padding:16px 20px; border-left:3px solid #5865F2;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+                        <div>
+                            <span style="font-weight:600; color:#fff; font-size:1.05rem;">${escHtml(p.title || 'Untitled')}</span>
+                            ${sentBadge}
+                            <span style="padding:2px 8px; border-radius:10px; font-size:0.7rem; font-weight:600; background:rgba(88,101,242,0.15); color:#5865F2;">${modeLabel}</span>
+                        </div>
+                        <div style="display:flex; gap:6px;">
+                            <button class="btn secondary sm" onclick="editRolePanel('${p.panel_id}')" title="Edit"><i class="fas fa-edit"></i></button>
+                            <button class="btn primary sm" onclick="sendRolePanelToDiscord('${p.panel_id}')" title="Send to Discord"><i class="fas fa-paper-plane"></i></button>
+                            <button class="btn danger sm" onclick="deleteRolePanel('${p.panel_id}')" title="Delete" style="background:rgba(237,66,69,0.15); border-color:#ed4245; color:#ed4245;"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                    <div style="color:#b5bac1; font-size:0.85rem; margin-bottom:10px;">${escHtml(p.description || '')}</div>
+                    <div style="display:flex; flex-wrap:wrap; gap:6px;">${btnPreview || '<span style="color:#72767d; font-size:0.8rem;">No buttons configured</span>'}</div>
+                </div>`;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        } catch (e) {
+            console.error('Load role panels error:', e);
+            container.innerHTML = '<div style="color:#f04747; text-align:center; padding:20px;">Failed to load role panels</div>';
+        }
+    }
+
+    function showRolePanelEditor(panelData = null) {
+        document.getElementById('rpEditPanelId').value = panelData ? panelData.panel_id : '';
+        document.getElementById('rpTitle').value = panelData ? panelData.title : '';
+        document.getElementById('rpDescription').value = panelData ? panelData.description : '';
+        document.getElementById('rpChannelId').value = panelData ? (panelData.channel_id || '') : '';
+        document.getElementById('rpEmbedColor').value = panelData ? (panelData.embed_color || '#5865F2') : '#5865F2';
+        document.getElementById('rpMode').value = panelData ? (panelData.mode || 'toggle') : 'toggle';
+        document.getElementById('rolePanelEditorTitle').innerHTML = panelData ? '<i class="fas fa-edit"></i> Edit Role Panel' : '<i class="fas fa-id-badge"></i> New Role Panel';
+
+        const btnList = document.getElementById('rpButtonsList');
+        btnList.innerHTML = '';
+
+        if (panelData && panelData.buttons) {
+            const buttons = typeof panelData.buttons === 'string' ? JSON.parse(panelData.buttons) : panelData.buttons;
+            buttons.forEach(b => addRolePanelButton(b));
+        }
+
+        const overlay = document.getElementById('rolePanelEditorOverlay');
+        overlay.style.display = 'flex';
+        setTimeout(() => overlay.classList.add('active'), 10);
+    }
+
+    function closeRolePanelEditor() {
+        const overlay = document.getElementById('rolePanelEditorOverlay');
+        overlay.classList.remove('active');
+        setTimeout(() => overlay.style.display = 'none', 300);
+    }
+
+    function addRolePanelButton(data = null) {
+        const list = document.getElementById('rpButtonsList');
+        const idx = list.children.length;
+
+        const roleOptions = rpAvailableRoles.map(r => {
+            const selected = data && data.role_id === r.id ? 'selected' : '';
+            return `<option value="${r.id}" ${selected} style="color:${r.color || '#99aab5'}">@${escHtml(r.name)}</option>`;
+        }).join('');
+
+        const div = document.createElement('div');
+        div.style.cssText = 'background:rgba(0,0,0,0.2); border-radius:6px; padding:12px; display:grid; grid-template-columns:1fr 1fr 80px 80px auto; gap:8px; align-items:center;';
+        div.innerHTML = `
+            <select class="modern-input rp-btn-role" style="font-size:0.85rem;">
+                <option value="">-- Select Role --</option>
+                ${roleOptions}
+            </select>
+            <input type="text" class="modern-input rp-btn-label" placeholder="Button Label" value="${escHtml(data ? data.label || '' : '')}" style="font-size:0.85rem;">
+            <input type="text" class="modern-input rp-btn-emoji" placeholder="Emoji" value="${escHtml(data ? data.emoji || '' : '')}" style="font-size:0.85rem; text-align:center;" maxlength="5">
+            <select class="modern-input rp-btn-color" style="font-size:0.85rem;">
+                <option value="blurple" ${data && data.color === 'blurple' ? 'selected' : ''}>Blue</option>
+                <option value="green" ${data && data.color === 'green' ? 'selected' : ''}>Green</option>
+                <option value="red" ${data && data.color === 'red' ? 'selected' : ''}>Red</option>
+                <option value="grey" ${data && data.color === 'grey' || data && data.color === 'gray' ? 'selected' : ''}>Grey</option>
+            </select>
+            <button type="button" onclick="this.parentElement.remove()" style="background:rgba(237,66,69,0.2); border:none; color:#ed4245; width:32px; height:32px; border-radius:6px; cursor:pointer; font-size:0.85rem;"><i class="fas fa-times"></i></button>
+        `;
+        list.appendChild(div);
+    }
+
+    function collectRolePanelButtons() {
+        const items = document.querySelectorAll('#rpButtonsList > div');
+        const buttons = [];
+        items.forEach(item => {
+            const role_id = item.querySelector('.rp-btn-role').value;
+            const label = item.querySelector('.rp-btn-label').value;
+            const emoji = item.querySelector('.rp-btn-emoji').value;
+            const color = item.querySelector('.rp-btn-color').value;
+            if (role_id) {
+                buttons.push({ role_id, label: label || getRoleNameById(role_id), emoji, color });
+            }
+        });
+        return buttons;
+    }
+
+    function getRoleNameById(id) {
+        const r = rpAvailableRoles.find(r => r.id === id);
+        return r ? r.name : 'Role';
+    }
+
+    async function saveRolePanel() {
+        const panelId = document.getElementById('rpEditPanelId').value;
+        const title = document.getElementById('rpTitle').value.trim();
+        const description = document.getElementById('rpDescription').value.trim();
+        const channelId = document.getElementById('rpChannelId').value;
+        const embedColor = document.getElementById('rpEmbedColor').value;
+        const mode = document.getElementById('rpMode').value;
+        const buttons = collectRolePanelButtons();
+
+        console.log('[RolePanel] Save clicked', { panelId, title, channelId, mode, buttons });
+
+        if (!title) { Toast.fire({ icon: 'warning', title: 'Please enter a title' }); return; }
+        if (buttons.length === 0) { Toast.fire({ icon: 'warning', title: 'Add at least one role button' }); return; }
+
+        const payload = {
+            panel_id: panelId || undefined,
+            title, description, embed_color: embedColor, mode,
+            channel_id: channelId || null,
+            buttons
+        };
+
+        console.log('[RolePanel] Sending payload:', JSON.stringify(payload));
+
+        try {
+            const resp = await fetch('../includes/bot_api_proxy.php?endpoint=/role-panels&method=POST', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const text = await resp.text();
+            console.log('[RolePanel] Status:', resp.status, 'Body:', text);
+            let data;
+            try { data = JSON.parse(text); } catch(pe) {
+                alert('[RolePanel ERROR] Server returned invalid JSON: ' + text.substring(0, 200));
+                return;
+            }
+            if (data.success) {
+                closeRolePanelEditor();
+                Toast.fire({ icon: 'success', title: 'Role panel saved!' });
+                loadRolePanels();
+            } else {
+                alert('[RolePanel ERROR] ' + (data.error || 'Save failed'));
+            }
+        } catch (e) {
+            alert('[RolePanel EXCEPTION] ' + e.message);
+        }
+    }
+
+    async function editRolePanel(panelId) {
+        try {
+            const resp = await fetch('../includes/bot_api_proxy.php?endpoint=/role-panels&method=GET');
+            const data = await resp.json();
+            if (data.success && data.panels) {
+                const panel = data.panels.find(p => p.panel_id === panelId);
+                if (panel) {
+                    showRolePanelEditor(panel);
+                }
+            }
+        } catch (e) {
+            Toast.fire({ icon: 'error', title: 'Failed to load panel' });
+        }
+    }
+
+    async function deleteRolePanel(panelId) {
+        const result = await Swal.fire({
+            title: 'Delete Role Panel?',
+            text: 'This will also delete the Discord message if it was sent.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Delete',
+            customClass: { popup: 'modern-alert' }
+        });
+        if (!result.isConfirmed) return;
+
+        try {
+            const resp = await fetch('../includes/bot_api_proxy.php?endpoint=/role-panels&method=DELETE', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ panel_id: panelId })
+            });
+            const data = await resp.json();
+            if (data.success) {
+                Toast.fire({ icon: 'success', title: 'Panel deleted' });
+                loadRolePanels();
+            } else {
+                Toast.fire({ icon: 'error', title: data.error || 'Delete failed' });
+            }
+        } catch (e) {
+            Toast.fire({ icon: 'error', title: 'Network error' });
+        }
+    }
+
+    async function sendRolePanelToDiscord(panelId) {
+        // Get panel to check channel
+        let channelId = '';
+        try {
+            const resp = await fetch('../includes/bot_api_proxy.php?endpoint=/role-panels&method=GET');
+            const data = await resp.json();
+            if (data.success && data.panels) {
+                const panel = data.panels.find(p => p.panel_id === panelId);
+                if (panel) channelId = panel.channel_id || '';
+            }
+        } catch(e) {}
+
+        if (!channelId) {
+            Toast.fire({ icon: 'warning', title: 'Please edit the panel and select a target channel first.' });
+            return;
+        }
+
+        const result = await Swal.fire({
+            title: 'Send Role Panel?',
+            text: 'This will send (or re-send) the role panel embed with buttons to the selected channel.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Send',
+            customClass: { popup: 'modern-alert' }
+        });
+        if (!result.isConfirmed) return;
+
+        try {
+            const resp = await fetch('../includes/bot_api_proxy.php?endpoint=/role-panels/send&method=POST', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ panel_id: panelId, channel_id: channelId })
+            });
+            const data = await resp.json();
+            if (data.success) {
+                Toast.fire({ icon: 'success', title: 'Role panel sent to Discord!' });
+                loadRolePanels();
+            } else {
+                Toast.fire({ icon: 'error', title: data.error || 'Send failed' });
+            }
+        } catch (e) {
+            Toast.fire({ icon: 'error', title: 'Network error' });
+        }
+    }
+
+    // Hook role panels into tab switching
+    const _origOpenTabForRoles = window.openTab;
+    if (typeof _origOpenTabForRoles === 'function') {
+        window.openTab = function(evt, tabName) {
+            _origOpenTabForRoles(evt, tabName);
+            if (tabName === 'tab-roles') {
+                loadRolePanels();
+            }
+        };
+    }
 </script>
 </body>
 

@@ -37,6 +37,19 @@ try {
         `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `intel_brief` (
+        `id` INT PRIMARY KEY DEFAULT 1,
+        `doc_title` VARCHAR(200) DEFAULT 'OPERATION STORMSURGE // BRIEFING DOCUMENT',
+        `op_name` VARCHAR(200) DEFAULT 'OPERATION STORMSURGE',
+        `classification` VARCHAR(50) DEFAULT 'CRITICAL',
+        `status` VARCHAR(50) DEFAULT 'ACTIVE',
+        `ao_location` VARCHAR(100) DEFAULT 'COLOMBIA',
+        `team` VARCHAR(100) DEFAULT 'ODA 0121',
+        `start_date` VARCHAR(50) DEFAULT '',
+        `opord` TEXT,
+        `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    $pdo->exec("INSERT IGNORE INTO `intel_brief` (`id`) VALUES (1)");
 
 } catch (PDOException $e) {}
 
@@ -57,6 +70,39 @@ if ($method === 'GET' && $action === 'list') {
             echo json_encode(['error' => 'Invalid type']); exit;
         }
         echo json_encode(['success' => true, 'data' => $rows]); exit;
+    } catch (PDOException $e) {
+        echo json_encode(['error' => $e->getMessage()]); exit;
+    }
+}
+
+// GET BRIEF
+if ($method === 'GET' && $action === 'get_brief') {
+    try {
+        $row = $pdo->query("SELECT * FROM intel_brief WHERE id=1")->fetch();
+        echo json_encode(['success' => true, 'data' => $row ?: null]); exit;
+    } catch (PDOException $e) {
+        echo json_encode(['success' => true, 'data' => null]); exit;
+    }
+}
+
+// SAVE BRIEF
+if ($method === 'POST' && $action === 'save_brief') {
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+    try {
+        $fields = ['doc_title','op_name','classification','status','ao_location','team','start_date','opord'];
+        $updates = [];
+        $values = [];
+        foreach ($fields as $f) {
+            if (isset($input[$f])) {
+                $updates[] = "`$f`=?";
+                $values[] = $input[$f];
+            }
+        }
+        if (!empty($updates)) {
+            $sql = "UPDATE intel_brief SET " . implode(',', $updates) . " WHERE id=1";
+            $pdo->prepare($sql)->execute($values);
+        }
+        echo json_encode(['success' => true]); exit;
     } catch (PDOException $e) {
         echo json_encode(['error' => $e->getMessage()]); exit;
     }

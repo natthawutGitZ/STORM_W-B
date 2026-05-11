@@ -1,0 +1,33 @@
+﻿@model Arma3TacMapWebApp.Entities.OrbatUnit
+@inject IHtmlLocalizer<SharedResource> Localizer
+
+<input type="hidden" asp-for="OrbatID" />
+<input type="hidden" asp-for="Trigram" />
+<div class="form-row">
+    <div class="form-group col-md-6">
+        <label asp-for="ParentOrbatUnitID" class="control-label"></label>
+        <select asp-for="ParentOrbatUnitID" class="form-control" asp-items="ViewBag.ParentOrbatUnitID">
+            <option value="">@Localizer["(none)"]</option>
+        </select>
+        <span asp-validation-for="ParentOrbatUnitID" class="text-danger"></span>
+    </div>
+    <div class="form-group col-md-6">
+        <label asp-for="Position" class="control-label"></label>
+        <input asp-for="Position" class="form-control" />
+        <span asp-validation-for="Position" class="text-danger"></span>
+    </div>
+</div>
+<div class="form-row">
+    <div class="form-group col-md-6">
+        <label asp-for="Name" class="control-label"></label>
+        <input asp-for="Name" class="form-control" />
+        <span asp-validation-for="Name" class="text-danger"></span>
+    </div>
+    <div class="form-group col-md-6">
+        <label asp-for="UniqueDesignation" class="control-label"></label>
+        <input asp-for="UniqueDesignation" class="form-control" />
+        <span asp-validation-for="UniqueDesignation" class="text-danger"></span>
+    </div>
+</div>
+
+<pmad-symbol-selector asp-for="FriendSidc" layout="OrbatIcon" />

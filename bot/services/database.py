@@ -270,6 +270,131 @@ class DatabaseService:
             cur.close()
             conn.close()
 
+    # ========== ROLE PANELS ==========
+
+    @staticmethod
+    def ensure_role_panels_schema():
+        """Create role_panels table if not exists"""
+        conn = DatabaseService.get_connection()
+        conn.autocommit = True
+        cur = conn.cursor()
+        try:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS role_panels (
+                    id SERIAL PRIMARY KEY,
+                    panel_id VARCHAR(100) UNIQUE NOT NULL,
+                    title VARCHAR(255) NOT NULL DEFAULT 'Role Selection',
+                    description TEXT DEFAULT '',
+                    embed_color VARCHAR(10) DEFAULT '#5865F2',
+                    channel_id VARCHAR(50),
+                    message_id VARCHAR(50),
+                    guild_id VARCHAR(50),
+                    buttons JSONB DEFAULT '[]',
+                    mode VARCHAR(20) DEFAULT 'toggle',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            print("Schema Migration: role_panels table ready.", flush=True)
+        except Exception as e:
+            print(f"Role Panels Schema Error: {e}", flush=True)
+        finally:
+            cur.close()
+            conn.close()
+
+    @staticmethod
+    def get_role_panels():
+        """Get all role panels"""
+        conn = DatabaseService.get_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        try:
+            cur.execute("SELECT * FROM role_panels ORDER BY created_at DESC")
+            return cur.fetchall()
+        finally:
+            cur.close()
+            conn.close()
+
+    @staticmethod
+    def get_role_panel(panel_id):
+        """Get a single role panel by panel_id"""
+        conn = DatabaseService.get_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        try:
+            cur.execute("SELECT * FROM role_panels WHERE panel_id = %s", (panel_id,))
+            return cur.fetchone()
+        finally:
+            cur.close()
+            conn.close()
+
+    @staticmethod
+    def save_role_panel(data):
+        """Create or update a role panel"""
+        conn = DatabaseService.get_connection()
+        cur = conn.cursor()
+        try:
+            import json as _json
+            buttons_json = _json.dumps(data.get('buttons', []))
+            cur.execute("""
+                INSERT INTO role_panels (panel_id, title, description, embed_color, channel_id, message_id, guild_id, buttons, mode)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (panel_id) DO UPDATE SET
+                    title = EXCLUDED.title,
+                    description = EXCLUDED.description,
+                    embed_color = EXCLUDED.embed_color,
+                    channel_id = EXCLUDED.channel_id,
+                    message_id = EXCLUDED.message_id,
+                    guild_id = EXCLUDED.guild_id,
+                    buttons = EXCLUDED.buttons,
+                    mode = EXCLUDED.mode,
+                    updated_at = CURRENT_TIMESTAMP
+            """, (
+                data.get('panel_id'),
+                data.get('title', 'Role Selection'),
+                data.get('description', ''),
+                data.get('embed_color', '#5865F2'),
+                data.get('channel_id'),
+                data.get('message_id'),
+                data.get('guild_id'),
+                buttons_json,
+                data.get('mode', 'toggle')
+            ))
+            conn.commit()
+            return True
+        except Exception as e:
+            print(f"Save Role Panel Error: {e}", flush=True)
+            return False
+        finally:
+            cur.close()
+            conn.close()
+
+    @staticmethod
+    def delete_role_panel(panel_id):
+        """Delete a role panel"""
+        conn = DatabaseService.get_connection()
+        cur = conn.cursor()
+        try:
+            cur.execute("DELETE FROM role_panels WHERE panel_id = %s", (panel_id,))
+            conn.commit()
+            return cur.rowcount > 0
+        finally:
+            cur.close()
+            conn.close()
+
+    @staticmethod
+    def update_role_panel_message(panel_id, channel_id, message_id):
+        """Update the message_id after sending to Discord"""
+        conn = DatabaseService.get_connection()
+        cur = conn.cursor()
+        try:
+            cur.execute(
+                "UPDATE role_panels SET channel_id = %s, message_id = %s, updated_at = CURRENT_TIMESTAMP WHERE panel_id = %s",
+                (str(channel_id), str(message_id), panel_id)
+            )
+            conn.commit()
+        finally:
+            cur.close()
+            conn.close()
+
     @staticmethod
     def update_event_thread_id(event_id, thread_id):
         """Store the Discord thread ID for an event"""

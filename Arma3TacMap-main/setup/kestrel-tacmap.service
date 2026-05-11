@@ -1,0 +1,17 @@
+[Unit]
+Description=GameTacMap
+
+[Service]
+WorkingDirectory=/opt/GameTacMap
+ExecStart=/opt/GameTacMap/Arma3TacMapWebApp --urls http://localhost:5020/
+Restart=always
+RestartSec=10
+KillSignal=SIGINT
+SyslogIdentifier=TacMap
+User=www-data
+Environment=ASPNETCORE_ENVIRONMENT=Production
+MemoryHigh=5G
+MemoryMax=6G
+
+[Install]
+WantedBy=multi-user.target

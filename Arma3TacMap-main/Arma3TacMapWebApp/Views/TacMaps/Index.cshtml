@@ -1,0 +1,95 @@
+﻿@model IndexViewModel
+@inject IHtmlLocalizer<SharedResource> Localizer
+
+@{
+    ViewData["Title"] = @Localizer["Tactical maps"];
+}
+
+<div class="container">
+    <h1>@Localizer["Tactical maps"]</h1>
+    <p>
+        <span class="dropdown">
+            <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="false">
+                @Localizer["Create tactical map"]
+            </button>
+            <span class="dropdown-menu w-100">
+                @foreach (var game in Model.Games)
+                {
+                    <a class="dropdown-item" asp-action="Create" asp-route-gameName="@game.Name">@game.EnglishTitle</a>
+                }
+            </span>
+        </span>
+    </p>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>
+                    @Html.DisplayNameFor(model => model.TacMaps[0].TacMap.Label)
+                </th>
+                <th>
+                    @Html.DisplayNameFor(model => model.TacMaps[0].TacMap.Created)
+                </th>
+                <th>
+                    @Html.DisplayNameFor(model => model.TacMaps[0].TacMap.GameName)
+                </th>
+                <th>
+                    @Html.DisplayNameFor(model => model.TacMaps[0].TacMap.WorldName)
+                </th>
+                <th>
+                    @Localizer["Access"]
+                </th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model.TacMaps)
+            {
+                var action = item.CanWrite ? "EditMap" : "ViewMap";
+                <tr>
+                    <td>
+                        <a asp-controller="Home" asp-action="@action" asp-route-id="@item.TacMapID">@Html.DisplayFor(modelItem => item.TacMap.Label)</a>
+                    </td>
+                    <td>
+                        @Html.DisplayFor(modelItem => item.TacMap.Created)
+                    </td>
+                    <td>
+                        @Html.DisplayFor(modelItem => item.TacMap.GameName)
+                    </td>
+                    <td>
+                        @(item.TacMap.MapInfos?.EnglishTitle ?? item.TacMap.WorldName)
+                    </td>
+                    <td>
+                        @if (item.TacMap.OwnerUserID == item.UserID)
+                        {
+                            <span>@Localizer["Owner"]</span>
+                        }
+                        else if (item.CanWrite)
+                        {
+                            <span>@Localizer["Editable"],<br />@Localizer["shared by {0}", item.TacMap.Owner.UserLabel]</span>
+                        }
+                        else
+                        {
+                            <span>@Localizer["Read only"],<br /> @Localizer["shared by {0}", item.TacMap.Owner.UserLabel]</span>
+                        }
+                    </td>
+                    <td>
+                        <a class="btn btn-sm btn-outline-primary" asp-controller="Home" asp-action="@action" asp-route-id="@item.TacMapID">@Localizer["Display"]</a>
+                        @if (item.CanWrite)
+                        {
+                            <a class="btn btn-sm btn-outline-secondary" asp-action="Export" asp-route-id="@item.TacMapID">@Localizer["Export"]</a>
+                        }
+                        @if (item.TacMap.OwnerUserID == item.UserID)
+                        {
+                            <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@item.TacMapID">@Localizer["Edit"]</a>
+                            <a class="btn btn-sm btn-outline-danger" asp-action="Delete" asp-route-id="@item.TacMapID">@Localizer["Delete"]</a>
+                        }
+                        else
+                        {
+                            <a class="btn btn-sm btn-outline-danger" asp-action="Forget" asp-route-id="@item.TacMapID">@Localizer["Forget"]</a>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

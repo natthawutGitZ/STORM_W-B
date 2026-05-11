@@ -1,0 +1,672 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Change informations" xml:space="preserve">
+    <value>Modifier les informations</value>
+  </data>
+  <data name="Copy" xml:space="preserve">
+    <value>Copier</value>
+  </data>
+  <data name="Create" xml:space="preserve">
+    <value>Créer</value>
+  </data>
+  <data name="Create tactical map" xml:space="preserve">
+    <value>Créer une carte tactique</value>
+  </data>
+  <data name="Delete" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+  <data name="Display" xml:space="preserve">
+    <value>Afficher</value>
+  </data>
+  <data name="Display map" xml:space="preserve">
+    <value>Afficher la carte</value>
+  </data>
+  <data name="Edit" xml:space="preserve">
+    <value>Modifier</value>
+  </data>
+  <data name="Export" xml:space="preserve">
+    <value>Exporter</value>
+  </data>
+  <data name="Export to Arma3" xml:space="preserve">
+    <value>Exporter vers Arma3</value>
+  </data>
+  <data name="Forget" xml:space="preserve">
+    <value>Oublier</value>
+  </data>
+  <data name="Link for read and write access" xml:space="preserve">
+    <value>Lien pour l'accès en lecture et écriture</value>
+  </data>
+  <data name="Link for read only access" xml:space="preserve">
+    <value>Lien pour l'accès en lecture seule</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>Enregistrer</value>
+  </data>
+  <data name="Sharing" xml:space="preserve">
+    <value>Partage</value>
+  </data>
+  <data name="Tactical map" xml:space="preserve">
+    <value>Carte tactique</value>
+  </data>
+  <data name="Connect" xml:space="preserve">
+    <value>Se connecter</value>
+  </data>
+  <data name="Disconnect" xml:space="preserve">
+    <value>Se déconnecter</value>
+  </data>
+  <data name="Home" xml:space="preserve">
+    <value>Accueil</value>
+  </data>
+  <data name="Maps" xml:space="preserve">
+    <value>Cartes</value>
+  </data>
+  <data name="Privacy" xml:space="preserve">
+    <value>Mentions légales</value>
+  </data>
+  <data name="Existing tactical maps" xml:space="preserve">
+    <value>Cartes tactiques existantes</value>
+  </data>
+  <data name="See full list" xml:space="preserve">
+    <value>Voir la liste complète</value>
+  </data>
+  <data name="shared by {0}" xml:space="preserve">
+    <value>partagé par {0}</value>
+  </data>
+  <data name="You have no existing tactical map." xml:space="preserve">
+    <value>Vous n'avez pas de carte tactique existante.</value>
+  </data>
+  <data name="Access" xml:space="preserve">
+    <value>Accés</value>
+  </data>
+  <data name="Are you sure you want to detele this tactical map?" xml:space="preserve">
+    <value>Êtes vous sûre de vouloir supprimer cette carte tactique ?</value>
+  </data>
+  <data name="Are you sure you want to forget this tactical map?" xml:space="preserve">
+    <value>Êtes vous sûre de vouloir oublier cette carte tactique?</value>
+  </data>
+  <data name="Best export, but required the &lt;a href=&quot;{0}&quot;&gt;Metis Marker&lt;/a&gt; mod." xml:space="preserve">
+    <value>Export le plus fidèle, mais nécessite le mod &lt;a href="{0}"&gt;Metis Marker&lt;/a&gt;.</value>
+  </data>
+  <data name="Delete a tactical map" xml:space="preserve">
+    <value>Supprimer une carte tactique</value>
+  </data>
+  <data name="Editable" xml:space="preserve">
+    <value>Modification</value>
+  </data>
+  <data name="Export to Arma3 with Metis Marker" xml:space="preserve">
+    <value>Export vers Arma3 avec Metis Marker</value>
+  </data>
+  <data name="Forget a tactical map" xml:space="preserve">
+    <value>Oublier une carte tactique</value>
+  </data>
+  <data name="Map will be only removed from your list, it will remain available for its owner." xml:space="preserve">
+    <value>La carte sera uniquement supprimée de votre liste, elle restera disponible pour son propriétaire.</value>
+  </data>
+  <data name="Owner" xml:space="preserve">
+    <value>Propriétaire</value>
+  </data>
+  <data name="Read only" xml:space="preserve">
+    <value>Lecture seule</value>
+  </data>
+  <data name="Sharing and export" xml:space="preserve">
+    <value>Partage et export</value>
+  </data>
+  <data name="Tactical maps" xml:space="preserve">
+    <value>Cartes tactiques</value>
+  </data>
+  <data name="Cities" xml:space="preserve">
+    <value>Villes</value>
+  </data>
+  <data name="{0}x{0}km, {1} cities" xml:space="preserve">
+    <value>{0}x{0}km, {1} villes</value>
+  </data>
+  <data name="Return to {0}" xml:space="preserve">
+    <value>Retourner à {0}</value>
+  </data>
+  <data name="Create a copy" xml:space="preserve">
+    <value>Créer une copie</value>
+  </data>
+  <data name="Help" xml:space="preserve">
+    <value>Aide</value>
+  </data>
+  <data name="Signin with Steam" xml:space="preserve">
+    <value>Se connecter avec Steam</value>
+  </data>
+  <data name="Remember me" xml:space="preserve">
+    <value>Se rappeler de moi</value>
+  </data>
+  <data name="Your steam id will be associated with the maps you will create, and to maps you will edit." xml:space="preserve">
+    <value>Votre identifiant steam sera associé aux cartes que vous allez créer, et aux cartes que vous modifirez.</value>
+  </data>
+  <data name="By default map is user specific, an administrator can share the map with all users using the chat command &lt;code&gt;#tacmap global&lt;/code&gt;." xml:space="preserve">
+    <value>Par défaut la carte est propre à l'utilisateur, un administrateur peut partager la carte avec tous les utilisateurs en écrivant dans le tchat &lt;code&gt;#tacmap global&lt;/code&gt;.</value>
+  </data>
+  <data name="Export in real time data to Arma 3 with &lt;a href=&quot;{0}&quot;&gt;SIT 1erGTD&lt;/a&gt; and &lt;a href=&quot;{1}&quot;&gt;Metis Marker&lt;/a&gt; mods." xml:space="preserve">
+    <value>Export en temps réel vers Arma 3 avec les mods &lt;a href="{0}"&gt;SIT 1erGTD&lt;/a&gt; et &lt;a href="{1}"&gt;Metis Marker&lt;/a&gt;.</value>
+  </data>
+  <data name="On your connected mobile device, click on menu icon &lt;i class=&quot;fas fa-bars&quot;&gt;&lt;/i&gt;, then on &quot;Load from {0}&quot;, and then select map." xml:space="preserve">
+    <value>Sur votre appareil mobile, cliquer sur l'icone &lt;i class="fas fa-bars"&gt;&lt;/i&gt;, puis sur "Charger depuis {0}", et sélectionner la carte.</value>
+  </data>
+  <data name="Real time export to Arma3 with SIT 1erGTD" xml:space="preserve">
+    <value>Export en temps réel avec SIT 1erGTD</value>
+  </data>
+  <data name="ORBATs" xml:space="preserve">
+    <value>ODBs</value>
+  </data>
+  <data name="(none)" xml:space="preserve">
+    <value>(aucun)</value>
+  </data>
+  <data name="Add an unit" xml:space="preserve">
+    <value>Ajouter une unité</value>
+  </data>
+  <data name="Are you sure you want to detele this order of battle?" xml:space="preserve">
+    <value>Êtres vous sûre de vouloir supprimer cet ordre de bataille ?</value>
+  </data>
+  <data name="Are you sure you want to detele this unit?" xml:space="preserve">
+    <value>Êtes vous sûre de vouloir supprimer cette unité ?</value>
+  </data>
+  <data name="Call sign" xml:space="preserve">
+    <value>Indicatif</value>
+  </data>
+  <data name="Create an order of battle" xml:space="preserve">
+    <value>Créer un ordre de bataille</value>
+  </data>
+  <data name="Create an unit" xml:space="preserve">
+    <value>Créer une unité</value>
+  </data>
+  <data name="Delete an order of battle" xml:space="preserve">
+    <value>Supprimer un ordre de bataille</value>
+  </data>
+  <data name="Delete an unit" xml:space="preserve">
+    <value>Supprimer une unité</value>
+  </data>
+  <data name="Echelon" xml:space="preserve">
+    <value>Echelon</value>
+  </data>
+  <data name="Edit an order of battle" xml:space="preserve">
+    <value>Modifier un ordre de bataille</value>
+  </data>
+  <data name="Edit an unit" xml:space="preserve">
+    <value>Modifier une unité</value>
+  </data>
+  <data name="Friendly ORBAT" xml:space="preserve">
+    <value>ODB Ami</value>
+  </data>
+  <data name="Friendly Symbol" xml:space="preserve">
+    <value>Symbole ami</value>
+  </data>
+  <data name="Hostile ORBAT" xml:space="preserve">
+    <value>ODB Ennemi</value>
+  </data>
+  <data name="Hostile Symbol" xml:space="preserve">
+    <value>Symbole ennemi</value>
+  </data>
+  <data name="Icon Modifier 1" xml:space="preserve">
+    <value>Modificateur 1</value>
+  </data>
+  <data name="Icon Modifier 2" xml:space="preserve">
+    <value>Modificateur 2</value>
+  </data>
+  <data name="Label" xml:space="preserve">
+    <value>Libellé</value>
+  </data>
+  <data name="Orders of battle" xml:space="preserve">
+    <value>Ordres de bataille</value>
+  </data>
+  <data name="Orders of battle allows you to quickly pick-up pre-defined symbols on a tactical map. A same order of battle can be used as freindly or as hostile." xml:space="preserve">
+    <value>Les ordres de bataille vous permettent de sélectionner rapidement des symboles pré-définits sur une carte tactique. Un même ordre de bataille peut être utilisé en tant qu'ami ou en tant qu'ennemi.</value>
+  </data>
+  <data name="Parent Unit" xml:space="preserve">
+    <value>Unité parent</value>
+  </data>
+  <data name="Public" xml:space="preserve">
+    <value>Publique</value>
+  </data>
+  <data name="Symbol" xml:space="preserve">
+    <value>Symbole</value>
+  </data>
+  <data name="Trigram" xml:space="preserve">
+    <value>Trigramme</value>
+  </data>
+  <data name="Unique Designation" xml:space="preserve">
+    <value>Désignation unique</value>
+  </data>
+  <data name="User Defined" xml:space="preserve">
+    <value>Définits par l'utilisateur</value>
+  </data>
+  <data name="View" xml:space="preserve">
+    <value>Consulter</value>
+  </data>
+  <data name="Visibility" xml:space="preserve">
+    <value>Visibilité</value>
+  </data>
+  <data name="Configure ORBAT" xml:space="preserve">
+    <value>Configurer l'ODB</value>
+  </data>
+  <data name="Friendly" xml:space="preserve">
+    <value>Ami</value>
+  </data>
+  <data name="Hostile" xml:space="preserve">
+    <value>Ennemi</value>
+  </data>
+  <data name="Insert a symbol from ORBAT" xml:space="preserve">
+    <value>Insérer un symbole depuis l'ODB</value>
+  </data>
+  <data name="Insert an other symbol" xml:space="preserve">
+    <value>Insérer un autre symbole</value>
+  </data>
+  <data name="Assumed" xml:space="preserve">
+    <value>Présumé</value>
+  </data>
+  <data name="Confirmed" xml:space="preserve">
+    <value>Confirmé</value>
+  </data>
+  <data name="Anticiped/Supect" xml:space="preserve">
+    <value>Anticipé/Suspecté</value>
+  </data>
+  <data name="Present" xml:space="preserve">
+    <value>Présent</value>
+  </data>
+  <data name="Additional Information" xml:space="preserve">
+    <value>Informations additionnelles</value>
+  </data>
+  <data name="Assumed Friend (blue)" xml:space="preserve">
+    <value>Présumé ami (bleu)</value>
+  </data>
+  <data name="Basic symbol" xml:space="preserve">
+    <value>Symbole basique</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
+  <data name="City or marker" xml:space="preserve">
+    <value>Ville ou marqueur</value>
+  </data>
+  <data name="Color" xml:space="preserve">
+    <value>Couleur</value>
+  </data>
+  <data name="Direction (mil)" xml:space="preserve">
+    <value>Direction (mil)</value>
+  </data>
+  <data name="Friend (blue)" xml:space="preserve">
+    <value>Ami (bleu)</value>
+  </data>
+  <data name="Hostile (red)" xml:space="preserve">
+    <value>Hostile (rouge)</value>
+  </data>
+  <data name="Insert" xml:space="preserve">
+    <value>Insérer</value>
+  </data>
+  <data name="Line" xml:space="preserve">
+    <value>Ligne</value>
+  </data>
+  <data name="Measure" xml:space="preserve">
+    <value>Distance</value>
+  </data>
+  <data name="NATO APP-6 (D) Symbol" xml:space="preserve">
+    <value>Symbole OTAN APP-6 (D)</value>
+  </data>
+  <data name="Neutral (green)" xml:space="preserve">
+    <value>Neutre (vert)</value>
+  </data>
+  <data name="Pending (yellow)" xml:space="preserve">
+    <value>En attente (jaune)</value>
+  </data>
+  <data name="Planned/Anticiped/Supect" xml:space="preserve">
+    <value>Prévu, anticipé, supecté</value>
+  </data>
+  <data name="Present/Damaged" xml:space="preserve">
+    <value>Présent/Endomagé</value>
+  </data>
+  <data name="Present/Destroyed" xml:space="preserve">
+    <value>Présent/Détruit</value>
+  </data>
+  <data name="Present/Full to capacity" xml:space="preserve">
+    <value>Présent/Complet</value>
+  </data>
+  <data name="Present/Fully capable" xml:space="preserve">
+    <value>Présent/Capacité complète</value>
+  </data>
+  <data name="Reinforced" xml:space="preserve">
+    <value>Renforcé</value>
+  </data>
+  <data name="Rotation (mil)" xml:space="preserve">
+    <value>Rotation (mil</value>
+  </data>
+  <data name="Search" xml:space="preserve">
+    <value>Chercher</value>
+  </data>
+  <data name="Shape" xml:space="preserve">
+    <value>Forme</value>
+  </data>
+  <data name="Standard Identity" xml:space="preserve">
+    <value>Identité</value>
+  </data>
+  <data name="Status" xml:space="preserve">
+    <value>Statut</value>
+  </data>
+  <data name="Suspect (red)" xml:space="preserve">
+    <value>Suspect (rouge)</value>
+  </data>
+  <data name="Symbol set" xml:space="preserve">
+    <value>Jeu de symboles</value>
+  </data>
+  <data name="Unknown (yellow)" xml:space="preserve">
+    <value>Inconnu (jaune)</value>
+  </data>
+  <data name="Update" xml:space="preserve">
+    <value>Modifier</value>
+  </data>
+  <data name="Are you sure you want to detele this layer ?" xml:space="preserve">
+    <value>Êtes vous sûre de vouloir supprimer ce calque ?</value>
+  </data>
+  <data name="Base layer" xml:space="preserve">
+    <value>Calque de base</value>
+  </data>
+  <data name="Connexion has been lost with server." xml:space="preserve">
+    <value>La connection a été perdue avec le serveur.</value>
+  </data>
+  <data name="Layer" xml:space="preserve">
+    <value>Calque</value>
+  </data>
+  <data name="Layers" xml:space="preserve">
+    <value>Calques</value>
+  </data>
+  <data name="This action cannot be undone, all layer markers will be permantly lost." xml:space="preserve">
+    <value>Cette action ne peut pas être annulée, tous les marqueurs du calque seront définitivement perdus.</value>
+  </data>
+  <data name="Export Layers" xml:space="preserve">
+    <value>Exporter les calques</value>
+  </data>
+  <data name="Export Layers to GeoJSON" xml:space="preserve">
+    <value>Exporter les calques en GeoJSON</value>
+  </data>
+  <data name="Export to GeoJSON" xml:space="preserve">
+    <value>Exporter en GeoJSON</value>
+  </data>
+  <data name="Select layers to export:" xml:space="preserve">
+    <value>Sélectionner les calques à exporter :</value>
+  </data>
+  <data name="GeoJSON File" xml:space="preserve">
+    <value>Fichier GeoJSON</value>
+  </data>
+  <data name="Import" xml:space="preserve">
+    <value>Importer</value>
+  </data>
+  <data name="Import a Layer" xml:space="preserve">
+    <value>Importer un calque</value>
+  </data>
+  <data name="Import a layer from a GeoJSON file" xml:space="preserve">
+    <value>Importer un calque depuis un fichier GeoJSON</value>
+  </data>
+  <data name="Area with sector: 4 points required" xml:space="preserve">
+    <value>Zone avec secteur: 4 points requis</value>
+  </data>
+  <data name="Choose mission" xml:space="preserve">
+    <value>Sélectionner la mission</value>
+  </data>
+  <data name="France - Infantry" xml:space="preserve">
+    <value>France - Infanterie</value>
+  </data>
+  <data name="Mission set" xml:space="preserve">
+    <value>Liste de mission</value>
+  </data>
+  <data name="Movement: 2 points required" xml:space="preserve">
+    <value>Mouvement: 2 points requis</value>
+  </data>
+  <data name="Single point: 1 point required" xml:space="preserve">
+    <value>Point unique: 1 point requis</value>
+  </data>
+  <data name="to cover" xml:space="preserve">
+    <value>Couvrir</value>
+  </data>
+  <data name="to defend" xml:space="preserve">
+    <value>Défendre</value>
+  </data>
+  <data name="to destroy" xml:space="preserve">
+    <value>Détruire</value>
+  </data>
+  <data name="to make and identify contact" xml:space="preserve">
+    <value>Prendre et précisier le contact</value>
+  </data>
+  <data name="to recce" xml:space="preserve">
+    <value>Reconnaître</value>
+  </data>
+  <data name="to scout" xml:space="preserve">
+    <value>Eclairer</value>
+  </data>
+  <data name="to seize" xml:space="preserve">
+    <value>S'emparer de</value>
+  </data>
+  <data name="to support" xml:space="preserve">
+    <value>Appuyer (par le mouvement)</value>
+  </data>
+  <data name="to support by fire" xml:space="preserve">
+    <value>Appuyer (par le feu)</value>
+  </data>
+  <data name="to survey" xml:space="preserve">
+    <value>Surveiller</value>
+  </data>
+  <data name="●● Section" xml:space="preserve">
+    <value>●● Groupe</value>
+  </data>
+  <data name="Edit points" xml:space="preserve">
+    <value>Modifier les points</value>
+  </data>
+  <data name="Topographic Map" xml:space="preserve">
+    <value>Carte topographique</value>
+  </data>
+  <data name="Base map" xml:space="preserve">
+    <value>Fond de carte</value>
+  </data>
+  <data name="Add a field" xml:space="preserve">
+    <value>Ajouter un champ</value>
+  </data>
+  <data name="Add a line" xml:space="preserve">
+    <value>Ajouter une ligne</value>
+  </data>
+  <data name="Number" xml:space="preserve">
+    <value>Numéro</value>
+  </data>
+  <data name="Country" xml:space="preserve">
+    <value>Pays</value>
+  </data>
+  <data name="Prefix" xml:space="preserve">
+    <value>Préfixe</value>
+  </data>
+  <data name="Input type" xml:space="preserve">
+    <value>Type de saisie</value>
+  </data>
+  <data name="Generated message" xml:space="preserve">
+    <value>Message généré</value>
+  </data>
+  <data name="Informations" xml:space="preserve">
+    <value>Informations</value>
+  </data>
+  <data name="To allow the user to enter values in the line, one or more fields must be provided." xml:space="preserve">
+    <value>Pour permettre à l'utilisateur de saisir des valeurs dans la ligne, un ou plusieurs champs doivent être fournis.</value>
+  </data>
+  <data name="Use the button 'Add a field' above." xml:space="preserve">
+    <value>Utilisez le bouton « Ajouter un champ » ci-dessus.</value>
+  </data>
+  <data name="To allow the user to enter values, one or more lines with fields must be provided." xml:space="preserve">
+    <value>Pour permettre à l'utilisateur de saisir des valeurs, une ou plusieurs lignes avec des champs doivent être fournies.</value>
+  </data>
+  <data name="Use the button 'Add a line' above." xml:space="preserve">
+    <value>Utilisez le bouton « Ajouter une ligne » ci-dessus.</value>
+  </data>
+  <data name="First line (number 0) should be used to specify the message type." xml:space="preserve">
+    <value>La première ligne (numéro 0) devrait être utilisée pour spécifier le type de message.</value>
+  </data>
+  <data name="Text" xml:space="preserve">
+    <value>Texte</value>
+  </data>
+  <data name="Number (Integer)" xml:space="preserve">
+    <value>Nomber (entier)</value>
+  </data>
+  <data name="Date and time (Local)" xml:space="preserve">
+    <value>Date et heure (locale)</value>
+  </data>
+  <data name="Frequency (MHz)" xml:space="preserve">
+    <value>Fréquence (MHz)</value>
+  </data>
+  <data name="Grid position (MRGS coordinates)" xml:space="preserve">
+    <value>Position sur la grille (Coordonnées MGRS)</value>
+  </data>
+  <data name="Checkbox" xml:space="preserve">
+    <value>Case à cocher</value>
+  </data>
+  <data name="Create a preformatted message" xml:space="preserve">
+    <value>Créer un message préformaté</value>
+  </data>
+  <data name="Preformatted messages" xml:space="preserve">
+    <value>Messages préformatés</value>
+  </data>
+  <data name="Preformatted messages allows to create precise and quick messages in a mission. They can be used here online, or with cTab on Arma 3." xml:space="preserve">
+    <value>Les messages préformatés permettent de créer des messages précis et rapide lors d'une mission. Ils peuvent être utilisés ici en ligne ou dans Arma 3 avec cTab.</value>
+  </data>
+  <data name="Contact" xml:space="preserve">
+    <value>Contact</value>
+  </data>
+  <data name="Hosted by {0}" xml:space="preserve">
+    <value>Hébergé par {0}</value>
+  </data>
+  <data name="Phase" xml:space="preserve">
+    <value>Temps</value>
+  </data>
+  <data name="All phases" xml:space="preserve">
+    <value>Tout le temps</value>
+  </data>
+  <data name="Phase number" xml:space="preserve">
+    <value>Temps numéro</value>
+  </data>
+  <data name="Symbols" xml:space="preserve">
+    <value>Symboles</value>
+  </data>
+	<data name="All symbols" xml:space="preserve">
+    <value>Tous les symboles</value>
+  </data>
+	<data name="Download PNG" xml:space="preserve">
+    <value>Télécharger PNG</value>
+  </data>
+	<data name="Download SVG" xml:space="preserve">
+    <value>Télécharger SVG</value>
+  </data>
+</root>

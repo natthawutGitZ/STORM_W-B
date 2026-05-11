@@ -26,21 +26,31 @@ if ($method === 'GET') {
         $stmt->execute([$map]);
         $rows = $stmt->fetchAll();
         $features = [];
+        $markers = [];
         foreach ($rows as $r) {
             $f = json_decode($r['geojson'], true);
             if ($f) {
-                // Add DB ID to feature properties so we can delete specific ones if needed later
-                if (!isset($f['properties'])) $f['properties'] = [];
-                $f['properties']['db_id'] = $r['id'];
-                $f['properties']['user_id'] = $r['user_id'];
-                $features[] = $f;
+                if (isset($f['type']) && $f['type'] !== 'Feature') {
+                    // This is Arma3TacMap markerData
+                    $f['db_id'] = $r['id'];
+                    $markers[] = $f;
+                } else {
+                    // Legacy GeoJSON
+                    if (!isset($f['properties'])) $f['properties'] = [];
+                    $f['properties']['db_id'] = $r['id'];
+                    $f['properties']['user_id'] = $r['user_id'];
+                    $features[] = $f;
+                }
             }
         }
-        $featureCollection = [
-            'type' => 'FeatureCollection',
-            'features' => $features
-        ];
-        echo json_encode(['success' => true, 'data' => $featureCollection]);
+        echo json_encode([
+            'success' => true, 
+            'data' => [
+                'type' => 'FeatureCollection',
+                'features' => $features
+            ],
+            'markers' => $markers
+        ]);
     } catch (PDOException $e) {
         echo json_encode(['error' => $e->getMessage()]);
     }
@@ -70,22 +80,52 @@ if ($method === 'POST') {
     // Save drawn feature (no hard auth required for drawing, or we can use S2_PASS)
     // The user requested that we add `user_id` so we track who draws.
     // For now, anyone can draw, but clearing requires S2.
+    // Legacy save
     if ($action === 'save') {
         $map = $input['map'] ?? 'altis';
         $geojson = $input['geojson'] ?? '';
         $user_id = $input['user_id'] ?? 'Anonymous';
-        
-        if (empty($geojson)) {
-            echo json_encode(['error' => 'Empty geojson']); exit;
-        }
-        
+        if (empty($geojson)) { echo json_encode(['error' => 'Empty geojson']); exit; }
         try {
             $stmt = $pdo->prepare("INSERT INTO intel_drawings (map_name, geojson, user_id) VALUES (?, ?, ?)");
             $stmt->execute([$map, is_string($geojson) ? $geojson : json_encode($geojson), $user_id]);
             echo json_encode(['success' => true, 'id' => $pdo->lastInsertId()]);
-        } catch (PDOException $e) {
-            echo json_encode(['error' => $e->getMessage()]);
-        }
+        } catch (PDOException $e) { echo json_encode(['error' => $e->getMessage()]); }
+        exit;
+    }
+
+    // New Arma3TacMap Format Save
+    if ($action === 'save_marker') {
+        $map = $input['map'] ?? 'altis';
+        $data = $input['data'] ?? '';
+        $user_id = $input['user_id'] ?? 'Anonymous';
+        try {
+            // Check if marker id exists (using geojson column to store the raw markerData JSON)
+            $markerId = $data['id'] ?? '';
+            $stmt = $pdo->prepare("SELECT id FROM intel_drawings WHERE map_name = ? AND geojson LIKE ?");
+            $stmt->execute([$map, '%"id":"' . $markerId . '"%']);
+            $exists = $stmt->fetch();
+            
+            if ($exists) {
+                $stmt = $pdo->prepare("UPDATE intel_drawings SET geojson = ? WHERE id = ?");
+                $stmt->execute([json_encode($data), $exists['id']]);
+            } else {
+                $stmt = $pdo->prepare("INSERT INTO intel_drawings (map_name, geojson, user_id) VALUES (?, ?, ?)");
+                $stmt->execute([$map, json_encode($data), $user_id]);
+            }
+            echo json_encode(['success' => true]);
+        } catch (PDOException $e) { echo json_encode(['error' => $e->getMessage()]); }
+        exit;
+    }
+
+    if ($action === 'delete_marker') {
+        $map = $input['map'] ?? 'altis';
+        $markerId = $input['id'] ?? '';
+        try {
+            $stmt = $pdo->prepare("DELETE FROM intel_drawings WHERE map_name = ? AND geojson LIKE ?");
+            $stmt->execute([$map, '%"id":"' . $markerId . '"%']);
+            echo json_encode(['success' => true]);
+        } catch (PDOException $e) { echo json_encode(['error' => $e->getMessage()]); }
         exit;
     }
 

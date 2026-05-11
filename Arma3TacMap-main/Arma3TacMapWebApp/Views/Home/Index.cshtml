@@ -1,0 +1,88 @@
+﻿@model IndexViewModel
+@inject IHtmlLocalizer<SharedResource> Localizer
+@{
+    ViewData["Title"] = "PLANOPS Maps";
+}
+<div class="container">
+@*    <div class="alert alert-info" role="alert">
+        <h2 class="alert-heading h3">New features, beta is over !</h2>
+
+        <p>
+            <span class="btn btn-sm btn-outline-secondary"><i class="fas fa-layer-group"></i></span>
+            You can now use multiple layers on a single map. It can be useful for differents times of a single mission.
+            Icon is available at the top right.
+
+        </p>
+        <p>
+            <span class="btn btn-sm btn-outline-secondary"><i class="fas fa-plus-circle"></i></span>
+            French infantry missions symbols are also available (more to come). Click on the icon in the left bar, choose the mission, and place the appropriate number of points.
+        </p>
+
+        <p>
+            Major changes have happened under hood, some issues may appear.<br />Please open an issue report on
+            <a href="https://github.com/jetelain/Arma3TacMap/issues">GitHub</a>, or contact me on
+            <a href="https://discord.gg/y3kfUP4">Discord</a> (look for GrueArbre), or on
+            <a href="https://steamcommunity.com/profiles/76561198081226363/">Steam</a> to get them fixed.
+        </p>
+    </div>*@
+
+    <div class="row">
+
+        <div class="col-md-6">
+            <h2>@Localizer["Create tactical map"]</h2>
+
+            <div class="row justify-content-center">
+                @foreach (var map in Model.Games)
+                {
+                    <a class="btn btn-outline-secondary m-2 p-3" asp-controller="TacMaps" asp-action="Create" asp-route-gameName="@map.Name">
+                        <img src="@map.LogoPng" class="bg-white" style="max-width:128px; max-height:128px;" alt="@map.EnglishTitle" title="@map.EnglishTitle" />
+                    </a>
+                }
+            </div> 
+        </div>
+        <div class="col-md-6">
+            <h2>@Localizer["Existing tactical maps"]</h2>
+            @if (Model.TacMaps.Count == 0)
+            {
+                <p>@Localizer["You have no existing tactical map."]</p>
+            }
+            else
+            {
+                foreach (var map in Model.TacMaps)
+                {
+                    var action = map.CanWrite ? "EditMap" : "ViewMap";
+                    <div class="card mb-3">
+                        <div class="row no-gutters">
+                            <div class="col-2">
+                                <a asp-action="@action" asp-route-id="@map.TacMapID">
+                                    <img class="card-img" src="/ViewMap/@map.TacMapID/Preview/256" />
+                                </a>
+                            </div>
+                            <div class="col-10">
+                                <div class="card-body pt-2 pb-2">
+                                    <h5 class="card-title">
+                                        <a asp-action="@action" asp-route-id="@map.TacMapID">@map.TacMap.Label</a>
+                                        <span class="small">
+                                            @(map.TacMap.MapInfos?.EnglishTitle ?? map.TacMap.WorldName)
+                                            @if (map.TacMap.OwnerUserID != map.UserID)
+                                            {
+                                                <br /> @Localizer["shared by {0}", @map.TacMap.Owner.UserLabel]
+                                            }
+                                        </span>
+                                    </h5>
+                                    <a asp-action="@action" asp-route-id="@map.TacMapID" class="btn btn-sm btn-outline-primary">@Localizer["Display"]</a>
+                                    @if (map.TacMap.OwnerUserID == map.UserID)
+                                    {
+                                        <a asp-controller="TacMaps" asp-action="Edit" asp-route-id="@map.TacMapID" class="btn btn-sm btn-outline-secondary">@Localizer["Edit"]</a>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+                <p><a class="btn btn-sm btn-outline-secondary" asp-controller="TacMaps" asp-action="Index">@Localizer["See full list"]</a></p>
+            }
+        </div>
+    </div>
+
+</div>

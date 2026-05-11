@@ -1,0 +1,102 @@
+﻿@model Arma3TacMapWebApp.Models.LiveMapModel
+@inject Microsoft.AspNetCore.Mvc.Localization.IHtmlLocalizer<SharedResource> Localizer
+
+<ul class="pagination pagination-sm justify-content-center ml-4 mr-4" id="phase-selector" style="display:none;">
+    <li class="page-item disabled"><span class="page-link text-dark">@Localizer["Phase"]</span></li>
+    <li class="page-item phase-item" id="phases-template"><a class="page-link pl-3 pr-3" href="#">1</a></li>
+</ul>
+
+<div class="alert alert-danger" role="alert" id="connectionlost" style="display:none;">
+    @Localizer["Connexion has been lost with server."]
+</div>
+
+<div class="row no-gutters">
+    <div class="col" id="map-col">
+        @if (ViewBag.IsFullScreen ?? false)
+        {
+            <div class="map" id="map" style="width:100%; height:100vh; margin:0;padding:0;border:0;">
+            </div>
+        }
+        else
+        {
+            <div class="map" id="map" style="width:100%; height:85vh; margin:0;padding:0;border:0;">
+            </div>
+        }
+    </div>
+    <div class="d-none" id="layers-col">
+        <h3>@Localizer["Layers"]</h3>
+        @if (!Model.isReadOnly)
+        {
+            <p>
+                <a class="btn btn-outline-primary" href="#" id="layers-add"><i class="fas fa-plus"></i> @Localizer["Create"]</a>
+                <a class="btn btn-outline-secondary" asp-controller="TacMaps" asp-action="ImportLayer" asp-route-id="@Model.mapId.TacMapID"><i class="fas fa-file-import"></i> @Localizer["Import"]</a>
+                <a class="btn btn-outline-secondary" asp-controller="TacMaps" asp-action="ExportLayers" asp-route-id="@Model.mapId.TacMapID"><i class="fas fa-file-export"></i> @Localizer["Export"]</a>
+            </p>
+        }
+        <div class="list-group" id="layers-list">
+            <div class="list-group-item list-group-item-action d-flex justify-content-between" id="layers-background">
+                <div>
+                    @Localizer["Base map"]
+                </div>
+                <div>
+                    <span class="mr-1" id="bg-opacity">100 %</span>
+                    <a href="#" class="btn btn-sm btn-secondary layers-item-display" id="bg-opacity-minus"><i class="fas fa-minus"></i></a>
+                    <a href="#" class="btn btn-sm btn-secondary layers-item-display" id="bg-opacity-plus"><i class="fas fa-plus"></i></a>
+                </div>
+            </div>
+            <div class="list-group-item list-group-item-action d-flex justify-content-between active" id="layers-default">
+                <div>
+                    @Localizer["Base layer"]
+                </div>
+                <div>
+                    <a href="#" class="btn btn-sm btn-secondary layers-item-display"><i class="fas fa-eye"></i></a>
+                    @if (!Model.isReadOnly)
+                    {
+                        <a href="#" class="btn btn-sm btn-secondary layers-item-lock"><i class="fas fa-lock-open"></i></a>
+                    }
+                </div>
+            </div>
+            <div class="list-group-item list-group-item-action d-flex justify-content-between" id="layers-template">
+                <div class="layers-item-label flex-fill">
+                     Libellé
+                </div>
+                <div>
+                    <a href="#" class="btn btn-sm btn-secondary layers-item-display"><i class="fas fa-eye"></i></a>
+                    @if (!Model.isReadOnly)
+                    {
+                        <a href="#" class="btn btn-sm btn-secondary layers-item-lock"><i class="fas fa-lock-open"></i></a>
+                        <a href="#" class="btn btn-sm btn-secondary layers-item-edit"><i class="fas fa-pen"></i></a>
+                        <a href="#" class="btn btn-sm btn-danger layers-item-delete"><i class="fas fa-trash"></i></a>
+                    }
+                </div>
+            </div>
+        </div>
+
+
+
+    </div>
+</div>
+
+<div class="modal" tabindex="-1" role="dialog" id="search">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    @Localizer["Search"]
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row">
+                    <label for="search-term" class="sr-only">@Localizer["City or marker"]</label>
+                    <input type="text" id="search-term" class="form-control" placeholder="@Localizer["City or marker"]" />
+                </div>
+                <ul id="search-results" style="height:50vh" class="overflow-auto list-unstyled mt-2">
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+

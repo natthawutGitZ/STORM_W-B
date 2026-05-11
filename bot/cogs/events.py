@@ -178,6 +178,51 @@ class EventsCog(commands.Cog):
                         print(f"[ERROR] ticket_close interaction: {e}")
                         await interaction.followup.send(f'❌ Error closing ticket: {str(e)}', ephemeral=True)
 
+                # --- ROLE ASSIGNMENT BUTTON ---
+                elif custom_id and custom_id.startswith('role_assign:'):
+                    parts = custom_id.split(':')
+                    if len(parts) >= 3:
+                        panel_id = parts[1]
+                        role_id = parts[2]
+                        
+                        try:
+                            guild = interaction.guild
+                            member = interaction.user
+                            role = guild.get_role(int(role_id))
+                            
+                            if not role:
+                                await interaction.response.send_message('❌ Role not found. It may have been deleted.', ephemeral=True)
+                                return
+                            
+                            # Check bot hierarchy
+                            if role >= guild.me.top_role:
+                                await interaction.response.send_message('❌ I cannot assign this role (it is higher than my role).', ephemeral=True)
+                                return
+                            
+                            # Check panel mode from DB
+                            from services.database import DatabaseService
+                            panel = DatabaseService.get_role_panel(panel_id)
+                            mode = panel.get('mode', 'toggle') if panel else 'toggle'
+                            
+                            if role in member.roles:
+                                if mode == 'toggle':
+                                    await member.remove_roles(role, reason=f'Role panel toggle: {panel_id}')
+                                    await interaction.response.send_message(f'❌ Removed role **{role.name}**', ephemeral=True)
+                                else:
+                                    await interaction.response.send_message(f'✅ You already have **{role.name}**', ephemeral=True)
+                            else:
+                                await member.add_roles(role, reason=f'Role panel: {panel_id}')
+                                await interaction.response.send_message(f'✅ You received **{role.name}**!', ephemeral=True)
+                        
+                        except discord.Forbidden:
+                            await interaction.response.send_message('❌ I do not have permission to manage this role.', ephemeral=True)
+                        except Exception as e:
+                            print(f"[ERROR] role_assign interaction: {e}")
+                            try:
+                                await interaction.response.send_message(f'❌ Error: {str(e)}', ephemeral=True)
+                            except:
+                                pass
+
         except Exception as e:
             print(f"Interaction Error: {e}")
 

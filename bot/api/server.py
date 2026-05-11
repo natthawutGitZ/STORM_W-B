@@ -1853,6 +1853,167 @@ async def handle_test_server_welcome(request):
         print(f"Test server welcome error: {e}")
         return web.json_response({'error': str(e)}, status=500)
 
+# ========== ROLE PANELS (Button Role Assignment) ==========
+
+async def handle_get_role_panels(request):
+    """Get all role panels"""
+    try:
+        panels = DatabaseService.get_role_panels()
+        # Convert datetime objects to strings for JSON serialization
+        for p in panels:
+            for k, v in p.items():
+                if hasattr(v, 'isoformat'):
+                    p[k] = v.isoformat()
+        return web.json_response({'success': True, 'panels': panels})
+    except Exception as e:
+        print(f"[ERROR] handle_get_role_panels: {e}", flush=True)
+        return web.json_response({'error': str(e)}, status=500)
+
+async def handle_save_role_panel(request):
+    """Create or update a role panel config"""
+    try:
+        data = await request.json()
+        panel_id = data.get('panel_id')
+        if not panel_id:
+            panel_id = f"rp_{int(time.time())}"
+            data['panel_id'] = panel_id
+
+        success = DatabaseService.save_role_panel(data)
+        if success:
+            return web.json_response({'success': True, 'panel_id': panel_id})
+        else:
+            return web.json_response({'error': 'Failed to save panel'}, status=500)
+    except Exception as e:
+        print(f"[ERROR] handle_save_role_panel: {e}", flush=True)
+        return web.json_response({'error': str(e)}, status=500)
+
+async def handle_delete_role_panel(request):
+    """Delete a role panel"""
+    try:
+        data = await request.json()
+        panel_id = data.get('panel_id')
+        if not panel_id:
+            return web.json_response({'error': 'Missing panel_id'}, status=400)
+
+        # Try to delete the Discord message too
+        panel = DatabaseService.get_role_panel(panel_id)
+        if panel and panel.get('channel_id') and panel.get('message_id'):
+            self = request.app['bot']
+            try:
+                ch = self.get_channel(int(panel['channel_id']))
+                if ch:
+                    msg = await ch.fetch_message(int(panel['message_id']))
+                    await msg.delete()
+            except Exception:
+                pass
+
+        deleted = DatabaseService.delete_role_panel(panel_id)
+        return web.json_response({'success': deleted})
+    except Exception as e:
+        print(f"[ERROR] handle_delete_role_panel: {e}", flush=True)
+        return web.json_response({'error': str(e)}, status=500)
+
+async def handle_send_role_panel(request):
+    """Send (or re-send) a role panel embed with buttons to a Discord channel"""
+    self = request.app['bot']
+    try:
+        data = await request.json()
+        panel_id = data.get('panel_id')
+        channel_id = data.get('channel_id')
+
+        if not panel_id or not channel_id:
+            return web.json_response({'error': 'Missing panel_id or channel_id'}, status=400)
+
+        panel = DatabaseService.get_role_panel(panel_id)
+        if not panel:
+            return web.json_response({'error': 'Panel not found'}, status=404)
+
+        channel = self.get_channel(int(channel_id))
+        if not channel:
+            return web.json_response({'error': 'Channel not found'}, status=404)
+
+        # Build embed
+        title = panel.get('title', 'Role Selection')
+        description = panel.get('description', 'Click a button below to get/remove a role.')
+        color_hex = panel.get('embed_color', '#5865F2')
+        try:
+            color_int = int(color_hex.replace('#', ''), 16)
+        except:
+            color_int = 0x5865F2
+
+        embed = discord.Embed(
+            title=title,
+            description=description,
+            color=color_int,
+            timestamp=datetime.now()
+        )
+        mode_label = 'Toggle' if panel.get('mode', 'toggle') == 'toggle' else 'Give Only'
+        embed.set_footer(text=f'Role Panel • {mode_label}')
+
+        # Build buttons
+        buttons_data = panel.get('buttons', [])
+        if isinstance(buttons_data, str):
+            buttons_data = json.loads(buttons_data)
+
+        view = discord.ui.View(timeout=None)
+        color_map = {
+            'blue': discord.ButtonStyle.blurple,
+            'blurple': discord.ButtonStyle.blurple,
+            'green': discord.ButtonStyle.green,
+            'red': discord.ButtonStyle.red,
+            'grey': discord.ButtonStyle.grey,
+            'gray': discord.ButtonStyle.grey,
+        }
+
+        for i, btn in enumerate(buttons_data):
+            role_id = btn.get('role_id', '')
+            label = btn.get('label', f'Role {i+1}')
+            emoji = btn.get('emoji') or None
+            btn_color = btn.get('color', 'blurple')
+            style = color_map.get(btn_color, discord.ButtonStyle.blurple)
+
+            button = discord.ui.Button(
+                label=label,
+                style=style,
+                emoji=emoji,
+                custom_id=f'role_assign:{panel_id}:{role_id}'
+            )
+            view.add_item(button)
+
+        # Delete old message if exists
+        old_msg_id = panel.get('message_id')
+        if old_msg_id:
+            try:
+                old_ch_id = panel.get('channel_id')
+                if old_ch_id:
+                    old_ch = self.get_channel(int(old_ch_id))
+                    if old_ch:
+                        old_msg = await old_ch.fetch_message(int(old_msg_id))
+                        await old_msg.delete()
+            except Exception:
+                pass
+
+        msg = await channel.send(embed=embed, view=view)
+
+        # Save message reference
+        DatabaseService.update_role_panel_message(panel_id, channel.id, msg.id)
+        # Also update channel_id + guild_id in the panel
+        DatabaseService.save_role_panel({
+            **{k: v for k, v in panel.items() if not hasattr(v, 'isoformat')},
+            'channel_id': str(channel.id),
+            'message_id': str(msg.id),
+            'guild_id': str(channel.guild.id) if channel.guild else None,
+            'buttons': buttons_data
+        })
+
+        return web.json_response({'success': True, 'message_id': str(msg.id)})
+
+    except Exception as e:
+        print(f"[ERROR] handle_send_role_panel: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        return web.json_response({'error': str(e)}, status=500)
+
 async def handle_steam_proxy(request):
     """Proxy for Steam API requests to bypass local network blocking."""
     try:
@@ -1951,6 +2112,12 @@ async def start_server(bot):
         # User Lookup Routes
         app.router.add_get('/users/lookup', handle_lookup_user)
         app.router.add_get('/users/filtered', handle_get_filtered_users)
+        
+        # Role Panel Routes (Button Role Assignment)
+        app.router.add_get('/role-panels', handle_get_role_panels)
+        app.router.add_post('/role-panels', handle_save_role_panel)
+        app.router.add_delete('/role-panels', handle_delete_role_panel)
+        app.router.add_post('/role-panels/send', handle_send_role_panel)
         
         # Steam Proxy
         app.router.add_get('/proxy/steam', handle_steam_proxy)

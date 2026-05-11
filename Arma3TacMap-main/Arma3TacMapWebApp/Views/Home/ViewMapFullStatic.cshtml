@@ -1,0 +1,16 @@
+﻿@model StaticMapModel
+@{
+    Layout = "_LayoutFull";
+}
+
+<pmad-script-milsymbol />
+<pmad-script-choices />
+
+@{await Html.RenderPartialAsync("_StaticMap", Model);}
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_MapScripts", Model);}
+}
+@section Styles {
+    @{await Html.RenderPartialAsync("_MapStyles", Model);}
+}
