@@ -33,6 +33,16 @@
     height: calc(100vh - 48px);
     background: var(--r-bg-dark);
     overflow: hidden;
+    transition: grid-template-columns 0.3s ease;
+}
+
+.dossier-layout.list-collapsed {
+    grid-template-columns: 260px 0px 1fr;
+}
+
+.dossier-layout.list-collapsed .dossier-middle {
+    opacity: 0;
+    pointer-events: none;
 }
 
 /* === LEFT PANEL — Operations Nav === */
@@ -274,13 +284,14 @@
     letter-spacing: 1px;
 }
 
-/* === MIDDLE PANEL — Asset Dossier List === */
+/* === MIDDLE PANEL — Asset Dossiers === */
 .dossier-middle {
-    background: rgba(12, 12, 12, .95);
+    background: rgba(10, 10, 10, .9);
     border-right: 1px solid var(--r-border);
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    transition: opacity 0.2s ease;
 }
 
 .dossier-middle-header {

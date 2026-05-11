@@ -383,6 +383,14 @@ document.querySelectorAll('.dossier-tab-btn').forEach(btn => {
 
 // ---- MRS SWITCH button (Removed) ----
 
+// ---- Toggle left dossier list ----
+document.getElementById('toggleDossierListBtn')?.addEventListener('click', function() {
+    const layout = document.querySelector('.dossier-layout');
+    if (layout) {
+        layout.classList.toggle('list-collapsed');
+    }
+});
+
 // ---- Save button ----
 document.getElementById('dossierSaveBtn')?.addEventListener('click', saveDossier);
 

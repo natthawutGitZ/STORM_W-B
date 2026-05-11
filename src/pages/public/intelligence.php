@@ -161,7 +161,7 @@ require_once ROOT_PATH . '/includes/db.php';
         </div>
 
         <div class="dossier-stats">
-          <div class="dossier-stat-row">
+          <div class="dossier-stat-row" id="toggleDossierListBtn" style="cursor: pointer;" title="Toggle Asset Dossiers List">
             <span class="stat-name"><i class="fas fa-file-shield"></i> INTEL Overall</span>
             <span class="stat-badge red" id="dossierIntelCount">0 HUMINT</span>
           </div>
