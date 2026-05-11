@@ -360,28 +360,38 @@ require_once ROOT_PATH . '/includes/db.php';
         </div>
         <div class="toolbar-group">
           <button class="map-tool-btn active" id="toolPan" data-tool="pan" title="Pan"><i class="far fa-hand-paper"></i></button>
+        </div>
+        <div class="toolbar-group">
           <button class="map-tool-btn" id="toolSelect" data-tool="select" title="Pointer"><i class="far fa-hand-pointer"></i></button>
         </div>
         <div class="toolbar-group">
           <button class="map-tool-btn" id="toolNatoSymbol" data-tool="natoSymbol" title="NATO APP-6 Symbol"><img height="16" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='14' viewBox='0 0 24 14'%3E%3Crect x='1' y='1' width='22' height='12' fill='%2380d0ff' stroke='%23333' stroke-width='1.5'/%3E%3C/svg%3E" alt="NATO"></button>
+        </div>
+        <div class="toolbar-group">
           <button class="map-tool-btn" id="toolBasicSymbol" data-tool="basicSymbol" title="Basic Symbol" style="font-size:18px;line-height:32px;">&#9679;</button>
         </div>
         <div class="toolbar-group">
           <button class="map-tool-btn" id="toolLine" data-tool="line" title="Line (Ctrl/Shift+click to add segments)" style="font-size:16px;font-weight:bold;">&#9585;</button>
+        </div>
+        <div class="toolbar-group">
           <button class="map-tool-btn" id="toolMeasure" data-tool="measure" title="Measure Distance"><i class="fas fa-ruler"></i></button>
         </div>
         <div class="toolbar-group toolbar-colorpicker" id="toolbarColorPicker" style="display:none;">
           <button class="tool-color-btn active" data-color="#000000" style="background:#000" title="Black"></button>
           <button class="tool-color-btn" data-color="#ff0000" style="background:#ff0000" title="Red"></button>
           <button class="tool-color-btn" data-color="#0066ff" style="background:#0066ff" title="Blue"></button>
-          <button class="tool-color-btn" data-color="#00cc00" style="background:#00cc00" title="Green"></button>
-          <button class="tool-color-btn" data-color="#ffff00" style="background:#ffff00" title="Yellow"></button>
-          <button class="tool-color-btn" data-color="#ff8800" style="background:#ff8800" title="Orange"></button>
+          <button class="tool-color-btn" data-color="#00cc44" style="background:#00cc44" title="Green"></button>
+          <button class="tool-color-btn" data-color="#ffaa00" style="background:#ffaa00" title="Orange"></button>
+          <button class="tool-color-btn" data-color="#aa00ff" style="background:#aa00ff" title="Purple"></button>
+          <button class="tool-color-btn" data-color="#ffff00" style="background:#ff0" title="Yellow"></button>
+          <button class="tool-color-btn" data-color="#00ffff" style="background:#0ff" title="Cyan"></button>
           <button class="tool-color-btn" data-color="#7f3f00" style="background:#7f3f00" title="Brown"></button>
           <button class="tool-color-btn" data-color="#ffffff" style="background:#fff;border:1px solid #999" title="White"></button>
         </div>
         <div class="toolbar-group">
           <button class="map-tool-btn" id="toolMission" data-tool="mission" title="Tactical Graphics"><i class="fas fa-plus-circle"></i></button>
+        </div>
+        <div class="toolbar-group">
           <button class="map-tool-btn" id="toolNote" data-tool="note" title="Sticky Note"><i class="fas fa-sticky-note"></i></button>
         </div>
       </div>

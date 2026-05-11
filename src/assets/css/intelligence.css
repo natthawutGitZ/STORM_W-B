@@ -199,12 +199,12 @@ body.sidebar-collapsed .main{margin-left:0}
 .map-toolbar{position:absolute;z-index:800;display:flex;flex-direction:column;gap:4px}
 .map-toolbar-left{left:28px;top:28px}
 .map-toolbar-right{right:8px;top:44px}
-.toolbar-group{display:flex;flex-direction:column;background:rgba(255,255,255,0.85);border:1px solid #aaa;border-radius:2px;box-shadow:0 1px 3px rgba(0,0,0,.2);margin-bottom:4px;overflow:hidden}
-.map-tool-btn{width:32px;height:32px;border:none;border-bottom:1px solid #ddd;background:transparent;color:#444;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .15s;position:relative}
+.toolbar-group{display:flex;flex-direction:column;background:rgba(255,255,255,0.95);border:1px solid #aaa;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.2);margin-bottom:6px;overflow:hidden}
+.map-tool-btn{width:34px;height:34px;border:none;border-bottom:1px solid #ddd;background:transparent;color:#444;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:all .15s;position:relative}
 .map-tool-btn:last-child{border-bottom:none}
-.map-tool-btn:hover{background:#fff;color:#000}
-.map-tool-btn.active{background:#e8f4ff;color:#0066ff}
-.map-tool-btn.active::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:#0066ff}
+.map-tool-btn:hover{background:#f0f0f0;color:#000}
+.map-tool-btn.active{background:#1864c7;color:#fff}
+.map-tool-btn.active::before{content:none}
 
 /* COORDINATE DISPLAY */
 
