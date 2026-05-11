@@ -370,46 +370,9 @@ document.querySelectorAll('.dossier-tab-btn').forEach(btn => {
     });
 });
 
-// ---- Left panel nav ----
-document.querySelectorAll('#dossierSubNav .dossier-nav-item').forEach(item => {
-    item.addEventListener('click', function () {
-        document.querySelectorAll('#dossierSubNav .dossier-nav-item').forEach(i => i.classList.remove('active'));
-        this.classList.add('active');
-        const view = this.getAttribute('data-view');
-        if (view === 'dossiers') {
-            // Stay on INTEL tab - show dossier panels
-            document.querySelector('.dossier-middle')?.style.setProperty('display', '');
-            document.querySelector('.dossier-right')?.style.setProperty('display', '');
-        } else {
-            // Switch to OPS HUB tab and scroll to section
-            const tabBtns = document.querySelectorAll('.tab-btn');
-            const tabContents = document.querySelectorAll('.tab-content');
-            tabBtns.forEach(b => b.classList.remove('active'));
-            tabContents.forEach(t => t.classList.remove('active'));
-            const opsBtn = document.querySelector('[data-tab="opshub"]');
-            if (opsBtn) opsBtn.classList.add('active');
-            const opsTab = document.getElementById('tab-opshub');
-            if (opsTab) opsTab.classList.add('active');
-            // Also update sidebar
-            document.querySelectorAll('.sidebar-nav .nav-item').forEach(n => n.classList.remove('active'));
-            document.querySelector('.sidebar-nav [data-tab="opshub"]')?.classList.add('active');
-        }
-    });
-});
+// ---- Left panel nav (Removed) ----
 
-// ---- MRS SWITCH button ----
-document.getElementById('btnMrsSortie')?.addEventListener('click', function() {
-    const tabBtns = document.querySelectorAll('.tab-btn');
-    const tabContents = document.querySelectorAll('.tab-content');
-    tabBtns.forEach(b => b.classList.remove('active'));
-    tabContents.forEach(t => t.classList.remove('active'));
-    const opsBtn = document.querySelector('.tab-btn[data-tab="opshub"]');
-    if (opsBtn) opsBtn.classList.add('active');
-    const opsTab = document.getElementById('tab-opshub');
-    if (opsTab) opsTab.classList.add('active');
-    document.querySelectorAll('.sidebar-nav .nav-item').forEach(n => n.classList.remove('active'));
-    document.querySelector('.sidebar-nav [data-tab="opshub"]')?.classList.add('active');
-});
+// ---- MRS SWITCH button (Removed) ----
 
 // ---- Save button ----
 document.getElementById('dossierSaveBtn')?.addEventListener('click', saveDossier);

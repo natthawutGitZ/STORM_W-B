@@ -26,10 +26,10 @@
     height: 100% !important;
 }
 
-/* === MAIN DOSSIER LAYOUT (3-panel) === */
+/* === MAIN DOSSIER LAYOUT (2-panel) === */
 .dossier-layout {
     display: grid;
-    grid-template-columns: 260px 300px 1fr;
+    grid-template-columns: 320px 1fr;
     height: calc(100vh - 48px);
     background: var(--r-bg);
     overflow: hidden;
@@ -1269,7 +1269,7 @@
 /* Responsive */
 @media (max-width: 1100px) {
     .dossier-layout {
-        grid-template-columns: 220px 260px 1fr;
+        grid-template-columns: 280px 1fr;
     }
 }
 
@@ -1277,7 +1277,7 @@
     .dossier-layout {
         grid-template-columns: 1fr;
     }
-    .dossier-left, .dossier-middle {
+    .dossier-middle {
         display: none;
     }
 }

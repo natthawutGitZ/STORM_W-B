@@ -153,58 +153,7 @@ require_once ROOT_PATH . '/includes/db.php';
   <section class="tab-content" id="tab-intel">
     <div class="dossier-layout">
 
-      <!-- LEFT PANEL — Operations & Navigation -->
-      <div class="dossier-left">
-        <div class="dossier-left-header">
-          <div class="op-label">OPERATION</div>
-          <div class="op-title" id="dossierOpTitle">OPERATION ARKERIAN FREEDOM</div>
-        </div>
-
-        <div class="dossier-stats">
-          <div class="dossier-stat-row">
-            <span class="stat-name"><i class="fas fa-file-shield"></i> INTEL Overall</span>
-            <span class="stat-badge red" id="dossierIntelCount">0 HUMINT</span>
-          </div>
-          <div class="dossier-stat-row">
-            <span class="stat-name"><i class="fas fa-tasks"></i> TASKING Overall</span>
-            <span class="stat-badge amber" id="dossierTaskCount">0 ACTIVE</span>
-          </div>
-          <div class="dossier-stat-row">
-            <span class="stat-name"><i class="fas fa-route"></i> MVT Overall</span>
-            <span class="stat-badge green">—</span>
-          </div>
-          <div class="dossier-stat-row">
-            <span class="stat-name"><i class="fas fa-users"></i> Operator Roster</span>
-            <span class="stat-badge green">—</span>
-          </div>
-        </div>
-
-        <div class="dossier-ops-section">
-          <div class="dossier-ops-title">
-            ACTIVE OPERATION SORTIES
-            <button class="btn-mini" id="btnMrsSortie">MRS SWITCH</button>
-          </div>
-          <div id="dossierOpsList">
-            <!-- Populated by JS -->
-          </div>
-        </div>
-
-        <div class="dossier-nav" id="dossierSubNav">
-          <div class="dossier-nav-item" data-view="opord">OPORD</div>
-          <div class="dossier-nav-item" data-view="intel">INTEL</div>
-          <div class="dossier-nav-item" data-view="rap">RAP</div>
-          <div class="dossier-nav-item" data-view="tasking">TASKING</div>
-          <div class="dossier-nav-item active" data-view="dossiers">DOSSIERS</div>
-          <div class="dossier-nav-item" data-view="unit">UNIT</div>
-        </div>
-
-        <div class="dossier-left-footer">
-          <button class="ghost-btn" id="btnGhostTerminal"><i class="fas fa-terminal"></i> GHOST TERMINAL</button>
-          <div class="version-tag">COMMAND OPS CONSOLE V8.9</div>
-        </div>
-      </div>
-
-      <!-- MIDDLE PANEL — Asset Dossier List -->
+      <!-- ASSET DOSSIER LIST (Formerly Middle Panel) -->
       <div class="dossier-middle">
         <div class="dossier-middle-header">
           <h3>ASSET DOSSIERS</h3>
@@ -260,15 +209,6 @@ require_once ROOT_PATH . '/includes/db.php';
 
       <!-- RIGHT PANEL — Dossier Detail View -->
       <div class="dossier-right">
-        <div class="dossier-classification" id="dossierClassBanner">
-          FICTIONAL SECRET // ACRN-IVORY VALOR // REL USA, FVEY
-        </div>
-
-        <div class="dossier-tabs">
-          <button class="dossier-tab-btn active" data-dtab="humint">HUMINT</button>
-          <button class="dossier-tab-btn" data-dtab="mvt">MVT</button>
-        </div>
-
         <div class="dossier-content" id="dossierDetailContent">
           <!-- Empty state -->
           <div class="dossier-empty" id="dossierEmptyState">
