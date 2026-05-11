@@ -365,7 +365,7 @@ require_once ROOT_PATH . '/includes/db.php';
           <button class="map-tool-btn" id="toolSelect" data-tool="select" title="Pointer"><i class="far fa-hand-pointer"></i></button>
         </div>
         <div class="toolbar-group">
-          <button class="map-tool-btn" id="toolNatoSymbol" data-tool="natoSymbol" title="NATO APP-6 Symbol"><img height="16" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='14' viewBox='0 0 24 14'%3E%3Crect x='1' y='1' width='22' height='12' fill='%2380d0ff' stroke='%23333' stroke-width='1.5'/%3E%3C/svg%3E" alt="NATO"></button>
+          <button class="map-tool-btn" id="toolNatoSymbol" data-tool="natoSymbol" title="NATO APP-6 Symbol"><img height="16" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='16' viewBox='0 0 24 16'%3E%3Crect x='1' y='1' width='22' height='14' fill='%2380d0ff' stroke='%23333' stroke-width='1.5'/%3E%3Cline x1='1' y1='1' x2='23' y2='15' stroke='%23333' stroke-width='1.5'/%3E%3Cline x1='23' y1='1' x2='1' y2='15' stroke='%23333' stroke-width='1.5'/%3E%3C/svg%3E" alt="NATO"></button>
         </div>
         <div class="toolbar-group">
           <button class="map-tool-btn" id="toolBasicSymbol" data-tool="basicSymbol" title="Basic Symbol" style="font-size:18px;line-height:32px;">&#9679;</button>
