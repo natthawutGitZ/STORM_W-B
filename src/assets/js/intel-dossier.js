@@ -1,4 +1,4 @@
-﻿// =========================================================
+// =========================================================
 // INTEL DOSSIER SYSTEM - JavaScript Controller
 // =========================================================
 
@@ -128,8 +128,8 @@ function showDossierDetail(d) {
     document.getElementById('dossierEmptyState').style.display = 'none';
     document.getElementById('dossierDetailView').style.display = 'block';
 
-    // Header
-    document.getElementById('dossierCallsign').textContent = d.callsign || '-';
+    // Header - show full name for primary targets, callsign for others
+    document.getElementById('dossierCallsign').textContent = (d.category === 'primary' && d.full_name) ? d.full_name : (d.callsign || '-');
     const statusIcon = document.getElementById('dossierStatusIcon');
     if (d.status === 'CAPTURED') {
         statusIcon.innerHTML = '<i class="fas fa-lock" style="color:#00cc44;"></i>';
@@ -375,7 +375,40 @@ document.querySelectorAll('#dossierSubNav .dossier-nav-item').forEach(item => {
     item.addEventListener('click', function () {
         document.querySelectorAll('#dossierSubNav .dossier-nav-item').forEach(i => i.classList.remove('active'));
         this.classList.add('active');
+        const view = this.getAttribute('data-view');
+        if (view === 'dossiers') {
+            // Stay on INTEL tab - show dossier panels
+            document.querySelector('.dossier-middle')?.style.setProperty('display', '');
+            document.querySelector('.dossier-right')?.style.setProperty('display', '');
+        } else {
+            // Switch to OPS HUB tab and scroll to section
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabBtns.forEach(b => b.classList.remove('active'));
+            tabContents.forEach(t => t.classList.remove('active'));
+            const opsBtn = document.querySelector('[data-tab="opshub"]');
+            if (opsBtn) opsBtn.classList.add('active');
+            const opsTab = document.getElementById('tab-opshub');
+            if (opsTab) opsTab.classList.add('active');
+            // Also update sidebar
+            document.querySelectorAll('.sidebar-nav .nav-item').forEach(n => n.classList.remove('active'));
+            document.querySelector('.sidebar-nav [data-tab="opshub"]')?.classList.add('active');
+        }
     });
+});
+
+// ---- MRS SWITCH button ----
+document.getElementById('btnMrsSortie')?.addEventListener('click', function() {
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+    tabBtns.forEach(b => b.classList.remove('active'));
+    tabContents.forEach(t => t.classList.remove('active'));
+    const opsBtn = document.querySelector('.tab-btn[data-tab="opshub"]');
+    if (opsBtn) opsBtn.classList.add('active');
+    const opsTab = document.getElementById('tab-opshub');
+    if (opsTab) opsTab.classList.add('active');
+    document.querySelectorAll('.sidebar-nav .nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelector('.sidebar-nav [data-tab="opshub"]')?.classList.add('active');
 });
 
 // ---- Save button ----
@@ -466,10 +499,11 @@ async function seedDossiersIfEmpty() {
             console.error('[DOSSIER SEED] API not returning JSON - cannot seed:', text.substring(0, 500));
             return;
         }
-        // Check if data already matches the FULL Arkerian narrative (v2 with 24 dossiers)
+        // Check if data already matches the Arkerian narrative v3 (22 dossiers, no RAVEN/WARLORD)
         if (d.success && d.data && d.data.length > 0) {
-            const hasMarshal = d.data.some(x => x.callsign === 'MARSHAL');
-            if (hasMarshal && d.data.length >= 20) { console.log('[DOSSIER SEED] Already seeded with Arkerian data v2'); return; }
+            const hasCleanser = d.data.some(x => x.callsign === 'CLEANSER');
+            const hasRaven = d.data.some(x => x.callsign === 'RAVEN');
+            if (hasCleanser && !hasRaven && d.data.length >= 18) { console.log('[DOSSIER SEED] Already seeded with Arkerian data v3'); return; }
             // Old data exists - reset first
             console.log('[DOSSIER SEED] Old data found, resetting...');
             const rr = await fetch(DOSSIER_API + '?action=reset', {
@@ -490,9 +524,9 @@ async function seedDossiersIfEmpty() {
         status: 'AT LARGE',
         task_directive: 'CAPTURE/KILL',
         last_loi: 'AO1 - Presidential Palace, Arkeria Capital',
-        grid_ref: '037 085',
+        grid_ref: 'N/A',
         asset_tag: 'HVT-001',
-        photo_url: 'assets/img/intel/HVT/20260508224440_1.jpg',
+        photo_url: 'assets/img/intel/HVT/20260508231651_1.jpg',
         stat_ma: '9.8',
         stat_fog: '8.5',
         stat_fr: '3.0',
@@ -518,57 +552,6 @@ async function seedDossiersIfEmpty() {
     },
     // ============ SECONDARY - PERSONNEL ============
     {
-        callsign: 'RAVEN',
-        full_name: 'Unknown - Presidential Guard Commander (Red Beret)',
-        category: 'secondary',
-        threat_level: 'HIGH',
-        status: 'AT LARGE',
-        task_directive: 'CAPTURE',
-        last_loi: 'AO1 - Presidential Palace Perimeter',
-        grid_ref: '037 086',
-        asset_tag: 'HVT-002',
-        photo_url: 'assets/img/intel/HVT/20260508224743_1.jpg',
-        stat_ma: '8.5',
-        stat_fog: '7.0',
-        stat_fr: '5.5',
-        stat_int: '7.8',
-        summary: [
-            'RAVEN is the commander of the Arkerian Presidential Guard (APG) - identified by the distinctive RED BERET. Always photographed within arm\'s reach of SOVEREIGN.',
-            'HUMINT indicates RAVEN personally coordinates all security movement for Donald III, including safe-house rotations and escape routes. Controls access to Palace. Manages 40-60 man close protection detail.',
-            'Believed to have direct knowledge of where IDAP hostages are held. Capturing RAVEN alive is critical - he is the gatekeeper to SOVEREIGN.',
-            '- PROFILE -',
-            'Identity: UNKNOWN (no biometric match in databases)',
-            'Estimated Age: 35-40 | Build: Athletic, ~178 cm',
-            'Distinguishing: Red beret, carries scoped rifle. Eastern European tactical gear.',
-            'Assessment: Former special forces. Highly trained personal security operator.'
-        ].join('\n')
-    },
-    {
-        callsign: 'WARLORD',
-        full_name: 'Unknown - Senior Military Commander',
-        category: 'secondary',
-        threat_level: 'HIGH',
-        status: 'AT LARGE',
-        task_directive: 'CAPTURE/KILL',
-        last_loi: 'AO1 - Forward Operating Base',
-        grid_ref: '039 082',
-        asset_tag: 'HVT-003',
-        photo_url: 'assets/img/intel/HVT/20260508224902_1.jpg',
-        stat_ma: '8.0',
-        stat_fog: '6.5',
-        stat_fr: '7.0',
-        stat_int: '7.5',
-        summary: [
-            'WARLORD is a senior military commander observed briefing troops at a forward operating base. HUMINT imagery shows SOVEREIGN (Donald III) personally visiting this location to issue orders.',
-            'The base compound includes barracks, vehicle staging area, and is surrounded by residential structures - indicating use of civilian areas as military staging grounds.',
-            'WARLORD commands an estimated battalion-strength force (300-500 personnel). His troops wear standard Arkerian woodland camouflage with steel helmets.',
-            '- PROFILE -',
-            'Identity: UNKNOWN | Estimated Age: 45-55 | Build: Medium',
-            'Distinguishing: Wears standard field uniform with beret/cap. Observed giving orders to multiple subordinates.',
-            'Assessment: Senior field-grade officer, likely Colonel or Brigadier. Key C2 node - neutralizing WARLORD would disrupt AO1 ground forces.'
-        ].join('\n')
-    },
-    {
         callsign: 'MARSHAL',
         full_name: 'Unknown - Troop Formation Commander',
         category: 'secondary',
@@ -576,7 +559,7 @@ async function seedDossiersIfEmpty() {
         status: 'AT LARGE',
         task_directive: 'IDENTIFY',
         last_loi: 'AO1 - Port District / Staging Area',
-        grid_ref: '041 078',
+        grid_ref: 'N/A',
         asset_tag: 'HVT-004',
         photo_url: 'assets/img/intel/HVT/20260508224910_1.jpg',
         stat_ma: '7.0',
@@ -602,7 +585,7 @@ async function seedDossiersIfEmpty() {
         status: 'AT LARGE',
         task_directive: 'CAPTURE/KILL',
         last_loi: 'AO1-AO2 - Rural Sector',
-        grid_ref: '048 071',
+        grid_ref: 'N/A',
         asset_tag: 'HVT-005',
         photo_url: 'assets/img/intel/Civil%20War/20260508224931_1.jpg',
         stat_ma: '7.5',
@@ -627,7 +610,7 @@ async function seedDossiersIfEmpty() {
         status: 'ACTIVE',
         task_directive: 'NEUTRALIZE',
         last_loi: 'AO1 - Main Airfield Complex',
-        grid_ref: '040 080',
+        grid_ref: 'N/A',
         asset_tag: 'SEC-006',
         photo_url: 'assets/img/intel/Civil%20War/20260508230624_1.jpg',
         stat_ma: '6.5',
@@ -654,7 +637,7 @@ async function seedDossiersIfEmpty() {
         status: 'ACTIVE',
         task_directive: 'PHASE 1 TARGET',
         last_loi: 'AO1 - Central Logistics Area',
-        grid_ref: '038 083',
+        grid_ref: 'N/A',
         asset_tag: 'OBJ-001',
         photo_url: 'assets/img/intel/AO1/20260508225135_1.jpg',
         stat_ma: '5.0',
@@ -676,7 +659,7 @@ async function seedDossiersIfEmpty() {
         status: 'ACTIVE',
         task_directive: 'PHASE 1 TARGET',
         last_loi: 'AO1 - Primary Airfield',
-        grid_ref: '036 084',
+        grid_ref: 'N/A',
         asset_tag: 'OBJ-002',
         photo_url: 'assets/img/intel/AO1/20260508225140_1.jpg',
         stat_ma: '7.0',
@@ -698,7 +681,7 @@ async function seedDossiersIfEmpty() {
         status: 'ACTIVE',
         task_directive: 'PHASE 1 TARGET',
         last_loi: 'AO1 - Control Tower Sector',
-        grid_ref: '035 084',
+        grid_ref: 'N/A',
         asset_tag: 'OBJ-003',
         photo_url: 'assets/img/intel/AO1/20260508225146_1.jpg',
         stat_ma: '4.5',
@@ -719,7 +702,7 @@ async function seedDossiersIfEmpty() {
         status: 'ACTIVE',
         task_directive: 'PHASE 1 TARGET',
         last_loi: 'AO1 - Radar Dome Complex',
-        grid_ref: '037 081',
+        grid_ref: 'N/A',
         asset_tag: 'OBJ-004',
         photo_url: 'assets/img/intel/AO1/20260508225151_1.jpg',
         stat_ma: '6.0',
@@ -741,7 +724,7 @@ async function seedDossiersIfEmpty() {
         status: 'ACTIVE',
         task_directive: 'RECON',
         last_loi: 'AO1 - Secondary Airstrip',
-        grid_ref: '034 082',
+        grid_ref: 'N/A',
         asset_tag: 'OBJ-005',
         photo_url: 'assets/img/intel/AO1/20260508225201_1.jpg',
         stat_ma: '4.0',
@@ -762,7 +745,7 @@ async function seedDossiersIfEmpty() {
         status: 'ACTIVE',
         task_directive: 'BYPASS',
         last_loi: 'AO1 - Main Supply Route',
-        grid_ref: '042 083',
+        grid_ref: 'N/A',
         asset_tag: 'OBJ-006',
         photo_url: 'assets/img/intel/AO1/20260508225207_1.jpg',
         stat_ma: '3.5',
@@ -783,7 +766,7 @@ async function seedDossiersIfEmpty() {
         status: 'ACTIVE',
         task_directive: 'PHASE 1 TARGET',
         last_loi: 'AO1 - Industrial Hangar',
-        grid_ref: '039 084',
+        grid_ref: 'N/A',
         asset_tag: 'OBJ-007',
         photo_url: 'assets/img/intel/AO1/20260508225220_1.jpg',
         stat_ma: '6.0',
@@ -805,7 +788,7 @@ async function seedDossiersIfEmpty() {
         status: 'ACTIVE',
         task_directive: 'INTERDICT',
         last_loi: 'AO1 - Southern MSR',
-        grid_ref: '038 079',
+        grid_ref: 'N/A',
         asset_tag: 'OBJ-008',
         photo_url: 'assets/img/intel/AO1/20260508225239_1.jpg',
         stat_ma: '3.0',
@@ -826,7 +809,7 @@ async function seedDossiersIfEmpty() {
         status: 'ACTIVE',
         task_directive: 'PHASE 1 TARGET',
         last_loi: 'AO1 - Sandbagged Emplacement',
-        grid_ref: '036 080',
+        grid_ref: 'N/A',
         asset_tag: 'OBJ-009',
         photo_url: 'assets/img/intel/AO1/20260508225244_1.jpg',
         stat_ma: '5.5',
@@ -847,7 +830,7 @@ async function seedDossiersIfEmpty() {
         status: 'ACTIVE',
         task_directive: 'PHASE 2 TARGET',
         last_loi: 'AO1 - Central Military Compound',
-        grid_ref: '037 082',
+        grid_ref: 'N/A',
         asset_tag: 'OBJ-010',
         photo_url: 'assets/img/intel/AO1/20260508225304_1.jpg',
         stat_ma: '7.0',
@@ -870,7 +853,7 @@ async function seedDossiersIfEmpty() {
         status: 'ACTIVE',
         task_directive: 'PHASE 3 TARGET',
         last_loi: 'AO2 - Urban Center',
-        grid_ref: '055 062',
+        grid_ref: 'N/A',
         asset_tag: 'OBJ-011',
         photo_url: 'assets/img/intel/AO2/20260508224800_1.jpg',
         stat_ma: '7.5',
@@ -892,7 +875,7 @@ async function seedDossiersIfEmpty() {
         status: 'ACTIVE',
         task_directive: 'PHASE 2 TARGET',
         last_loi: 'AO2 - Eastern Industrial Sector',
-        grid_ref: '057 065',
+        grid_ref: 'N/A',
         asset_tag: 'OBJ-012',
         photo_url: 'assets/img/intel/AO2/20260508224808_1.jpg',
         stat_ma: '5.0',
@@ -913,7 +896,7 @@ async function seedDossiersIfEmpty() {
         status: 'ACTIVE',
         task_directive: 'NEUTRALIZE',
         last_loi: 'AO2 - Northern Approach Road',
-        grid_ref: '054 068',
+        grid_ref: 'N/A',
         asset_tag: 'OBJ-013',
         photo_url: 'assets/img/intel/AO2/20260508224816_1.jpg',
         stat_ma: '4.0',
@@ -934,7 +917,7 @@ async function seedDossiersIfEmpty() {
         status: 'ACTIVE',
         task_directive: 'RECON',
         last_loi: 'AO2 - Western Industrial Area',
-        grid_ref: '053 063',
+        grid_ref: 'N/A',
         asset_tag: 'OBJ-014',
         photo_url: 'assets/img/intel/AO2/20260508224819_1.jpg',
         stat_ma: '4.5',
@@ -956,7 +939,7 @@ async function seedDossiersIfEmpty() {
         status: 'ACTIVE',
         task_directive: 'RECON',
         last_loi: 'AO2 - Coastal Sector',
-        grid_ref: '058 060',
+        grid_ref: 'N/A',
         asset_tag: 'OBJ-015',
         photo_url: 'assets/img/intel/AO2/20260508224828_1.jpg',
         stat_ma: '3.0',
@@ -978,7 +961,7 @@ async function seedDossiersIfEmpty() {
         status: 'DOCUMENTED',
         task_directive: 'EVIDENCE',
         last_loi: 'AO1-AO2 Border - Rural Village',
-        grid_ref: '045 073',
+        grid_ref: 'N/A',
         asset_tag: 'EVD-001',
         photo_url: 'assets/img/intel/Civil%20War/20260508224924_1.jpg',
         stat_ma: '2.0',
@@ -1000,7 +983,7 @@ async function seedDossiersIfEmpty() {
         status: 'DOCUMENTED',
         task_directive: 'EVIDENCE',
         last_loi: 'AO1-AO2 Border - Rural Road',
-        grid_ref: '046 072',
+        grid_ref: 'N/A',
         asset_tag: 'EVD-002',
         photo_url: 'assets/img/intel/Civil%20War/20260508224951_1.jpg',
         stat_ma: '2.0',
@@ -1021,7 +1004,7 @@ async function seedDossiersIfEmpty() {
         status: 'DOCUMENTED',
         task_directive: 'EVIDENCE',
         last_loi: 'AO1 - Rural Patrol Route',
-        grid_ref: '043 075',
+        grid_ref: 'N/A',
         asset_tag: 'EVD-003',
         photo_url: 'assets/img/intel/Civil%20War/20260508230624_1.jpg',
         stat_ma: '3.0',
@@ -1043,7 +1026,7 @@ async function seedDossiersIfEmpty() {
         status: 'DOCUMENTED',
         task_directive: 'EVIDENCE',
         last_loi: 'AO1 - Rural Checkpoint',
-        grid_ref: '044 074',
+        grid_ref: 'N/A',
         asset_tag: 'EVD-004',
         photo_url: 'assets/img/intel/Civil%20War/20260508230641_1.jpg',
         stat_ma: '3.0',
@@ -1064,7 +1047,7 @@ async function seedDossiersIfEmpty() {
         status: 'DOCUMENTED',
         task_directive: 'EVIDENCE',
         last_loi: 'AO2 - Town Courtyard',
-        grid_ref: '056 063',
+        grid_ref: 'N/A',
         asset_tag: 'EVD-005',
         photo_url: 'assets/img/intel/Proof%20of%20the%20IDAP%20Killing/20260508225038_1.jpg',
         stat_ma: '2.0',
@@ -1086,7 +1069,7 @@ async function seedDossiersIfEmpty() {
         status: 'DOCUMENTED',
         task_directive: 'EVIDENCE',
         last_loi: 'AO2 - Church Square',
-        grid_ref: '055 064',
+        grid_ref: 'N/A',
         asset_tag: 'EVD-006',
         photo_url: 'assets/img/intel/Proof%20of%20the%20IDAP%20Killing/20260508225050_1.jpg',
         stat_ma: '2.0',
@@ -1107,7 +1090,7 @@ async function seedDossiersIfEmpty() {
         status: 'DOCUMENTED',
         task_directive: 'CASUS BELLI',
         last_loi: 'Unknown - Detention Facility',
-        grid_ref: 'UNKNOWN',
+        grid_ref: 'N/A',
         asset_tag: 'EVD-007',
         photo_url: 'assets/img/intel/Proof%20of%20the%20IDAP%20Killing/20260508225104_1.jpg',
         stat_ma: '1.0',
@@ -1130,7 +1113,7 @@ async function seedDossiersIfEmpty() {
         status: 'DOCUMENTED',
         task_directive: 'CASUS BELLI',
         last_loi: 'Unknown - Detention Facility',
-        grid_ref: 'UNKNOWN',
+        grid_ref: 'N/A',
         asset_tag: 'EVD-008',
         photo_url: 'assets/img/intel/Proof%20of%20the%20IDAP%20Killing/20260508230703_1.jpg',
         stat_ma: '1.0',
@@ -1178,6 +1161,8 @@ let lightboxIndex = 0;
 // Image folder mapping for gallery browsing
 const INTEL_IMAGE_FOLDERS = {
     'HVT': [
+        'assets/img/intel/HVT/20260508231651_1.jpg',
+        'assets/img/intel/HVT/20260508225022_1.jpg',
         'assets/img/intel/HVT/20260508224440_1.jpg',
         'assets/img/intel/HVT/20260508224743_1.jpg',
         'assets/img/intel/HVT/20260508224902_1.jpg',
