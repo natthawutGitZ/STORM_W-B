@@ -13,6 +13,7 @@ require_once ROOT_PATH . '/includes/db.php';
 <link href="https://db.onlinewebfonts.com/c/1a44ef13187871a0b1e1c0e4abfa563e?family=FC+Mittraphap+Rounded" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/intelligence.css">
 <link rel="stylesheet" href="assets/css/intel-dossier.css">
+<link rel="stylesheet" href="assets/css/deployment.css">
 <!-- Leaflet CSS & JS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
@@ -38,11 +39,12 @@ require_once ROOT_PATH . '/includes/db.php';
   <nav class="sidebar-nav">
     <a class="nav-item active" data-tab="opshub"><i class="fas fa-crosshairs"></i><span>OPS HUB</span></a>
     <a class="nav-item" data-tab="intel"><i class="fas fa-file-shield"></i><span>INTEL</span></a>
+    <a class="nav-item" data-tab="unit"><i class="fas fa-users"></i><span>DEPLOYMENT</span></a>
     <a class="nav-item" data-tab="sorties"><i class="fas fa-map"></i><span>INTELLIGENCE MAP</span></a>
   </nav>
   <div class="sidebar-ops" id="sidebarOps">
-    <div class="sidebar-ops-title"><i class="fas fa-layer-group"></i> ACTIVE OPS</div>
-    <div id="sidebarOpsList"></div>
+    <div class="sidebar-ops-title"><i class="fas fa-users"></i> PERSONNEL DEPLOYMENT</div>
+    <div id="sidebarDeployList" class="sidebar-deploy-stats"></div>
   </div>
   <div class="sidebar-footer">
     <div class="sidebar-clock" id="clock"></div>
@@ -57,6 +59,7 @@ require_once ROOT_PATH . '/includes/db.php';
     <div class="topbar-tabs">
       <button class="tab-btn active" data-tab="opshub">OPS HUB</button>
       <button class="tab-btn" data-tab="intel">INTEL FEED</button>
+      <button class="tab-btn" data-tab="unit">DEPLOYMENT</button>
       <button class="tab-btn" data-tab="sorties">INTELLIGENCE MAP</button>
     </div>
     <div class="topbar-right">
@@ -346,6 +349,61 @@ require_once ROOT_PATH . '/includes/db.php';
     <button class="intel-lightbox-nav next" id="lightboxNext" onclick="navigateLightbox(1)"><i class="fas fa-chevron-right"></i></button>
     <div class="intel-lightbox-img-wrap">
       <img id="lightboxImg" src="" alt="">
+    </div>
+  </div>
+
+  <!-- TAB: DEPLOYMENT -->
+  <section class="tab-content" id="tab-unit">
+    <div class="deploy-container">
+      <!-- Header -->
+      <div class="deploy-header">
+        <div class="deploy-header-left">
+          <i class="fas fa-users-gear"></i>
+          <div>
+            <div class="deploy-header-title">PERSONNEL DEPLOYMENT STATUS</div>
+            <div class="deploy-header-subtitle">OPERATION STORMSURGE — ROLE ASSIGNMENT</div>
+          </div>
+        </div>
+        <div class="deploy-stats-box">
+          <div class="deploy-stat">
+            <div class="deploy-stat-num" id="deployFilledCount">0</div>
+            <div class="deploy-stat-label">DEPLOYED</div>
+          </div>
+          <div class="deploy-stat">
+            <div class="deploy-stat-num" id="deployTotalCount">0</div>
+            <div class="deploy-stat-label">TOTAL SLOTS</div>
+          </div>
+          <button class="deploy-btn-reset" onclick="resetDeployment()" title="Clear all assignments (Admin)">
+            <i class="fas fa-rotate-left"></i> RESET ALL
+          </button>
+        </div>
+      </div>
+      <!-- Unit Cards -->
+      <div id="deployUnitList"></div>
+    </div>
+  </section>
+
+  <!-- MODAL: SIGNUP -->
+  <div class="signup-modal-overlay" id="signupModal">
+    <div class="signup-modal">
+      <div class="signup-modal-header">
+        <span><i class="fas fa-user-plus" style="margin-right:8px;"></i>SIGN UP</span>
+        <button class="signup-modal-close" onclick="closeSignupModal()">&times;</button>
+      </div>
+      <div class="signup-modal-body">
+        <div class="signup-modal-info">ASSIGNING TO ROLE:</div>
+        <div class="signup-modal-role" id="signupRoleName"></div>
+        <div class="signup-modal-unit" id="signupUnitName"></div>
+        <input type="text" class="signup-input" id="signupPlayerInput" 
+               placeholder="Enter your callsign / name..." 
+               autocomplete="off" maxlength="50">
+      </div>
+      <div class="signup-modal-footer">
+        <button class="signup-modal-btn cancel" onclick="closeSignupModal()">CANCEL</button>
+        <button class="signup-modal-btn confirm" onclick="confirmSignup()">
+          <i class="fas fa-check"></i> CONFIRM
+        </button>
+      </div>
     </div>
   </div>
 
@@ -975,6 +1033,7 @@ require_once ROOT_PATH . '/includes/db.php';
 </main>
 
 <script src="assets/js/intelligence.js"></script>
+<script src="assets/js/deployment.js"></script>
 <script src="assets/js/intel-dossier.js"></script>
 </body>
 </html>

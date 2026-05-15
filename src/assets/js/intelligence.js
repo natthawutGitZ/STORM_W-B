@@ -93,8 +93,11 @@ function switchTab(tab){
 document.querySelectorAll('.tab-btn,.nav-item').forEach(btn=>{
   btn.addEventListener('click',()=>switchTab(btn.dataset.tab));
 });
-// Restore last active tab on page load
+// Restore tab on page load — URL param takes priority
 (function(){
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlTab = urlParams.get('tab');
+  if (urlTab) { switchTab(urlTab); return; }
   const saved=localStorage.getItem('intel_active_tab');
   if(saved) switchTab(saved);
 })();
@@ -108,14 +111,11 @@ async function loadOps(){
   const r=await fetch(API+'?action=list&type=operations'),d=await r.json();
   if(!d.success)return;
   document.getElementById('opCount').textContent=d.data.length;
-  const sb=document.getElementById('sidebarOpsList');
   const sortiesList=document.getElementById('briefSortiesList');
   if(!d.data.length){
-    sb.innerHTML='';
     sortiesList.innerHTML='<div style="color:#666;font-family:var(--mono);font-size:.75rem;padding:12px;">NO ACTIVE SORTIES</div>';
     return;
   }
-  sb.innerHTML=d.data.map(o=>`<div class="sop-item"><div>${esc(o.codename)}</div><div class="sop-status tag-${o.status.toLowerCase()}" style="color:inherit">${o.status}</div></div>`).join('');
   sortiesList.innerHTML=d.data.map(o=>`
     <div class="brief-sortie-row" ondblclick="openEditModal('operations',${o.id})">
       <div class="brief-sortie-name"><i class="fas fa-chevron-right"></i> ${esc(o.codename)}</div>
