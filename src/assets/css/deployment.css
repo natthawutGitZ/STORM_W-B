@@ -458,3 +458,118 @@
   .slot-player { min-width: 100px; font-size: .65rem; }
   .unit-name { font-size: .8rem; }
 }
+
+/* =========================================================
+   EDIT MODE STYLES
+   ========================================================= */
+
+.deploy-action-btn {
+  background: none;
+  font-family: var(--mono);
+  font-size: .65rem;
+  padding: 6px 14px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all .2s;
+  letter-spacing: 1px;
+}
+
+.deploy-btn-edit {
+  border: 1px solid rgba(255,170,0,0.3);
+  color: #ffaa00;
+}
+.deploy-btn-edit:hover {
+  background: rgba(255,170,0,0.1);
+  border-color: #ffaa00;
+  box-shadow: 0 0 12px rgba(255,170,0,0.2);
+}
+
+.deploy-btn-exit {
+  border: 1px solid rgba(0,255,65,0.3);
+  color: #00ff41;
+}
+.deploy-btn-exit:hover {
+  background: rgba(0,255,65,0.1);
+  border-color: #00ff41;
+  box-shadow: 0 0 12px rgba(0,255,65,0.2);
+}
+
+.unit-edit-btn, .unit-del-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: .75rem;
+  transition: color .2s, transform .2s;
+  padding: 4px;
+}
+.unit-edit-btn { color: #888; }
+.unit-edit-btn:hover { color: #ffaa00; transform: scale(1.2); }
+.unit-del-btn { color: #888; }
+.unit-del-btn:hover { color: #ff4c66; transform: scale(1.2); }
+
+.edit-role-btn {
+  background: rgba(255,170,0,0.08);
+  color: #ffaa00;
+  border: 1px solid rgba(255,170,0,0.2);
+}
+.edit-role-btn:hover {
+  background: rgba(255,170,0,0.2);
+  box-shadow: 0 0 10px rgba(255,170,0,0.3);
+  transform: scale(1.1);
+}
+
+.del-role-btn {
+  background: rgba(255,76,102,0.08);
+  color: #ff4c66;
+  border: 1px solid rgba(255,76,102,0.2);
+}
+.del-role-btn:hover {
+  background: rgba(255,76,102,0.2);
+  box-shadow: 0 0 10px rgba(255,76,102,0.3);
+  transform: scale(1.1);
+}
+
+.add-role-row {
+  padding: 0;
+  border-bottom: none;
+  display: flex;
+  justify-content: flex-end;
+}
+.add-role-btn {
+  background: rgba(0,255,65,0.04);
+  border: none;
+  border-top: 1px dashed rgba(0,255,65,0.2);
+  color: #00ff41;
+  font-family: var(--mono);
+  font-size: .65rem;
+  width: 100%;
+  padding: 8px;
+  cursor: pointer;
+  transition: all .2s;
+  letter-spacing: 1px;
+}
+.add-role-btn:hover {
+  background: rgba(0,255,65,0.1);
+  text-shadow: 0 0 8px rgba(0,255,65,0.4);
+}
+
+.add-unit-btn {
+  display: block;
+  width: 100%;
+  background: rgba(0,255,65,0.05);
+  border: 1px dashed rgba(0,255,65,0.3);
+  color: #00ff41;
+  font-family: var(--heading);
+  font-size: .9rem;
+  padding: 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all .2s;
+  letter-spacing: 2px;
+  margin-top: 16px;
+}
+.add-unit-btn:hover {
+  background: rgba(0,255,65,0.15);
+  border-color: #00ff41;
+  box-shadow: 0 0 16px rgba(0,255,65,0.2);
+}

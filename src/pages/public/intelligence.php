@@ -42,7 +42,7 @@ require_once ROOT_PATH . '/includes/db.php';
     <a class="nav-item" data-tab="sorties"><i class="fas fa-map"></i><span>INTELLIGENCE MAP</span></a>
   </nav>
   <div class="sidebar-ops" id="sidebarOps" style="padding-top: 10px;">
-    <a class="nav-item" data-tab="unit"><i class="fas fa-users"></i><span>PERSONNEL DEPLOYMENT</span></a>
+    <a class="nav-item" data-tab="unit"><i class="fas fa-users"></i><span>DEPLOYMENT</span></a>
   </div>
   <div class="sidebar-footer">
     <div class="sidebar-clock" id="clock"></div>
