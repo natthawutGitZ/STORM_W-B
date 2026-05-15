@@ -185,28 +185,7 @@ async function resetDeployment() {
 
 // ---- Sidebar Summary ----
 function renderSidebarDeployment() {
-    const el = document.getElementById('sidebarDeployList');
-    if (!el) return;
-
-    let totalSlots = 0, totalFilled = 0;
-
-    el.innerHTML = deployData.map(u => {
-        const filled = u.slots.filter(s => s.player_name).length;
-        const total = u.slots.length;
-        totalSlots += total;
-        totalFilled += filled;
-        // Shorten name for sidebar
-        const shortName = u.unit_name.replace(/\s*\[.*?\]\s*/g, '').substring(0, 16);
-        return `<div class="sidebar-deploy-item">
-            <span class="unit-short">${escDep(shortName)}</span>
-            <span class="count ${filled === 0 ? 'empty' : ''}">${filled}/${total}</span>
-        </div>`;
-    }).join('');
-
-    el.innerHTML += `<div class="sidebar-deploy-total">
-        <span>TOTAL</span>
-        <span class="total-num">${totalFilled} / ${totalSlots}</span>
-    </div>`;
+    // Intentionally empty: sidebar detailed list was replaced by a single button.
 }
 
 // ---- Auto-refresh ----
