@@ -245,20 +245,24 @@ function showDossierDetail(d) {
 
 // ---- Modal: Create / Edit ----
 function openDossierModal(category) {
-    dossierEditId = null;
-    document.getElementById('dossierModalTitle').textContent = 'CREATE ASSET DOSSIER';
-    clearDossierForm();
-    if (category) document.getElementById('df_category').value = category;
-    document.getElementById('dossierModal').classList.add('show');
+    requireAuth(function() {
+        dossierEditId = null;
+        document.getElementById('dossierModalTitle').textContent = 'CREATE ASSET DOSSIER';
+        clearDossierForm();
+        if (category) document.getElementById('df_category').value = category;
+        document.getElementById('dossierModal').classList.add('show');
+    });
 }
 
 function openDossierEditModal(id) {
-    const d = allDossiers.find(x => x.id == id);
-    if (!d) return;
-    dossierEditId = id;
-    document.getElementById('dossierModalTitle').textContent = 'EDIT DOSSIER - ' + (d.callsign || '').toUpperCase();
-    fillDossierForm(d);
-    document.getElementById('dossierModal').classList.add('show');
+    requireAuth(function() {
+        const d = allDossiers.find(x => x.id == id);
+        if (!d) return;
+        dossierEditId = id;
+        document.getElementById('dossierModalTitle').textContent = 'EDIT DOSSIER - ' + (d.callsign || '').toUpperCase();
+        fillDossierForm(d);
+        document.getElementById('dossierModal').classList.add('show');
+    });
 }
 
 function closeDossierModal() {
@@ -310,7 +314,7 @@ async function saveDossier() {
         return;
     }
 
-    const body = { password: 'S2', fields: data };
+    const body = { password: getAuthPass(), fields: data };
     let action = 'create';
     if (dossierEditId) {
         body.id = dossierEditId;
@@ -348,7 +352,7 @@ async function deleteDossier(id) {
         const r = await fetch(DOSSIER_API + '?action=delete', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password: 'S2', id })
+            body: JSON.stringify({ password: getAuthPass(), id })
         });
         const d = await r.json();
         if (d.success) {
@@ -489,7 +493,7 @@ async function seedDossiersIfEmpty() {
             const rr = await fetch(DOSSIER_API + '?action=reset', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password: 'S2' })
+                body: JSON.stringify({ password: getAuthPass() || 'Storm888' })
             });
             console.log('[DOSSIER SEED] Reset response:', await rr.text());
         }

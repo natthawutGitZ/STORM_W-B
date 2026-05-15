@@ -3,7 +3,7 @@ define('ROOT_PATH', dirname(__DIR__));
 require_once ROOT_PATH . '/includes/db.php';
 header('Content-Type: application/json');
 
-$S2_PASS = 'S2';
+$S2_PASS = 'Storm888';
 
 // Auto-create dossier table
 try {

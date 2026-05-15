@@ -1,6 +1,54 @@
 const API='api/intelligence.php';
 let editState={};
 
+// ---- S2 AUTHORIZATION GATE ----
+let _authPass = sessionStorage.getItem('s2_auth') || '';
+let _authCallback = null;
+
+function getAuthPass() { return _authPass; }
+function isAuthed() { return !!_authPass; }
+
+function requireAuth(callback) {
+    if (isAuthed()) { callback(); return; }
+    _authCallback = callback;
+    document.getElementById('authPassInput').value = '';
+    document.getElementById('authError').style.display = 'none';
+    document.getElementById('authModal').classList.add('show');
+    setTimeout(() => document.getElementById('authPassInput').focus(), 200);
+}
+
+function submitAuth() {
+    const pass = document.getElementById('authPassInput').value;
+    if (!pass) return;
+    // Validate by making a test request to the API
+    fetch(API + '?action=create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pass, type: 'operations', fields: {} })
+    }).then(r => {
+        if (r.status === 403) {
+            document.getElementById('authError').style.display = 'block';
+            document.getElementById('authPassInput').value = '';
+            document.getElementById('authPassInput').style.borderColor = '#ff4c66';
+            setTimeout(() => { document.getElementById('authPassInput').style.borderColor = '#333'; }, 1500);
+            return;
+        }
+        // Auth success — store password
+        _authPass = pass;
+        sessionStorage.setItem('s2_auth', pass);
+        closeModal('authModal');
+        if (_authCallback) { _authCallback(); _authCallback = null; }
+    }).catch(() => {
+        document.getElementById('authError').style.display = 'block';
+    });
+}
+
+// Enter key support for auth modal
+document.addEventListener('DOMContentLoaded', function() {
+    var inp = document.getElementById('authPassInput');
+    if (inp) inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') submitAuth(); });
+});
+
 // Clock
 function updateClock(){
   const d=new Date(),z=n=>String(n).padStart(2,'0');
@@ -129,15 +177,17 @@ async function loadBrief(){
 }
 
 function toggleBriefEdit(){
-  const editor=document.getElementById('briefOpordEditor');
-  const content=document.getElementById('briefOpordContent');
-  if(editor.style.display==='none'){
-    editor.style.display='block';
-    content.style.display='none';
-    document.getElementById('briefOpordText').value=content.innerText.trim()==='No operation order loaded. Click EDIT OPORD to add briefing content.'?'':content.innerText;
-  }else{
-    cancelBriefEdit();
-  }
+  requireAuth(function() {
+    const editor=document.getElementById('briefOpordEditor');
+    const content=document.getElementById('briefOpordContent');
+    if(editor.style.display==='none'){
+      editor.style.display='block';
+      content.style.display='none';
+      document.getElementById('briefOpordText').value=content.innerText.trim()==='No operation order loaded. Click EDIT OPORD to add briefing content.'?'':content.innerText;
+    }else{
+      cancelBriefEdit();
+    }
+  });
 }
 
 function cancelBriefEdit(){
@@ -148,7 +198,7 @@ function cancelBriefEdit(){
 async function saveBrief(){
   const opord=document.getElementById('briefOpordText').value;
   try{
-    await fetch(API+'?action=save_brief',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({opord})});
+    await fetch(API+'?action=save_brief',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({opord,password:getAuthPass()})});
     document.getElementById('briefOpordContent').innerHTML=opord?'<p>'+esc(opord).replace(/\n/g,'</p><p>')+'</p>':'<p class="brief-placeholder">No operation order loaded.</p>';
     cancelBriefEdit();
   }catch(e){alert('Failed to save');}
@@ -186,37 +236,43 @@ function buildForm(type,data){
 }
 
 function openCreateModal(type){
-  editState={type,id:null};
-  document.getElementById('editTitle').textContent='CREATE — '+type.toUpperCase();
-  document.getElementById('editBody').innerHTML=buildForm(type,null);
-  document.getElementById('editSave').onclick=()=>saveItem();
-  document.getElementById('editModal').classList.add('show');
+  requireAuth(function() {
+    editState={type,id:null};
+    document.getElementById('editTitle').textContent='CREATE — '+type.toUpperCase();
+    document.getElementById('editBody').innerHTML=buildForm(type,null);
+    document.getElementById('editSave').onclick=()=>saveItem();
+    document.getElementById('editModal').classList.add('show');
+  });
 }
 
 async function openEditModal(type,id){
-  const r=await fetch(API+'?action=list&type='+type),d=await r.json();
-  const item=d.data.find(x=>x.id==id);if(!item)return;
-  editState={type,id};
-  document.getElementById('editTitle').textContent='EDIT — '+type.toUpperCase();
-  document.getElementById('editBody').innerHTML=buildForm(type,item);
-  document.getElementById('editSave').onclick=()=>saveItem();
-  document.getElementById('editModal').classList.add('show');
+  requireAuth(async function() {
+    const r=await fetch(API+'?action=list&type='+type),d=await r.json();
+    const item=d.data.find(x=>x.id==id);if(!item)return;
+    editState={type,id};
+    document.getElementById('editTitle').textContent='EDIT — '+type.toUpperCase();
+    document.getElementById('editBody').innerHTML=buildForm(type,item);
+    document.getElementById('editSave').onclick=()=>saveItem();
+    document.getElementById('editModal').classList.add('show');
+  });
 }
 
 async function saveItem(){
   const fields={};FORMS[editState.type].forEach(f=>{fields[f.k]=document.getElementById('f_'+f.k).value;});
-  const body={password:'S2',type:editState.type,fields};
+  const body={password:getAuthPass(),type:editState.type,fields};
   const action=editState.id?'update':'create';
   if(editState.id)body.id=editState.id;
   const r=await fetch(API+'?action='+action,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   const d=await r.json();
-  if(d.success){closeModal('editModal');loadAll();}else alert(d.error);
+  if(d.success){closeModal('editModal');loadAll();}else{ if(d.error&&d.error.includes('ACCESS DENIED')){_authPass='';sessionStorage.removeItem('s2_auth');alert('Session expired. Please re-authenticate.');}else alert(d.error);}
 }
 
 async function deleteItem(type,id){
-  if(!confirm('⚠ CONFIRM DELETE — This action cannot be undone'))return;
-  const r=await fetch(API+'?action=delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:'S2',type,id})});
-  const d=await r.json();if(d.success)loadAll();else alert(d.error);
+  requireAuth(async function() {
+    if(!confirm('⚠ CONFIRM DELETE — This action cannot be undone'))return;
+    const r=await fetch(API+'?action=delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:getAuthPass(),type,id})});
+    const d=await r.json();if(d.success)loadAll();else{ if(d.error&&d.error.includes('ACCESS DENIED')){_authPass='';sessionStorage.removeItem('s2_auth');alert('Session expired.');}else alert(d.error);}
+  });
 }
 
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
@@ -237,6 +293,30 @@ let currentMap = 'colombia';
 let gridLayer = null;
 let drawPollTimer = null;
 let currentArea = null;
+
+// ---- REAL-TIME MULTIPLAYER ----
+const RT_COLORS = ['#00ff41','#00e5ff','#ff4c66','#ffaa00','#aa00ff','#ffff00','#ff6600','#00cc44','#ff00aa','#66ccff'];
+let rtUserId = localStorage.getItem('map_user_id');
+let rtDisplayName = localStorage.getItem('map_display_name') || '';
+let rtUserColor = localStorage.getItem('map_user_color') || '';
+let rtCursorPos = null;
+let rtPresenceTimer = null;
+let rtCursorLayer = null;
+let rtCursorMarkers = {};
+let rtHeartbeatTimer = null;
+
+if (!rtUserId) {
+    rtUserId = 'user_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+    localStorage.setItem('map_user_id', rtUserId);
+}
+if (!rtDisplayName) {
+    rtDisplayName = 'Operator-' + rtUserId.substr(-4).toUpperCase();
+    localStorage.setItem('map_display_name', rtDisplayName);
+}
+if (!rtUserColor) {
+    rtUserColor = RT_COLORS[Math.floor(Math.random() * RT_COLORS.length)];
+    localStorage.setItem('map_user_color', rtUserColor);
+}
 
 // ---- PLANOPS MAP CONFIG ----
 // Uses MGRS_CRS from mapUtils.js (loaded from PLANOPS CDN)
@@ -886,6 +966,20 @@ async function initIntelMap() {
 
     pollPlayers();
     pollDrawings();
+    
+    // ---- Real-Time Cursor Layer ----
+    rtCursorLayer = L.layerGroup().addTo(mapInst);
+    
+    // Track mouse position on map
+    mapInst.on('mousemove', function(e) {
+        rtCursorPos = { lat: e.latlng.lat, lng: e.latlng.lng };
+    });
+    mapInst.on('mouseout', function() {
+        rtCursorPos = null;
+    });
+    
+    // Start real-time presence system
+    startRealTimePresence();
     
     // Init TinyMCE for notes
     tinymce.init({
@@ -1733,8 +1827,117 @@ async function pollDrawings() {
             });
         }
     } catch(e) {}
-    drawPollTimer = setTimeout(pollDrawings, 5000);
+    drawPollTimer = setTimeout(pollDrawings, 2000);
 }
+
+// ---- REAL-TIME PRESENCE SYSTEM ----
+function startRealTimePresence() {
+    sendHeartbeat();
+    pollPresence();
+}
+
+async function sendHeartbeat() {
+    try {
+        await fetch('api/map_presence.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'heartbeat',
+                user_id: rtUserId,
+                display_name: rtDisplayName,
+                user_color: rtUserColor,
+                map: currentMap,
+                cursor_lat: rtCursorPos ? rtCursorPos.lat : null,
+                cursor_lng: rtCursorPos ? rtCursorPos.lng : null
+            })
+        });
+    } catch (e) { }
+    rtHeartbeatTimer = setTimeout(sendHeartbeat, 2000);
+}
+
+async function pollPresence() {
+    try {
+        var r = await fetch('api/map_presence.php?map=' + currentMap);
+        var d = await r.json();
+        if (d.success && d.users) {
+            var activeIds = new Set();
+            var onlineCount = 0;
+            
+            d.users.forEach(function(u) {
+                activeIds.add(u.user_id);
+                onlineCount++;
+                
+                // Skip self cursor
+                if (u.user_id === rtUserId) return;
+                
+                if (u.cursor_lat != null && u.cursor_lng != null && rtCursorLayer) {
+                    var latlng = L.latLng(u.cursor_lat, u.cursor_lng);
+                    if (rtCursorMarkers[u.user_id]) {
+                        rtCursorMarkers[u.user_id].setLatLng(latlng);
+                        // Update tooltip
+                        rtCursorMarkers[u.user_id].setTooltipContent(u.display_name);
+                    } else {
+                        var cursorIcon = L.divIcon({
+                            className: 'rt-cursor-marker',
+                            html: '<div class="rt-cursor-dot" style="background:' + u.user_color + ';box-shadow:0 0 8px ' + u.user_color + '"></div>' +
+                                  '<div class="rt-cursor-label" style="color:' + u.user_color + '">' + u.display_name + '</div>',
+                            iconSize: [0, 0],
+                            iconAnchor: [0, 0]
+                        });
+                        var marker = L.marker(latlng, { icon: cursorIcon, interactive: false, zIndexOffset: 9000 });
+                        marker.bindTooltip(u.display_name, { permanent: false, direction: 'right', offset: [12, 0], className: 'rt-cursor-tooltip' });
+                        rtCursorLayer.addLayer(marker);
+                        rtCursorMarkers[u.user_id] = marker;
+                    }
+                } else if (rtCursorMarkers[u.user_id]) {
+                    // User has no cursor position — remove marker
+                    rtCursorLayer.removeLayer(rtCursorMarkers[u.user_id]);
+                    delete rtCursorMarkers[u.user_id];
+                }
+            });
+            
+            // Remove cursors for users who left
+            Object.keys(rtCursorMarkers).forEach(function(uid) {
+                if (!activeIds.has(uid)) {
+                    rtCursorLayer.removeLayer(rtCursorMarkers[uid]);
+                    delete rtCursorMarkers[uid];
+                }
+            });
+            
+            // Update connected users indicator
+            updateOnlineIndicator(onlineCount, d.users);
+        }
+    } catch (e) { }
+    rtPresenceTimer = setTimeout(pollPresence, 2000);
+}
+
+function updateOnlineIndicator(count, users) {
+    var el = document.getElementById('rtOnlineCount');
+    if (el) el.textContent = count;
+    var dot = document.getElementById('rtOnlineDot');
+    if (dot) dot.style.background = count > 1 ? '#00ff41' : '#ffaa00';
+    
+    // Update user list panel
+    var listEl = document.getElementById('rtUserList');
+    if (listEl) {
+        listEl.innerHTML = users.map(function(u) {
+            var isSelf = u.user_id === rtUserId;
+            return '<div class="rt-user-item' + (isSelf ? ' self' : '') + '">' +
+                   '<span class="rt-user-dot" style="background:' + u.user_color + '"></span>' +
+                   '<span class="rt-user-name">' + (u.display_name || 'Unknown') + (isSelf ? ' (You)' : '') + '</span>' +
+                   '</div>';
+        }).join('');
+    }
+}
+
+// Send leave signal when user closes tab
+window.addEventListener('beforeunload', function() {
+    navigator.sendBeacon('api/map_presence.php', JSON.stringify({
+        action: 'leave',
+        user_id: rtUserId,
+        map: currentMap
+    }));
+});
 
 // Hook map init
 document.querySelectorAll('[data-tab="sorties"]').forEach(function(el) {

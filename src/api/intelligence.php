@@ -3,7 +3,7 @@ define('ROOT_PATH', dirname(__DIR__));
 require_once ROOT_PATH . '/includes/db.php';
 header('Content-Type: application/json');
 
-$S2_PASS = 'S2';
+$S2_PASS = 'Storm888';
 
 // Auto-create tables
 try {
@@ -85,9 +85,14 @@ if ($method === 'GET' && $action === 'get_brief') {
     }
 }
 
-// SAVE BRIEF
+// SAVE BRIEF (auth required)
 if ($method === 'POST' && $action === 'save_brief') {
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
+    $pass = $input['password'] ?? '';
+    if ($pass !== $S2_PASS) {
+        http_response_code(403);
+        echo json_encode(['error' => 'ACCESS DENIED — Invalid Authorization']); exit;
+    }
     try {
         $fields = ['doc_title','op_name','classification','status','ao_location','team','start_date','opord'];
         $updates = [];

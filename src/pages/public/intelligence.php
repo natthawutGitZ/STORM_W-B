@@ -406,6 +406,26 @@ require_once ROOT_PATH . '/includes/db.php';
         <div class="toolbar-group">
           <button class="map-tool-btn" id="toolSearch" title="Search Grid"><i class="fas fa-search"></i></button>
         </div>
+        <div class="toolbar-group">
+          <button class="map-tool-btn" id="toolOnlineUsers" title="Connected Users" onclick="document.getElementById('rtUsersPanel').classList.toggle('show')">
+            <span id="rtOnlineDot" class="rt-online-dot"></span>
+            <span id="rtOnlineCount" style="font-size:11px;font-family:var(--mono);">0</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- CONNECTED USERS PANEL -->
+      <div class="rt-users-panel" id="rtUsersPanel">
+        <div class="rt-users-header">
+          <span><i class="fas fa-users"></i> CONNECTED OPERATORS</span>
+          <button class="layers-panel-close" onclick="document.getElementById('rtUsersPanel').classList.remove('show')">&times;</button>
+        </div>
+        <div class="rt-users-body" id="rtUserList">
+          <!-- Populated by JS -->
+        </div>
+        <div class="rt-users-footer">
+          <span class="rt-status-text"><i class="fas fa-satellite-dish"></i> REAL-TIME SYNC ACTIVE</span>
+        </div>
       </div>
 
       <!-- LAYERS PANEL -->
@@ -919,6 +939,36 @@ require_once ROOT_PATH . '/includes/db.php';
       <div class="dossier-modal-footer">
         <button class="btn-dossier cancel" onclick="closeDossierModal()">CANCEL</button>
         <button class="btn-dossier save" id="dossierSaveBtn">SAVE DOSSIER</button>
+      </div>
+    </div>
+  </div>
+  <!-- MODAL: PASSWORD GATE -->
+  <div class="modal-overlay" id="authModal">
+    <div class="modal-box" style="max-width:380px;">
+      <div class="modal-header" style="border-bottom-color:#ff4c66;">
+        <span class="modal-title"><i class="fas fa-lock" style="color:#ff4c66;margin-right:8px;"></i>S2 AUTHORIZATION REQUIRED</span>
+        <button class="modal-close" onclick="closeModal('authModal')">&times;</button>
+      </div>
+      <div class="modal-body" style="text-align:center;padding:28px 20px;">
+        <div style="font-family:var(--mono);font-size:.7rem;color:#888;margin-bottom:16px;letter-spacing:1px;">
+          ENTER AUTHORIZATION CODE TO PROCEED
+        </div>
+        <input type="password" id="authPassInput" 
+               style="width:100%;padding:12px 16px;background:#0a0a0a;border:1px solid #333;color:#00ff41;font-family:var(--mono);font-size:1rem;text-align:center;letter-spacing:4px;border-radius:4px;"
+               placeholder="••••••••"
+               autocomplete="off">
+        <div id="authError" style="color:#ff4c66;font-family:var(--mono);font-size:.7rem;margin-top:10px;display:none;">
+          ⚠ ACCESS DENIED — INVALID AUTHORIZATION CODE
+        </div>
+        <div style="font-family:var(--mono);font-size:.6rem;color:#444;margin-top:14px;">
+          <i class="fas fa-shield-halved"></i> ALL EDIT OPERATIONS REQUIRE S2 CLEARANCE
+        </div>
+      </div>
+      <div class="modal-footer" style="justify-content:center;gap:10px;">
+        <button class="brief-btn danger" onclick="closeModal('authModal')">CANCEL</button>
+        <button class="brief-btn save" id="authSubmitBtn" onclick="submitAuth()">
+          <i class="fas fa-key"></i> AUTHORIZE
+        </button>
       </div>
     </div>
   </div>
