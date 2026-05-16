@@ -37,7 +37,7 @@ require_once ROOT_PATH . '/includes/db.php';
     <span>STORMSURGE</span>
   </div>
   <nav class="sidebar-nav">
-    <a class="nav-item active" data-tab="opshub"><i class="fas fa-crosshairs"></i><span>OPS HUB</span></a>
+    <a class="nav-item active" data-tab="opshub"><i class="fas fa-crosshairs"></i><span>MAIN OPS</span></a>
     <a class="nav-item" data-tab="intel"><i class="fas fa-file-shield"></i><span>INTEL</span></a>
     <a class="nav-item" data-tab="sorties"><i class="fas fa-map"></i><span>INTELLIGENCE MAP</span></a>
   </nav>
@@ -55,7 +55,7 @@ require_once ROOT_PATH . '/includes/db.php';
   <header class="topbar">
     <button class="sidebar-toggle" onclick="document.body.classList.toggle('sidebar-collapsed')"><i class="fas fa-bars"></i></button>
     <div class="topbar-tabs">
-      <button class="tab-btn active" data-tab="opshub">OPS HUB</button>
+      <button class="tab-btn active" data-tab="opshub">MAIN OPS</button>
       <button class="tab-btn" data-tab="intel">INTEL FEED</button>
       <button class="tab-btn" data-tab="sorties">INTELLIGENCE MAP</button>
     </div>
@@ -69,7 +69,7 @@ require_once ROOT_PATH . '/includes/db.php';
     </div>
   </header>
 
-  <!-- TAB: OPS HUB -->
+  <!-- TAB: MAIN OPS -->
   <section class="tab-content active" id="tab-opshub">
     <!-- Briefing Document Header -->
     <div class="brief-header">
