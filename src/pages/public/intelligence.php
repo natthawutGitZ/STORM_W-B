@@ -761,6 +761,45 @@ require_once ROOT_PATH . '/includes/db.php';
             <option value="hd_unknown">? hd_unknown</option>
             <option value="hd_warning">⚠ hd_warning</option>
             </optgroup>
+            <optgroup label="Flags">
+            <option value="flag_aaf">⚑ flag_aaf</option>
+            <option value="flag_altis">⚑ flag_altis</option>
+            <option value="flag_altiscolonial">⚑ flag_altiscolonial</option>
+            <option value="flag_belgium">⚑ flag_belgium</option>
+            <option value="flag_canada">⚑ flag_canada</option>
+            <option value="flag_catalonia">⚑ flag_catalonia</option>
+            <option value="flag_croatia">⚑ flag_croatia</option>
+            <option value="flag_csat">⚑ flag_csat</option>
+            <option value="flag_ctrg">⚑ flag_ctrg</option>
+            <option value="flag_czechrepublic">⚑ flag_czechrepublic</option>
+            <option value="flag_denmark">⚑ flag_denmark</option>
+            <option value="flag_eu">⚑ flag_eu</option>
+            <option value="flag_fia">⚑ flag_fia</option>
+            <option value="flag_france">⚑ flag_france</option>
+            <option value="flag_georgia">⚑ flag_georgia</option>
+            <option value="flag_germany">⚑ flag_germany</option>
+            <option value="flag_greece">⚑ flag_greece</option>
+            <option value="flag_hungary">⚑ flag_hungary</option>
+            <option value="flag_iceland">⚑ flag_iceland</option>
+            <option value="flag_italy">⚑ flag_italy</option>
+            <option value="flag_luxembourg">⚑ flag_luxembourg</option>
+            <option value="flag_nato">⚑ flag_nato</option>
+            <option value="flag_netherlands">⚑ flag_netherlands</option>
+            <option value="flag_norway">⚑ flag_norway</option>
+            <option value="flag_poland">⚑ flag_poland</option>
+            <option value="flag_portugal">⚑ flag_portugal</option>
+            <option value="flag_russia">⚑ flag_russia</option>
+            <option value="flag_slovakia">⚑ flag_slovakia</option>
+            <option value="flag_slovenia">⚑ flag_slovenia</option>
+            <option value="flag_spain">⚑ flag_spain</option>
+            <option value="flag_syndicat">⚑ flag_syndicat</option>
+            <option value="flag_tanoa">⚑ flag_tanoa</option>
+            <option value="flag_tanoagendarmerie">⚑ flag_tanoagendarmerie</option>
+            <option value="flag_uk">⚑ flag_uk</option>
+            <option value="flag_un">⚑ flag_un</option>
+            <option value="flag_usa">⚑ flag_usa</option>
+            <option value="flag_viper">⚑ flag_viper</option>
+            </optgroup>
           </select></div>
           <div class="form-col"><label>Color</label>
             <div class="color-picker-wrap">

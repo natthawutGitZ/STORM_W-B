@@ -822,7 +822,28 @@ const BASIC_SYMBOL_SVG = {
     'hd_warning':    '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><polygon points="12,3 22,21 2,21" fill="none" stroke="{c}" stroke-width="2.5"/><line x1="12" y1="10" x2="12" y2="15" stroke="{c}" stroke-width="2.5"/><circle cx="12" cy="18" r="1.2" fill="{c}"/></svg>'
 };
 
+// ---- PLANOPS Country Flag markers (loaded from CDN) ----
+const PLANOPS_CDN = 'https://atlas.plan-ops.fr/data/1/markers/';
+const BASIC_SYMBOL_FLAGS = {
+    'flag_aaf': 30, 'flag_altis': 31, 'flag_altiscolonial': 32,
+    'flag_belgium': 33, 'flag_canada': 34, 'flag_catalonia': 35,
+    'flag_croatia': 36, 'flag_csat': 37, 'flag_ctrg': 38,
+    'flag_czechrepublic': 39, 'flag_denmark': 40, 'flag_eu': 41,
+    'flag_fia': 42, 'flag_france': 43, 'flag_georgia': 44,
+    'flag_germany': 45, 'flag_greece': 46, 'flag_hungary': 47,
+    'flag_iceland': 48, 'flag_italy': 49, 'flag_luxembourg': 50,
+    'flag_nato': 51, 'flag_netherlands': 52, 'flag_norway': 53,
+    'flag_poland': 54, 'flag_portugal': 55, 'flag_russia': 56,
+    'flag_slovakia': 57, 'flag_slovenia': 58, 'flag_spain': 59,
+    'flag_syndicat': 60, 'flag_tanoa': 61, 'flag_tanoagendarmerie': 62,
+    'flag_uk': 63, 'flag_un': 64, 'flag_usa': 65, 'flag_viper': 66
+};
+
 function getBasicSymbolSVG(symbol, color, size) {
+    // Flag markers use PLANOPS CDN images (not color-compatible)
+    if (BASIC_SYMBOL_FLAGS[symbol] !== undefined) {
+        return '<img src="' + PLANOPS_CDN + BASIC_SYMBOL_FLAGS[symbol] + '.webp" width="' + size + '" height="' + size + '" style="object-fit:contain;" />';
+    }
     var tmpl = BASIC_SYMBOL_SVG[symbol] || BASIC_SYMBOL_SVG['mil_dot'];
     return tmpl.replace(/\{s\}/g, size).replace(/\{c\}/g, color);
 }
