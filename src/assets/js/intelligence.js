@@ -1950,3 +1950,42 @@ document.querySelectorAll('[data-tab="sorties"]').forEach(function(el) {
 if(localStorage.getItem('intel_active_tab')==='sorties'){
     setTimeout(initIntelMap, 400);
 }
+
+// ==========================================
+// DOCUMENT VIEWER LOGIC
+// ==========================================
+let currentPdfLang = 'EN';
+const pdfPaths = {
+    'EN': 'assets/Role/Joint%20OPS%20plan%20[%20Edit-t%20].pdf',
+    'TH': 'assets/Role/Joint%20OPS%20plan%20[%20Edit-t%20]_TH.pdf'
+};
+
+function togglePdfLanguage() {
+    currentPdfLang = currentPdfLang === 'EN' ? 'TH' : 'EN';
+    const btn = document.getElementById('btnPdfLang');
+    if (btn) btn.innerHTML = `<i class="fas fa-language"></i> ${currentPdfLang}`;
+    
+    const iframe = document.getElementById('documentPdfViewer');
+    if (iframe) {
+        iframe.src = pdfPaths[currentPdfLang] + '#toolbar=0&navpanes=0&scrollbar=0&view=FitH';
+    }
+}
+
+function togglePdfFullscreen() {
+    const container = document.getElementById('pdfViewerContainer');
+    if (!container) return;
+    
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        if (container.requestFullscreen) {
+            container.requestFullscreen();
+        } else if (container.webkitRequestFullscreen) {
+            container.webkitRequestFullscreen();
+        }
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+        }
+    }
+}

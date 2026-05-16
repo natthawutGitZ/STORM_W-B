@@ -619,6 +619,25 @@
   background: rgba(0,20,0,0.4);
   margin-top: 10px;
   opacity: 0.9;
+  transition: all 0.3s;
+}
+
+.pdf-viewer-container:-webkit-full-screen {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  opacity: 1;
+}
+
+.pdf-viewer-container:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  opacity: 1;
 }
 
 .pdf-viewer {

@@ -393,10 +393,18 @@ require_once ROOT_PATH . '/includes/db.php';
             <div class="deploy-header-subtitle">OPERATION STORMSURGE — JOINT OPS PLAN</div>
           </div>
         </div>
+        <div class="deploy-header-right">
+          <button class="deploy-btn-reset" onclick="togglePdfLanguage()" id="btnPdfLang" style="color:#00e5ff; border-color:rgba(0,229,255,0.3);">
+            <i class="fas fa-language"></i> EN
+          </button>
+          <button class="deploy-btn-reset" onclick="togglePdfFullscreen()" style="color:#ffaa00; border-color:rgba(255,170,0,0.3);">
+            <i class="fas fa-expand"></i> FULLSCREEN
+          </button>
+        </div>
       </div>
       <!-- PDF Viewer -->
-      <div class="pdf-viewer-container">
-        <iframe class="pdf-viewer" src="assets/Role/Joint%20OPS%20plan%20[%20Edit-t%20].pdf#toolbar=0&navpanes=0&scrollbar=0&view=FitH" frameborder="0" scrolling="no"></iframe>
+      <div class="pdf-viewer-container" id="pdfViewerContainer">
+        <iframe class="pdf-viewer" id="documentPdfViewer" src="assets/Role/Joint%20OPS%20plan%20[%20Edit-t%20].pdf#toolbar=0&navpanes=0&scrollbar=0&view=FitH" frameborder="0" scrolling="no"></iframe>
       </div>
     </div>
   </section>
