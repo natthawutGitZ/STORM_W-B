@@ -690,6 +690,73 @@ function updateMarkerHandler(e, map, backend) {
     if (modalMarkerData.type === 'mil') {
         document.getElementById('natoDeleteBtn').style.display = 'block';
         document.getElementById('natoInsertBtn').innerText = 'Update';
+        // ---- Pre-populate NATO form from existing marker data ----
+        var sidc = modalMarkerData.symbol || '';
+        if (sidc.length >= 20) {
+            // Parse SIDC: 10(ver) 0(sid1) identity(1) symbolSet(2) status(1) hqtf(1) echelon(2) entity(6) mod1(2) mod2(2)
+            var identity  = sidc.charAt(3);
+            var symbolSet = sidc.substring(4, 6);
+            var status    = sidc.charAt(6);
+            var hqtf      = sidc.charAt(7);
+            var echelon   = sidc.substring(8, 10);
+            var entity    = sidc.substring(10, 16);
+            var mod1      = sidc.substring(16, 18);
+            var mod2      = sidc.substring(18, 20);
+
+            // Reverse lookup: identity → affiliation key
+            var affReverse = { '0':'pending','1':'unknown','2':'assumedFriend','3':'friend','4':'neutral','5':'suspect','6':'hostile' };
+            var affKey = affReverse[identity] || 'friend';
+            document.querySelectorAll('.aff-box-btn[data-aff]').forEach(function(b) { b.classList.remove('active'); });
+            var affBtn = document.querySelector('.aff-box-btn[data-aff="' + affKey + '"]');
+            if (affBtn) affBtn.classList.add('active');
+
+            // Symbol set → triggers entity/mod dropdown repopulation
+            var ssEl = document.getElementById('natoSymbolSet');
+            if (ssEl) { ssEl.value = symbolSet; }
+            // Repopulate entity/mod1/mod2 dropdowns for this symbol set
+            var ssVal = ssEl ? ssEl.value : '10';
+            populateSelect('natoSymbolType', NATO_ENTITIES[ssVal] || NATO_ENTITIES['_default']);
+            populateSelect('natoMod1', NATO_MOD1[ssVal] || NATO_MOD1['_default']);
+            populateSelect('natoMod2', NATO_MOD2[ssVal] || NATO_MOD2['_default']);
+
+            // Set entity, status, echelon, mod1, mod2
+            var ntEl = document.getElementById('natoSymbolType');
+            if (ntEl && ntEl.querySelector('option[value="' + entity + '"]')) ntEl.value = entity;
+            var stEl = document.getElementById('natoStatus');
+            if (stEl) stEl.value = status;
+            var ecEl = document.getElementById('natoEchelon');
+            if (ecEl) ecEl.value = echelon;
+            var m1El = document.getElementById('natoMod1');
+            if (m1El && m1El.querySelector('option[value="' + mod1 + '"]')) m1El.value = mod1;
+            var m2El = document.getElementById('natoMod2');
+            if (m2El && m2El.querySelector('option[value="' + mod2 + '"]')) m2El.value = mod2;
+
+            // HQ/TF/Dummy toggles (bitfield: 1=Dummy, 2=HQ, 4=TF)
+            var hqtfNum = parseInt(hqtf) || 0;
+            document.querySelectorAll('.aff-box-btn[data-hqtf]').forEach(function(b) {
+                var bit = parseInt(b.dataset.hqtf) || 0;
+                if (hqtfNum & bit) b.classList.add('active');
+                else b.classList.remove('active');
+            });
+        }
+        // Config fields (text inputs)
+        var cfg = modalMarkerData.config || {};
+        document.getElementById('natoDesignation').value = cfg.uniqueDesignation || '';
+        document.getElementById('natoAdditional').value = cfg.additionalInformation || '';
+        if (document.getElementById('natoHigherFormation'))
+            document.getElementById('natoHigherFormation').value = cfg.higherFormation || '';
+        if (document.getElementById('natoDirection'))
+            document.getElementById('natoDirection').value = (cfg.direction !== undefined && cfg.direction !== null) ? Math.round(cfg.direction * 6400 / 360) : '';
+        if (document.getElementById('natoReinforced'))
+            document.getElementById('natoReinforced').value = cfg.reinforcedReduced || '';
+        // Scale
+        var scaleVal = modalMarkerData.scale ? Math.round(modalMarkerData.scale * 100) : 100;
+        document.getElementById('natoScale').value = scaleVal;
+
+        // Rebuild icon dropdowns and update preview
+        updateAffiliationIcons();
+        if (typeof buildAllIconDropdowns === 'function') buildAllIconDropdowns();
+        updateNatoPreview();
         openMapModal('modalNatoSymbol');
     } else if (modalMarkerData.type === 'line') {
         document.getElementById('lineDeleteBtn').style.display = 'block';
