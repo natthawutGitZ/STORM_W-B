@@ -608,3 +608,20 @@
 .slot-row.drag-over {
   border-top: 2px dashed #00ff41;
 }
+/* ---- PDF Viewer ---- */
+.pdf-viewer-container {
+  width: 100%;
+  height: calc(100vh - 180px);
+  border: 1px solid rgba(0,255,65,0.25);
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 0 20px rgba(0,255,65,0.06);
+  background: rgba(0,20,0,0.4);
+  margin-top: 10px;
+}
+
+.pdf-viewer {
+  width: 100%;
+  height: 100%;
+  filter: invert(0.9) hue-rotate(180deg) grayscale(0.5) contrast(1.2);
+}

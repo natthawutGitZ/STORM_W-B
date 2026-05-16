@@ -43,6 +43,7 @@ require_once ROOT_PATH . '/includes/db.php';
   </nav>
   <div class="sidebar-ops" id="sidebarOps" style="padding-top: 10px;">
     <a class="nav-item" data-tab="unit"><i class="fas fa-users"></i><span>DEPLOYMENT</span></a>
+    <a class="nav-item" data-tab="document"><i class="fas fa-file-pdf"></i><span>DOCUMENT</span></a>
   </div>
   <div class="sidebar-footer">
     <div class="sidebar-clock" id="clock"></div>
@@ -377,6 +378,26 @@ require_once ROOT_PATH . '/includes/db.php';
       </div>
       <!-- Unit Cards -->
       <div id="deployUnitList"></div>
+    </div>
+  </section>
+
+  <!-- TAB: DOCUMENT -->
+  <section class="tab-content" id="tab-document">
+    <div class="deploy-container" style="height: 100%;">
+      <!-- Header -->
+      <div class="deploy-header">
+        <div class="deploy-header-left">
+          <i class="fas fa-file-pdf"></i>
+          <div>
+            <div class="deploy-header-title">OFFICIAL DOCUMENTS</div>
+            <div class="deploy-header-subtitle">OPERATION STORMSURGE — JOINT OPS PLAN</div>
+          </div>
+        </div>
+      </div>
+      <!-- PDF Viewer -->
+      <div class="pdf-viewer-container">
+        <iframe class="pdf-viewer" src="assets/Role/Joint%20OPS%20plan%20[%20Edit-t%20].pdf" frameborder="0"></iframe>
+      </div>
     </div>
   </section>
 
