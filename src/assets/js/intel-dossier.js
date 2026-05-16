@@ -310,7 +310,7 @@ function getDossierFormData() {
 async function saveDossier() {
     const data = getDossierFormData();
     if (!data.callsign && !data.full_name) {
-        alert('Callsign or Full Name is required.');
+        stormAlert('Callsign or Full Name is required.', 'error');
         return;
     }
 
@@ -337,17 +337,17 @@ async function saveDossier() {
                 selectDossier(d.id);
             }
         } else {
-            alert(d.error || 'Failed to save dossier');
+            stormAlert(d.error || 'Failed to save dossier', 'error');
         }
     } catch (e) {
-        alert('Network error');
+        stormAlert('Network error', 'error');
         console.error(e);
     }
 }
 
 // ---- Delete dossier ----
 async function deleteDossier(id) {
-    if (!confirm('WARNING: CONFIRM DELETE - This action cannot be undone')) return;
+    if (!await stormConfirm('WARNING: CONFIRM DELETE - This action cannot be undone')) return;
     try {
         const r = await fetch(DOSSIER_API + '?action=delete', {
             method: 'POST',
@@ -363,10 +363,10 @@ async function deleteDossier(id) {
             }
             await loadDossiers();
         } else {
-            alert(d.error || 'Failed to delete');
+            stormAlert(d.error || 'Failed to delete', 'error');
         }
     } catch (e) {
-        alert('Network error');
+        stormAlert('Network error', 'error');
     }
 }
 

@@ -412,7 +412,7 @@ async function saveBrief(){
     await fetch(API+'?action=save_brief',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({opord,password:getAuthPass()})});
     document.getElementById('briefOpordContent').innerHTML=opord?'<p>'+esc(opord).replace(/\n/g,'</p><p>')+'</p>':'<p class="brief-placeholder">No operation order loaded.</p>';
     cancelBriefEdit();
-  }catch(e){alert('Failed to save');}
+  }catch(e){stormAlert('Failed to save', 'error');}
 }
 
 function exportBrief(){
@@ -475,14 +475,14 @@ async function saveItem(){
   if(editState.id)body.id=editState.id;
   const r=await fetch(API+'?action='+action,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   const d=await r.json();
-  if(d.success){closeModal('editModal');loadAll();}else{ if(d.error&&d.error.includes('ACCESS DENIED')){_authPass='';sessionStorage.removeItem('s2_auth');alert('Session expired. Please re-authenticate.');}else alert(d.error);}
+  if(d.success){closeModal('editModal');loadAll();}else{ if(d.error&&d.error.includes('ACCESS DENIED')){_authPass='';sessionStorage.removeItem('s2_auth');stormAlert('Session expired. Please re-authenticate.', 'error');}else stormAlert(d.error, 'error');}
 }
 
 async function deleteItem(type,id){
   requireAuth(async function() {
-    if(!confirm('⚠ CONFIRM DELETE — This action cannot be undone'))return;
+    if(!await stormConfirm('CONFIRM DELETE — This action cannot be undone'))return;
     const r=await fetch(API+'?action=delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:getAuthPass(),type,id})});
-    const d=await r.json();if(d.success)loadAll();else{ if(d.error&&d.error.includes('ACCESS DENIED')){_authPass='';sessionStorage.removeItem('s2_auth');alert('Session expired.');}else alert(d.error);}
+    const d=await r.json();if(d.success)loadAll();else{ if(d.error&&d.error.includes('ACCESS DENIED')){_authPass='';sessionStorage.removeItem('s2_auth');stormAlert('Session expired.', 'error');}else stormAlert(d.error, 'error');}
   });
 }
 
@@ -697,9 +697,9 @@ function updateMarkerHandler(e, map, backend) {
         openMapModal('modalLineProps');
     } else if (modalMarkerData.type === 'mission') {
         // Just delete for now to recreate
-        if(confirm("Delete this mission?")) {
-            backend.removeMarker(modalMarkerId);
-        }
+        stormConfirm('Delete this mission?').then(function(ok) {
+            if(ok) backend.removeMarker(modalMarkerId);
+        });
     } else if (modalMarkerData.type === 'note') {
         openMapModal('modalNote');
         document.getElementById('noteDeleteBtn').style.display = 'block';
@@ -1139,7 +1139,8 @@ async function initIntelMap() {
 
     // Clear All markers
     document.getElementById('btnClearAll').onclick = function() {
-        if (!confirm('CLEAR ALL MARKERS? This cannot be undone.')) return;
+        stormConfirm('CLEAR ALL MARKERS? This cannot be undone.').then(function(ok) {
+        if (!ok) return;
         fetch('api/mission_plan.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'clear', map:currentMap, password:'S2' }) })
         .then(r => r.json()).then(d => {
             if (d.success) {
@@ -1149,6 +1150,7 @@ async function initIntelMap() {
                 });
                 allMarkers = {};
             }
+        });
         });
     };
 
@@ -1168,7 +1170,7 @@ async function initIntelMap() {
                             backend.addMarker(null, m.data);
                         });
                     }
-                } catch(err) { alert('Invalid JSON file'); }
+                } catch(err) { stormAlert('Invalid JSON file', 'error'); }
             };
             reader.readAsText(file);
         };

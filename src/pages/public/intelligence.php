@@ -14,6 +14,7 @@ require_once ROOT_PATH . '/includes/db.php';
 <link rel="stylesheet" href="assets/css/intelligence.css">
 <link rel="stylesheet" href="assets/css/intel-dossier.css">
 <link rel="stylesheet" href="assets/css/deployment.css">
+<link rel="stylesheet" href="assets/css/storm-dialog.css">
 <!-- Leaflet CSS & JS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
@@ -1067,6 +1068,7 @@ require_once ROOT_PATH . '/includes/db.php';
   </div>
 </main>
 
+<script src="assets/js/storm-dialog.js"></script>
 <script src="assets/js/intelligence.js"></script>
 <script src="assets/js/deployment.js"></script>
 <script src="assets/js/intel-dossier.js"></script>

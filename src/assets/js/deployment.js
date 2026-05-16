@@ -163,7 +163,7 @@ function toggleEditMode() {
         renderDeployment();
         startDeployRefresh();
     } else {
-        if (typeof requireAuth !== 'function') { alert('Auth system not loaded'); return; }
+        if (typeof requireAuth !== 'function') { stormAlert('Auth system not loaded'); return; }
         requireAuth(function() {
             deployIsEditMode = true;
             stopDeployRefresh(); // Stop auto-refresh while editing to prevent UI jumps
@@ -221,12 +221,12 @@ async function confirmSignup() {
         if (d.success) {
             closeSignupModal();
             await loadDeployment();
-        } else { alert(d.error || 'Failed to sign up'); }
-    } catch (e) { alert('Network error'); console.error(e); }
+        } else { stormAlert(d.error || 'Failed to sign up', 'error'); }
+    } catch (e) { stormAlert('Network error', 'error'); console.error(e); }
 }
 
 async function withdrawSlot(slotId) {
-    if (!confirm('⚠ CONFIRM WITHDRAWAL — Remove assignment from this slot?')) return;
+    if (!await stormConfirm('CONFIRM WITHDRAWAL — Remove assignment from this slot?')) return;
     try {
         const r = await fetch(DEPLOY_API + '?action=withdraw', {
             method: 'POST',
@@ -235,8 +235,8 @@ async function withdrawSlot(slotId) {
         });
         const d = await r.json();
         if (d.success) { await loadDeployment(); }
-        else { alert(d.error || 'Failed to withdraw'); }
-    } catch (e) { alert('Network error'); }
+        else { stormAlert(d.error || 'Failed to withdraw', 'error'); }
+    } catch (e) { stormAlert('Network error', 'error'); }
 }
 
 // =========================================================
@@ -253,12 +253,12 @@ async function _deployApiCall(action, payload) {
         });
         const d = await r.json();
         if (d.success) { await loadDeployment(); return true; }
-        else { alert(d.error || 'Operation failed'); return false; }
-    } catch (e) { alert('Network error'); return false; }
+        else { stormAlert(d.error || 'Operation failed', 'error'); return false; }
+    } catch (e) { stormAlert('Network error', 'error'); return false; }
 }
 
 async function resetDeployment() {
-    if (!confirm('⚠ CONFIRM RESET — Clear ALL personnel assignments?')) return;
+    if (!await stormConfirm('CONFIRM RESET — Clear ALL personnel assignments?')) return;
     await _deployApiCall('reset', {});
 }
 
@@ -277,7 +277,7 @@ async function editUnit(oldName, oldType) {
 }
 
 async function deleteUnit(name) {
-    if (!confirm(`⚠ CONFIRM DELETION — Delete unit '${name}' and ALL its roles?`)) return;
+    if (!await stormConfirm(`CONFIRM DELETION — Delete unit '${name}' and ALL its roles?`)) return;
     await _deployApiCall('delete_unit', { unit_name: name });
 }
 
@@ -300,7 +300,7 @@ async function editRole(slotId, oldRole) {
 }
 
 async function deleteRole(slotId) {
-    if (!confirm('⚠ Delete this role?')) return;
+    if (!await stormConfirm('Delete this role?')) return;
     await _deployApiCall('delete_role', { slot_id: slotId });
 }
 
