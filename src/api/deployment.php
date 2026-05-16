@@ -290,6 +290,43 @@ if ($method === 'POST') {
         } catch (PDOException $e) { echo json_encode(['success' => false, 'error' => $e->getMessage()]); }
         exit;
     }
+    if ($action === 'reorder_units') {
+        verifyAuth($input);
+        $units = $input['units'] ?? [];
+        if (!is_array($units)) { echo json_encode(['success' => false, 'error' => 'Invalid data']); exit; }
+        try {
+            $pdo->beginTransaction();
+            $stmt = $pdo->prepare("UPDATE personnel_deployment SET sort_order = ? WHERE unit_name = ?");
+            foreach ($units as $index => $unitName) {
+                $stmt->execute([$index + 1, $unitName]);
+            }
+            $pdo->commit();
+            echo json_encode(['success' => true]);
+        } catch (PDOException $e) { 
+            $pdo->rollBack();
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]); 
+        }
+        exit;
+    }
+
+    if ($action === 'reorder_roles') {
+        verifyAuth($input);
+        $slotIds = $input['slot_ids'] ?? [];
+        if (!is_array($slotIds)) { echo json_encode(['success' => false, 'error' => 'Invalid data']); exit; }
+        try {
+            $pdo->beginTransaction();
+            $stmt = $pdo->prepare("UPDATE personnel_deployment SET slot_index = ? WHERE id = ?");
+            foreach ($slotIds as $index => $id) {
+                $stmt->execute([$index + 1, intval($id)]);
+            }
+            $pdo->commit();
+            echo json_encode(['success' => true]);
+        } catch (PDOException $e) { 
+            $pdo->rollBack();
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]); 
+        }
+        exit;
+    }
 }
 
 echo json_encode(['success' => false, 'error' => 'Invalid action']);

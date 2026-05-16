@@ -528,6 +528,27 @@ body.sidebar-collapsed .main{margin-left:0}
 .measure-tooltip .measure-line i{font-size:10px;opacity:.6}
 .marker-text{background:transparent!important;border:none!important;box-shadow:none!important;font-family:var(--mono)!important;font-size:11px!important;color:#fff!important;text-shadow:0 0 3px #000,0 0 3px #000!important}
 
+/* ---- REAL-TIME MULTIPLAYER ---- */
+.rt-online-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#ffaa00;margin-right:3px;animation:rt-pulse 2s ease infinite}
+@keyframes rt-pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+.rt-cursor-marker{background:none!important;border:none!important}
+.rt-cursor-dot{width:10px;height:10px;border-radius:50%;position:absolute;top:-5px;left:-5px;pointer-events:none}
+.rt-cursor-label{position:absolute;top:8px;left:8px;font-family:var(--mono);font-size:10px;font-weight:700;white-space:nowrap;text-shadow:0 0 3px #000,0 0 3px #000;pointer-events:none}
+.rt-cursor-tooltip{background:rgba(0,0,0,.7)!important;color:#fff!important;border:none!important;font-family:var(--mono)!important;font-size:10px!important;padding:2px 6px!important}
+.rt-cursor-tooltip::before{border-right-color:rgba(0,0,0,.7)!important}
+
+.rt-users-panel{position:absolute;right:48px;top:44px;width:240px;background:rgba(10,10,10,.95);border:1px solid rgba(0,255,65,.2);border-radius:6px;z-index:900;display:none;font-family:var(--mono);overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.5)}
+.rt-users-panel.show{display:block}
+.rt-users-header{padding:10px 12px;border-bottom:1px solid rgba(0,255,65,.15);font-size:.7rem;color:#00ff41;letter-spacing:1px;display:flex;justify-content:space-between;align-items:center}
+.rt-users-body{padding:8px 12px;max-height:200px;overflow-y:auto}
+.rt-user-item{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:.7rem;color:#ccc}
+.rt-user-item.self{color:#00ff41;font-weight:700}
+.rt-user-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.rt-user-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rt-users-footer{padding:8px 12px;border-top:1px solid rgba(0,255,65,.15);text-align:center}
+.rt-status-text{font-size:.6rem;color:#00ff41;letter-spacing:.5px;animation:rt-pulse 2s ease infinite}
+
 /* MISSION BUTTONS in white-bg modal */
 .mission-btn{background:#f8f9fa;color:#333;border:1px solid #dee2e6;display:inline-flex;align-items:center;font-size:.8rem;padding:6px 10px;border-radius:4px;cursor:pointer;transition:all .15s}
 .mission-btn:hover{background:#e2e6ea;border-color:#adb5bd}

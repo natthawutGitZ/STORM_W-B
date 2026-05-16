@@ -62,10 +62,16 @@ function renderDeployment() {
             `;
         }
 
+        let dragHandle = '';
+        if (deployIsEditMode) {
+            dragHandle = `<i class="fas fa-grip-vertical drag-handle" title="Drag to reorder"></i>`;
+        }
+
         return `
-        <div class="unit-card ${isExpanded ? 'expanded' : ''}" data-unit="${escHtml(unit.unit_name)}">
+        <div class="unit-card ${isExpanded ? 'expanded' : ''}" data-unit="${escHtml(unit.unit_name)}" ${deployIsEditMode ? 'draggable="true"' : ''}>
             <div class="unit-header" onclick="toggleUnit('${escJS(unit.unit_name)}')">
                 <div class="unit-header-left">
+                    ${dragHandle}
                     <i class="fas fa-chevron-right unit-chevron"></i>
                     <span class="unit-type-badge ${escHtml(unit.unit_type)}">${escHtml(unit.unit_type)}</span>
                     <span class="unit-name">${escHtml(unit.unit_name)}</span>
@@ -133,8 +139,14 @@ function renderSlotRow(unit, slot, idx) {
             : `<button class="slot-action signup-btn" onclick="openSignupModal(${slot.id},'${escJS(slot.role_name)}','${escJS(unit.unit_name)}')" title="Sign Up"><i class="fas fa-plus"></i></button>`;
     }
 
+    let dragHandle = '';
+    if (deployIsEditMode) {
+        dragHandle = `<i class="fas fa-grip-vertical drag-handle" title="Drag to reorder"></i>`;
+    }
+
     return `
-    <div class="slot-row">
+    <div class="slot-row" data-slot-id="${slot.id}" ${deployIsEditMode ? 'draggable="true"' : ''}>
+        ${dragHandle}
         <span class="slot-index">${String(idx + 1).padStart(2, '0')}</span>
         <span class="slot-role">${escHtml(slot.role_name)}</span>
         <span class="slot-player ${isFilled ? 'filled' : 'vacant'}">
@@ -350,4 +362,155 @@ document.addEventListener('DOMContentLoaded', function() {
         if (typeof switchTab === 'function') switchTab('unit');
     }
     loadDeployment();
+});
+
+// =========================================================
+// DRAG AND DROP REORDERING
+// =========================================================
+
+let draggedUnit = null;
+let draggedSlot = null;
+
+document.addEventListener('dragstart', function(e) {
+    if (!deployIsEditMode) return;
+    
+    const unitCard = e.target.closest('.unit-card');
+    const slotRow = e.target.closest('.slot-row');
+    
+    if (slotRow && slotRow.hasAttribute('draggable')) {
+        draggedSlot = slotRow;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', slotRow.dataset.slotId);
+        setTimeout(() => slotRow.classList.add('dragging'), 0);
+        e.stopPropagation();
+    } else if (unitCard && unitCard.hasAttribute('draggable')) {
+        draggedUnit = unitCard;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', unitCard.dataset.unit);
+        setTimeout(() => unitCard.classList.add('dragging'), 0);
+    }
+});
+
+document.addEventListener('dragend', function(e) {
+    if (draggedSlot) {
+        draggedSlot.classList.remove('dragging');
+        draggedSlot = null;
+    }
+    if (draggedUnit) {
+        draggedUnit.classList.remove('dragging');
+        draggedUnit = null;
+    }
+    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+});
+
+document.addEventListener('dragover', function(e) {
+    if (!deployIsEditMode) return;
+    if (draggedSlot || draggedUnit) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    }
+    
+    if (draggedSlot) {
+        const targetRow = e.target.closest('.slot-row');
+        if (targetRow && targetRow !== draggedSlot && targetRow.hasAttribute('draggable')) {
+            if (targetRow.closest('.unit-slots') === draggedSlot.closest('.unit-slots')) {
+                const bounding = targetRow.getBoundingClientRect();
+                const offset = bounding.y + (bounding.height / 2);
+                if (e.clientY - offset > 0) {
+                    targetRow.style.borderBottom = '2px dashed #00ff41';
+                    targetRow.style.borderTop = '';
+                } else {
+                    targetRow.style.borderTop = '2px dashed #00ff41';
+                    targetRow.style.borderBottom = '';
+                }
+            }
+        }
+    } else if (draggedUnit) {
+        const targetUnit = e.target.closest('.unit-card');
+        if (targetUnit && targetUnit !== draggedUnit) {
+            const bounding = targetUnit.getBoundingClientRect();
+            const offset = bounding.y + (bounding.height / 2);
+            if (e.clientY - offset > 0) {
+                targetUnit.style.borderBottom = '2px dashed #00ff41';
+                targetUnit.style.borderTop = '';
+            } else {
+                targetUnit.style.borderTop = '2px dashed #00ff41';
+                targetUnit.style.borderBottom = '';
+            }
+        }
+    }
+});
+
+document.addEventListener('dragleave', function(e) {
+    if (draggedSlot) {
+        const targetRow = e.target.closest('.slot-row');
+        if (targetRow) {
+            targetRow.style.borderTop = '';
+            targetRow.style.borderBottom = '';
+        }
+    } else if (draggedUnit) {
+        const targetUnit = e.target.closest('.unit-card');
+        if (targetUnit) {
+            targetUnit.style.borderTop = '';
+            targetUnit.style.borderBottom = '';
+        }
+    }
+});
+
+document.addEventListener('drop', async function(e) {
+    if (!deployIsEditMode) return;
+    
+    if (draggedSlot) {
+        e.preventDefault();
+        const targetRow = e.target.closest('.slot-row');
+        if (targetRow) {
+            targetRow.style.borderTop = '';
+            targetRow.style.borderBottom = '';
+        }
+        
+        if (targetRow && targetRow !== draggedSlot && targetRow.hasAttribute('draggable')) {
+            if (targetRow.closest('.unit-slots') === draggedSlot.closest('.unit-slots')) {
+                const container = targetRow.parentNode;
+                const bounding = targetRow.getBoundingClientRect();
+                const offset = bounding.y + (bounding.height / 2);
+                if (e.clientY - offset > 0) {
+                    container.insertBefore(draggedSlot, targetRow.nextSibling);
+                } else {
+                    container.insertBefore(draggedSlot, targetRow);
+                }
+                
+                const newOrder = [];
+                container.querySelectorAll('.slot-row[draggable="true"]').forEach(row => {
+                    newOrder.push(row.dataset.slotId);
+                });
+                
+                await _deployApiCall('reorder_roles', { slot_ids: newOrder });
+            }
+        }
+    } else if (draggedUnit) {
+        e.preventDefault();
+        const targetUnit = e.target.closest('.unit-card');
+        if (targetUnit) {
+            targetUnit.style.borderTop = '';
+            targetUnit.style.borderBottom = '';
+        }
+        
+        if (targetUnit && targetUnit !== draggedUnit) {
+            const container = targetUnit.parentNode;
+            const bounding = targetUnit.getBoundingClientRect();
+            const offset = bounding.y + (bounding.height / 2);
+            if (e.clientY - offset > 0) {
+                container.insertBefore(draggedUnit, targetUnit.nextSibling);
+            } else {
+                container.insertBefore(draggedUnit, targetUnit);
+            }
+            
+            const newOrder = [];
+            container.querySelectorAll('.unit-card[draggable="true"]').forEach(card => {
+                newOrder.push(card.dataset.unit);
+            });
+            
+            await _deployApiCall('reorder_units', { units: newOrder });
+        }
+    }
 });
