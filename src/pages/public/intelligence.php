@@ -383,7 +383,7 @@ require_once ROOT_PATH . '/includes/db.php';
 
   <!-- TAB: DOCUMENT -->
   <section class="tab-content" id="tab-document">
-    <div class="deploy-container" style="height: 100%;">
+    <div class="deploy-container" style="max-width: 100%; height: 100%; padding-bottom: 0;">
       <!-- Header -->
       <div class="deploy-header">
         <div class="deploy-header-left">
@@ -396,7 +396,7 @@ require_once ROOT_PATH . '/includes/db.php';
       </div>
       <!-- PDF Viewer -->
       <div class="pdf-viewer-container">
-        <iframe class="pdf-viewer" src="assets/Role/Joint%20OPS%20plan%20[%20Edit-t%20].pdf" frameborder="0"></iframe>
+        <iframe class="pdf-viewer" src="assets/Role/Joint%20OPS%20plan%20[%20Edit-t%20].pdf#toolbar=0&navpanes=0&scrollbar=0&view=FitH" frameborder="0" scrolling="no"></iframe>
       </div>
     </div>
   </section>
