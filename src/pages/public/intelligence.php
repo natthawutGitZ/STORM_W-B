@@ -724,82 +724,73 @@ require_once ROOT_PATH . '/includes/db.php';
       </div>
       <div class="map-modal-body">
         <div class="form-row">
-          <div class="form-col"><label>Shape</label><select id="basicShape">
-            <optgroup label="MIL — Standard">
-            <option value="mil_dot">● mil_dot</option>
-            <option value="mil_ambush">⩔ mil_ambush</option>
-            <option value="mil_arrow">➤ mil_arrow</option>
-            <option value="mil_arrow2">⬆ mil_arrow2</option>
-            <option value="mil_box">■ mil_box</option>
-            <option value="mil_circle">○ mil_circle</option>
-
-            <option value="mil_destroy">✖ mil_destroy</option>
-
-            <option value="mil_end">⊗ mil_end</option>
-            <option value="mil_flag">⚑ mil_flag</option>
-            <option value="mil_join">⊞ mil_join</option>
-            <option value="mil_marker">📍 mil_marker</option>
-            <option value="mil_objective">⊕ mil_objective</option>
-            <option value="mil_pickup">△ mil_pickup</option>
-
-            <option value="mil_start">⊙ mil_start</option>
-            <option value="mil_triangle">▲ mil_triangle</option>
-            <option value="mil_unknown">? mil_unknown</option>
-            <option value="mil_warning">⚠ mil_warning</option>
-            </optgroup>
-            <optgroup label="HD — Heavy Duty">
-            <option value="hd_ambush">⩔ hd_ambush</option>
-            <option value="hd_arrow">➤ hd_arrow</option>
-            <option value="hd_destroy">✖ hd_destroy</option>
-            <option value="hd_dot">⬤ hd_dot</option>
-            <option value="hd_end">⊗ hd_end</option>
-            <option value="hd_flag">⚑ hd_flag</option>
-            <option value="hd_join">⊞ hd_join</option>
-            <option value="hd_objective">⊕ hd_objective</option>
-            <option value="hd_pickup">△ hd_pickup</option>
-            <option value="hd_start">⊙ hd_start</option>
-            <option value="hd_unknown">? hd_unknown</option>
-            <option value="hd_warning">⚠ hd_warning</option>
-            </optgroup>
-            <optgroup label="Flags">
-            <option value="flag_aaf">⚑ flag_aaf</option>
-            <option value="flag_altis">⚑ flag_altis</option>
-            <option value="flag_altiscolonial">⚑ flag_altiscolonial</option>
-            <option value="flag_belgium">⚑ flag_belgium</option>
-            <option value="flag_canada">⚑ flag_canada</option>
-            <option value="flag_catalonia">⚑ flag_catalonia</option>
-            <option value="flag_croatia">⚑ flag_croatia</option>
-            <option value="flag_csat">⚑ flag_csat</option>
-            <option value="flag_ctrg">⚑ flag_ctrg</option>
-            <option value="flag_czechrepublic">⚑ flag_czechrepublic</option>
-            <option value="flag_denmark">⚑ flag_denmark</option>
-            <option value="flag_eu">⚑ flag_eu</option>
-            <option value="flag_fia">⚑ flag_fia</option>
-            <option value="flag_france">⚑ flag_france</option>
-            <option value="flag_georgia">⚑ flag_georgia</option>
-            <option value="flag_germany">⚑ flag_germany</option>
-            <option value="flag_greece">⚑ flag_greece</option>
-            <option value="flag_hungary">⚑ flag_hungary</option>
-            <option value="flag_iceland">⚑ flag_iceland</option>
-            <option value="flag_italy">⚑ flag_italy</option>
-            <option value="flag_luxembourg">⚑ flag_luxembourg</option>
-            <option value="flag_nato">⚑ flag_nato</option>
-            <option value="flag_netherlands">⚑ flag_netherlands</option>
-            <option value="flag_norway">⚑ flag_norway</option>
-            <option value="flag_poland">⚑ flag_poland</option>
-            <option value="flag_portugal">⚑ flag_portugal</option>
-            <option value="flag_russia">⚑ flag_russia</option>
-            <option value="flag_slovakia">⚑ flag_slovakia</option>
-            <option value="flag_slovenia">⚑ flag_slovenia</option>
-            <option value="flag_spain">⚑ flag_spain</option>
-            <option value="flag_syndicat">⚑ flag_syndicat</option>
-            <option value="flag_tanoa">⚑ flag_tanoa</option>
-            <option value="flag_tanoagendarmerie">⚑ flag_tanoagendarmerie</option>
-            <option value="flag_uk">⚑ flag_uk</option>
-            <option value="flag_un">⚑ flag_un</option>
-            <option value="flag_usa">⚑ flag_usa</option>
-            <option value="flag_viper">⚑ flag_viper</option>
-            </optgroup>
+          <div class="form-col"><label>Shape</label><select id="basicShape" class="form-control game-icon-select">
+            <option class="game-icon-mil_dot" value="mil_dot">mil_dot</option>
+            <option class="game-icon-mil_ambush" value="mil_ambush">mil_ambush</option>
+            <option class="game-icon-mil_arrow" value="mil_arrow">mil_arrow</option>
+            <option class="game-icon-mil_arrow2" value="mil_arrow2">mil_arrow2</option>
+            <option class="game-icon-mil_box" value="mil_box">mil_box</option>
+            <option class="game-icon-mil_circle" value="mil_circle">mil_circle</option>
+            <option class="game-icon-mil_destroy" value="mil_destroy">mil_destroy</option>
+            <option class="game-icon-mil_end" value="mil_end">mil_end</option>
+            <option class="game-icon-mil_flag" value="mil_flag">mil_flag</option>
+            <option class="game-icon-mil_join" value="mil_join">mil_join</option>
+            <option class="game-icon-mil_marker" value="mil_marker">mil_marker</option>
+            <option class="game-icon-mil_objective" value="mil_objective">mil_objective</option>
+            <option class="game-icon-mil_pickup" value="mil_pickup">mil_pickup</option>
+            <option class="game-icon-mil_start" value="mil_start">mil_start</option>
+            <option class="game-icon-mil_triangle" value="mil_triangle">mil_triangle</option>
+            <option class="game-icon-mil_unknown" value="mil_unknown">mil_unknown</option>
+            <option class="game-icon-mil_warning" value="mil_warning">mil_warning</option>
+            <option class="game-icon-hd_ambush" value="hd_ambush">hd_ambush</option>
+            <option class="game-icon-hd_arrow" value="hd_arrow">hd_arrow</option>
+            <option class="game-icon-hd_destroy" value="hd_destroy">hd_destroy</option>
+            <option class="game-icon-hd_dot" value="hd_dot">hd_dot</option>
+            <option class="game-icon-hd_end" value="hd_end">hd_end</option>
+            <option class="game-icon-hd_flag" value="hd_flag">hd_flag</option>
+            <option class="game-icon-hd_join" value="hd_join">hd_join</option>
+            <option class="game-icon-hd_objective" value="hd_objective">hd_objective</option>
+            <option class="game-icon-hd_pickup" value="hd_pickup">hd_pickup</option>
+            <option class="game-icon-hd_start" value="hd_start">hd_start</option>
+            <option class="game-icon-hd_unknown" value="hd_unknown">hd_unknown</option>
+            <option class="game-icon-hd_warning" value="hd_warning">hd_warning</option>
+            <option class="game-icon-flag_aaf" value="flag_aaf">flag_aaf</option>
+            <option class="game-icon-flag_altis" value="flag_altis">flag_altis</option>
+            <option class="game-icon-flag_altiscolonial" value="flag_altiscolonial">flag_altiscolonial</option>
+            <option class="game-icon-flag_belgium" value="flag_belgium">flag_belgium</option>
+            <option class="game-icon-flag_canada" value="flag_canada">flag_canada</option>
+            <option class="game-icon-flag_catalonia" value="flag_catalonia">flag_catalonia</option>
+            <option class="game-icon-flag_croatia" value="flag_croatia">flag_croatia</option>
+            <option class="game-icon-flag_csat" value="flag_csat">flag_csat</option>
+            <option class="game-icon-flag_ctrg" value="flag_ctrg">flag_ctrg</option>
+            <option class="game-icon-flag_czechrepublic" value="flag_czechrepublic">flag_czechrepublic</option>
+            <option class="game-icon-flag_denmark" value="flag_denmark">flag_denmark</option>
+            <option class="game-icon-flag_eu" value="flag_eu">flag_eu</option>
+            <option class="game-icon-flag_fia" value="flag_fia">flag_fia</option>
+            <option class="game-icon-flag_france" value="flag_france">flag_france</option>
+            <option class="game-icon-flag_georgia" value="flag_georgia">flag_georgia</option>
+            <option class="game-icon-flag_germany" value="flag_germany">flag_germany</option>
+            <option class="game-icon-flag_greece" value="flag_greece">flag_greece</option>
+            <option class="game-icon-flag_hungary" value="flag_hungary">flag_hungary</option>
+            <option class="game-icon-flag_iceland" value="flag_iceland">flag_iceland</option>
+            <option class="game-icon-flag_italy" value="flag_italy">flag_italy</option>
+            <option class="game-icon-flag_luxembourg" value="flag_luxembourg">flag_luxembourg</option>
+            <option class="game-icon-flag_nato" value="flag_nato">flag_nato</option>
+            <option class="game-icon-flag_netherlands" value="flag_netherlands">flag_netherlands</option>
+            <option class="game-icon-flag_norway" value="flag_norway">flag_norway</option>
+            <option class="game-icon-flag_poland" value="flag_poland">flag_poland</option>
+            <option class="game-icon-flag_portugal" value="flag_portugal">flag_portugal</option>
+            <option class="game-icon-flag_russia" value="flag_russia">flag_russia</option>
+            <option class="game-icon-flag_slovakia" value="flag_slovakia">flag_slovakia</option>
+            <option class="game-icon-flag_slovenia" value="flag_slovenia">flag_slovenia</option>
+            <option class="game-icon-flag_spain" value="flag_spain">flag_spain</option>
+            <option class="game-icon-flag_syndicat" value="flag_syndicat">flag_syndicat</option>
+            <option class="game-icon-flag_tanoa" value="flag_tanoa">flag_tanoa</option>
+            <option class="game-icon-flag_tanoagendarmerie" value="flag_tanoagendarmerie">flag_tanoagendarmerie</option>
+            <option class="game-icon-flag_uk" value="flag_uk">flag_uk</option>
+            <option class="game-icon-flag_un" value="flag_un">flag_un</option>
+            <option class="game-icon-flag_usa" value="flag_usa">flag_usa</option>
+            <option class="game-icon-flag_viper" value="flag_viper">flag_viper</option>
           </select></div>
           <div class="form-col"><label>Color</label>
             <div class="color-picker-wrap">
