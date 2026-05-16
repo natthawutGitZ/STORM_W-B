@@ -107,7 +107,6 @@ let pdfDoc = null,
     pageNum = 1,
     pageRendering = false,
     pageNumPending = null,
-    pdfScale = 1.5,
     pdfCanvas = null,
     pdfCtx = null;
 
@@ -126,18 +125,22 @@ function renderPage(num, direction) {
 
     // Fetch page
     pdfDoc.getPage(num).then(function(page) {
-        // Find container width to adjust scale if needed, but 1.5 usually fits well
         const container = document.getElementById('pdfCanvasWrap');
-        let viewport = page.getViewport({ scale: pdfScale });
-        
-        // Adjust scale to fit width if larger than container
-        if (container && viewport.width > container.clientWidth - 40) {
-             const newScale = (container.clientWidth - 40) / viewport.width * pdfScale;
-             viewport = page.getViewport({ scale: newScale });
-        }
+        if (!container) return;
 
-        pdfCanvas.height = viewport.height;
+        const containerW = container.clientWidth - 20;  // slight padding
+        const containerH = container.clientHeight - 20;
+
+        // Calculate scale to fit BOTH width and height (no scrollbar)
+        const unscaledViewport = page.getViewport({ scale: 1 });
+        const scaleW = containerW / unscaledViewport.width;
+        const scaleH = containerH / unscaledViewport.height;
+        const fitScale = Math.min(scaleW, scaleH);
+
+        const viewport = page.getViewport({ scale: fitScale });
+
         pdfCanvas.width = viewport.width;
+        pdfCanvas.height = viewport.height;
 
         const renderContext = {
             canvasContext: pdfCtx,
@@ -148,8 +151,10 @@ function renderPage(num, direction) {
         renderTask.promise.then(function() {
             pageRendering = false;
             if (pageNumPending !== null) {
-                renderPage(pageNumPending, pageNumPending > num ? 'next' : 'prev');
+                const pendingDir = pageNumPending > num ? 'next' : 'prev';
+                const pending = pageNumPending;
                 pageNumPending = null;
+                renderPage(pending, pendingDir);
             }
         });
     });
@@ -169,13 +174,13 @@ function queueRenderPage(num, direction) {
 }
 
 function prevPage() {
-    if (pageNum <= 1) return;
+    if (!pdfDoc || pageNum <= 1) return;
     pageNum--;
     queueRenderPage(pageNum, 'prev');
 }
 
 function nextPage() {
-    if (pageNum >= pdfDoc.numPages) return;
+    if (!pdfDoc || pageNum >= pdfDoc.numPages) return;
     pageNum++;
     queueRenderPage(pageNum, 'next');
 }
@@ -194,6 +199,52 @@ document.addEventListener('DOMContentLoaded', () => {
         }).catch(function(err) {
             console.error('Error loading PDF:', err);
         });
+    }
+
+    // Re-render on window resize so it always fits
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            if (pdfDoc) renderPage(pageNum, null);
+        }, 200);
+    });
+
+    // Arrow key navigation (Left/Right)
+    document.addEventListener('keydown', (e) => {
+        // Only when DOCUMENT tab is active
+        const docTab = document.getElementById('tab-document');
+        if (!docTab || !docTab.classList.contains('active')) return;
+        // Don't capture if user is typing in an input
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+        
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            nextPage();
+        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            prevPage();
+        }
+    });
+
+    // Mouse scroll navigation (scroll up = prev, scroll down = next)
+    const canvasWrap = document.getElementById('pdfCanvasWrap');
+    if (canvasWrap) {
+        let scrollCooldown = false;
+        canvasWrap.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            if (scrollCooldown) return;
+            scrollCooldown = true;
+            
+            if (e.deltaY > 0) {
+                nextPage();
+            } else if (e.deltaY < 0) {
+                prevPage();
+            }
+            
+            // Cooldown to prevent rapid-fire page changes
+            setTimeout(() => { scrollCooldown = false; }, 350);
+        }, { passive: false });
     }
 });
 

@@ -685,21 +685,21 @@
 
 .pdf-canvas-wrap {
   flex: 1;
-  overflow: auto;
+  overflow: hidden;
   display: flex;
   justify-content: center;
-  align-items: flex-start;
-  padding: 20px;
+  align-items: center;
+  padding: 10px;
   position: relative;
   perspective: 1000px;
+  background: #111;
 }
 
 .pdf-render-canvas {
   max-width: 100%;
-  height: auto;
+  max-height: 100%;
   box-shadow: 0 0 30px rgba(0,0,0,0.8);
   border: 1px solid rgba(255,255,255,0.1);
-  filter: invert(0.95) hue-rotate(180deg);
   transform-origin: center center;
 }
 
@@ -713,11 +713,11 @@
 }
 
 @keyframes pdfSlideNext {
-  0% { transform: translateX(50px) scale(0.95); opacity: 0; filter: invert(0.95) hue-rotate(180deg) brightness(2); }
-  100% { transform: translateX(0) scale(1); opacity: 1; filter: invert(0.95) hue-rotate(180deg) brightness(1); }
+  0% { transform: translateX(60px) scale(0.92); opacity: 0; }
+  100% { transform: translateX(0) scale(1); opacity: 1; }
 }
 
 @keyframes pdfSlidePrev {
-  0% { transform: translateX(-50px) scale(0.95); opacity: 0; filter: invert(0.95) hue-rotate(180deg) brightness(2); }
-  100% { transform: translateX(0) scale(1); opacity: 1; filter: invert(0.95) hue-rotate(180deg) brightness(1); }
+  0% { transform: translateX(-60px) scale(0.92); opacity: 0; }
+  100% { transform: translateX(0) scale(1); opacity: 1; }
 }
