@@ -732,16 +732,16 @@ require_once ROOT_PATH . '/includes/db.php';
             <option value="mil_arrow2">⬆ mil_arrow2</option>
             <option value="mil_box">■ mil_box</option>
             <option value="mil_circle">○ mil_circle</option>
-            <option value="mil_cross">✕ mil_cross</option>
+
             <option value="mil_destroy">✖ mil_destroy</option>
-            <option value="mil_diamond">◆ mil_diamond</option>
+
             <option value="mil_end">⊗ mil_end</option>
             <option value="mil_flag">⚑ mil_flag</option>
             <option value="mil_join">⊞ mil_join</option>
             <option value="mil_marker">📍 mil_marker</option>
             <option value="mil_objective">⊕ mil_objective</option>
             <option value="mil_pickup">△ mil_pickup</option>
-            <option value="mil_square">□ mil_square</option>
+
             <option value="mil_start">⊙ mil_start</option>
             <option value="mil_triangle">▲ mil_triangle</option>
             <option value="mil_unknown">? mil_unknown</option>

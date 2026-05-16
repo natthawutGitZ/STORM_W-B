@@ -794,16 +794,15 @@ const BASIC_SYMBOL_SVG = {
     'mil_arrow2':    '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><path d="M12 2L22 12H16V22H8V12H2Z" fill="{c}"/></svg>',
     'mil_box':       '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" fill="{c}"/></svg>',
     'mil_circle':    '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="{c}" stroke-width="2.5"/></svg>',
-    'mil_cross':     '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><line x1="4" y1="4" x2="20" y2="20" stroke="{c}" stroke-width="3"/><line x1="20" y1="4" x2="4" y2="20" stroke="{c}" stroke-width="3"/></svg>',
     'mil_destroy':   '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="{c}" stroke-width="2"/><line x1="5" y1="5" x2="19" y2="19" stroke="{c}" stroke-width="3"/><line x1="19" y1="5" x2="5" y2="19" stroke="{c}" stroke-width="3"/></svg>',
-    'mil_diamond':   '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><polygon points="12,2 22,12 12,22 2,12" fill="{c}"/></svg>',
+
     'mil_end':       '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="{c}" stroke-width="2.5"/><line x1="5" y1="5" x2="19" y2="19" stroke="{c}" stroke-width="2"/><line x1="19" y1="5" x2="5" y2="19" stroke="{c}" stroke-width="2"/></svg>',
     'mil_flag':      '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><line x1="5" y1="2" x2="5" y2="22" stroke="{c}" stroke-width="2"/><polygon points="5,2 20,7 5,12" fill="{c}"/></svg>',
     'mil_join':      '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="{c}" stroke-width="2"/><line x1="7" y1="12" x2="17" y2="12" stroke="{c}" stroke-width="2.5"/><line x1="12" y1="7" x2="12" y2="17" stroke="{c}" stroke-width="2.5"/></svg>',
     'mil_marker':    '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z" fill="{c}"/></svg>',
     'mil_objective': '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="{c}" stroke-width="2"/><line x1="12" y1="3" x2="12" y2="21" stroke="{c}" stroke-width="2"/><line x1="3" y1="12" x2="21" y2="12" stroke="{c}" stroke-width="2"/></svg>',
     'mil_pickup':    '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><polygon points="12,2 22,18 2,18" fill="none" stroke="{c}" stroke-width="2.5"/><circle cx="12" cy="11" r="3" fill="{c}"/></svg>',
-    'mil_square':    '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" fill="none" stroke="{c}" stroke-width="2.5"/></svg>',
+
     'mil_start':     '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="{c}" stroke-width="2.5"/><circle cx="12" cy="12" r="3" fill="{c}"/></svg>',
     'mil_triangle':  '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><polygon points="12,2 22,22 2,22" fill="{c}"/></svg>',
     'mil_unknown':   '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="{c}" stroke-width="2"/><text x="12" y="17" text-anchor="middle" fill="{c}" font-size="16" font-weight="bold">?</text></svg>',
