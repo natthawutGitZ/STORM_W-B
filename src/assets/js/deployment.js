@@ -162,7 +162,8 @@ function toggleEditMode() {
 
 // ---- Expand / Collapse unit ----
 function toggleUnit(unitName) {
-    const card = document.querySelector(`.unit-card[data-unit="${unitName}"]`);
+    const safeUnitName = unitName.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    const card = document.querySelector(`.unit-card[data-unit="${safeUnitName}"]`);
     if (!card) return;
     card.classList.toggle('expanded');
     const expanded = card.classList.contains('expanded');
