@@ -102,6 +102,41 @@ document.querySelectorAll('.tab-btn,.nav-item').forEach(btn=>{
   if(saved) switchTab(saved);
 })();
 
+// PDF Viewer toggles
+function togglePdfFullscreen() {
+    const container = document.getElementById('pdfViewerContainer');
+    if (!document.fullscreenElement) {
+        if (container.requestFullscreen) {
+            container.requestFullscreen();
+        } else if (container.webkitRequestFullscreen) { /* Safari */
+            container.webkitRequestFullscreen();
+        } else if (container.msRequestFullscreen) { /* IE11 */
+            container.msRequestFullscreen();
+        }
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) { /* Safari */
+            document.webkitExitFullscreen();
+        } else if (document.msExitFullscreen) { /* IE11 */
+            document.msExitFullscreen();
+        }
+    }
+}
+
+let pdfLangEn = true;
+function togglePdfLanguage() {
+    const iframe = document.getElementById('documentPdfViewer');
+    const btn = document.getElementById('btnPdfLang');
+    pdfLangEn = !pdfLangEn;
+    
+    // For now, there is only one PDF. Just toggle the button appearance.
+    // If you add a TH version of the PDF later, you can update the src here:
+    // iframe.src = pdfLangEn ? 'assets/Role/Joint OPS plan [ Edit-t ].pdf#toolbar=0&navpanes=0&scrollbar=0&view=FitH' : 'assets/Role/Joint_OPS_plan_TH.pdf#toolbar=0...';
+    
+    btn.innerHTML = pdfLangEn ? '<i class="fas fa-language"></i> EN' : '<i class="fas fa-language"></i> TH';
+}
+
 function closeModal(id){document.getElementById(id).classList.remove('show');}
 
 // Data loading

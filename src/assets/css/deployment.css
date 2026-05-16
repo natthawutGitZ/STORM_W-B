@@ -645,4 +645,5 @@
   height: 100%;
   border: none;
   overflow: hidden;
+  filter: invert(0.95) hue-rotate(180deg);
 }
