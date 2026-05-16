@@ -46,8 +46,8 @@ function renderDeployment() {
         let unitHeaderActions = '';
         if (deployIsEditMode) {
             unitHeaderActions = `
-                <button class="unit-edit-btn" onclick="event.stopPropagation(); editUnit('${escDep(unit.unit_name)}', '${escDep(unit.unit_type)}')"><i class="fas fa-pencil"></i></button>
-                <button class="unit-del-btn" onclick="event.stopPropagation(); deleteUnit('${escDep(unit.unit_name)}')"><i class="fas fa-trash"></i></button>
+                <button class="unit-edit-btn" onclick="event.stopPropagation(); editUnit('${escJS(unit.unit_name)}', '${escJS(unit.unit_type)}')"><i class="fas fa-pencil"></i></button>
+                <button class="unit-del-btn" onclick="event.stopPropagation(); deleteUnit('${escJS(unit.unit_name)}')"><i class="fas fa-trash"></i></button>
             `;
         }
 
@@ -57,18 +57,18 @@ function renderDeployment() {
         if (deployIsEditMode) {
             addRoleBtn = `
                 <div class="slot-row add-role-row">
-                    <button class="add-role-btn" onclick="addRole('${escDep(unit.unit_name)}')"><i class="fas fa-plus"></i> ADD ROLE</button>
+                    <button class="add-role-btn" onclick="addRole('${escJS(unit.unit_name)}')"><i class="fas fa-plus"></i> ADD ROLE</button>
                 </div>
             `;
         }
 
         return `
-        <div class="unit-card ${isExpanded ? 'expanded' : ''}" data-unit="${escDep(unit.unit_name)}">
-            <div class="unit-header" onclick="toggleUnit('${escDep(unit.unit_name)}')">
+        <div class="unit-card ${isExpanded ? 'expanded' : ''}" data-unit="${escHtml(unit.unit_name)}">
+            <div class="unit-header" onclick="toggleUnit('${escJS(unit.unit_name)}')">
                 <div class="unit-header-left">
                     <i class="fas fa-chevron-right unit-chevron"></i>
-                    <span class="unit-type-badge ${escDep(unit.unit_type)}">${escDep(unit.unit_type)}</span>
-                    <span class="unit-name">${escDep(unit.unit_name)}</span>
+                    <span class="unit-type-badge ${escHtml(unit.unit_type)}">${escHtml(unit.unit_type)}</span>
+                    <span class="unit-name">${escHtml(unit.unit_name)}</span>
                 </div>
                 <div class="unit-header-right">
                     ${unitHeaderActions}
@@ -124,21 +124,21 @@ function renderSlotRow(unit, slot, idx) {
     let actions = '';
     if (deployIsEditMode) {
         actions = `
-            <button class="slot-action edit-role-btn" onclick="editRole(${slot.id}, '${escDep(slot.role_name)}')"><i class="fas fa-pencil"></i></button>
+            <button class="slot-action edit-role-btn" onclick="editRole(${slot.id}, '${escJS(slot.role_name)}')"><i class="fas fa-pencil"></i></button>
             <button class="slot-action del-role-btn" onclick="deleteRole(${slot.id})"><i class="fas fa-trash"></i></button>
         `;
     } else {
         actions = isFilled
             ? `<button class="slot-action withdraw-btn" onclick="withdrawSlot(${slot.id})" title="Withdraw"><i class="fas fa-times"></i></button>`
-            : `<button class="slot-action signup-btn" onclick="openSignupModal(${slot.id},'${escDep(slot.role_name)}','${escDep(unit.unit_name)}')" title="Sign Up"><i class="fas fa-plus"></i></button>`;
+            : `<button class="slot-action signup-btn" onclick="openSignupModal(${slot.id},'${escJS(slot.role_name)}','${escJS(unit.unit_name)}')" title="Sign Up"><i class="fas fa-plus"></i></button>`;
     }
 
     return `
     <div class="slot-row">
         <span class="slot-index">${String(idx + 1).padStart(2, '0')}</span>
-        <span class="slot-role">${escDep(slot.role_name)}</span>
+        <span class="slot-role">${escHtml(slot.role_name)}</span>
         <span class="slot-player ${isFilled ? 'filled' : 'vacant'}">
-            ${isFilled ? escDep(slot.player_name) : '── VACANT ──'}
+            ${isFilled ? escHtml(slot.player_name) : '── VACANT ──'}
         </span>
         ${actions}
     </div>`;
@@ -306,11 +306,18 @@ function stopDeployRefresh() {
 }
 
 // ---- Helper ----
-function escDep(s) {
+function escHtml(s) {
     if (!s) return '';
     const d = document.createElement('div');
     d.textContent = s;
-    return d.innerHTML;
+    return d.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function escJS(s) {
+    if (!s) return '';
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }
 
 document.addEventListener('DOMContentLoaded', function() {
