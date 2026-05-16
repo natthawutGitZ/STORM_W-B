@@ -1,5 +1,34 @@
 <?php
 require_once ROOT_PATH . '/includes/db.php';
+
+// PLANOPS API Integration with File Cache
+$planopsCacheFile = ROOT_PATH . '/planops_game_1_cache.json';
+$cacheExpiration = 3600 * 24; // 24 hours
+$planopsDataRaw = null;
+
+if (file_exists($planopsCacheFile) && (time() - filemtime($planopsCacheFile) < $cacheExpiration)) {
+    $planopsDataRaw = file_get_contents($planopsCacheFile);
+} else {
+    $ch = curl_init('https://atlas.plan-ops.fr/api/v1/games/1');
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    $planopsDataRaw = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode === 200 && $planopsDataRaw) {
+        file_put_contents($planopsCacheFile, $planopsDataRaw);
+    } elseif (file_exists($planopsCacheFile)) {
+        $planopsDataRaw = file_get_contents($planopsCacheFile);
+    } else {
+        $planopsDataRaw = '{"colors":[],"markers":[]}';
+    }
+}
+$planopsData = json_decode($planopsDataRaw, true);
+if (!is_array($planopsData)) {
+    $planopsData = ['colors' => [], 'markers' => []];
+}
 ?>
 <!DOCTYPE html>
 <html lang="th">
@@ -29,6 +58,23 @@ require_once ROOT_PATH . '/includes/db.php';
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/5.10.7/tinymce.min.js" referrerpolicy="origin"></script>
 <!-- PDF.js for Animated Book Viewer -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+<!-- PLANOPS API DATA INJECTION -->
+<script>
+    window.PLANOPS_DATA = <?php echo json_encode($planopsData); ?>;
+</script>
+<style>
+/* Dynamic PLANOPS Marker CSS */
+<?php
+if (isset($planopsData['markers']) && is_array($planopsData['markers'])) {
+    foreach ($planopsData['markers'] as $marker) {
+        $img = htmlspecialchars($marker['imageWebp']);
+        $name = htmlspecialchars($marker['name']);
+        echo ".game-icon-{$name} { background-image: url('{$img}') !important; background-size: contain; background-repeat: no-repeat; background-position: left center; padding-left: 30px !important; }\n";
+    }
+}
+?>
+</style>
 </head>
 <body>
 <div class="scanline"></div>
@@ -725,91 +771,30 @@ require_once ROOT_PATH . '/includes/db.php';
       <div class="map-modal-body">
         <div class="form-row">
           <div class="form-col"><label>Shape</label><select id="basicShape" class="form-control game-icon-select">
-            <option class="game-icon-mil_dot" value="mil_dot">mil_dot</option>
-            <option class="game-icon-mil_ambush" value="mil_ambush">mil_ambush</option>
-            <option class="game-icon-mil_arrow" value="mil_arrow">mil_arrow</option>
-            <option class="game-icon-mil_arrow2" value="mil_arrow2">mil_arrow2</option>
-            <option class="game-icon-mil_box" value="mil_box">mil_box</option>
-            <option class="game-icon-mil_circle" value="mil_circle">mil_circle</option>
-            <option class="game-icon-mil_destroy" value="mil_destroy">mil_destroy</option>
-            <option class="game-icon-mil_end" value="mil_end">mil_end</option>
-            <option class="game-icon-mil_flag" value="mil_flag">mil_flag</option>
-            <option class="game-icon-mil_join" value="mil_join">mil_join</option>
-            <option class="game-icon-mil_marker" value="mil_marker">mil_marker</option>
-            <option class="game-icon-mil_objective" value="mil_objective">mil_objective</option>
-            <option class="game-icon-mil_pickup" value="mil_pickup">mil_pickup</option>
-            <option class="game-icon-mil_start" value="mil_start">mil_start</option>
-            <option class="game-icon-mil_triangle" value="mil_triangle">mil_triangle</option>
-            <option class="game-icon-mil_unknown" value="mil_unknown">mil_unknown</option>
-            <option class="game-icon-mil_warning" value="mil_warning">mil_warning</option>
-            <option class="game-icon-hd_ambush" value="hd_ambush">hd_ambush</option>
-            <option class="game-icon-hd_arrow" value="hd_arrow">hd_arrow</option>
-            <option class="game-icon-hd_destroy" value="hd_destroy">hd_destroy</option>
-            <option class="game-icon-hd_dot" value="hd_dot">hd_dot</option>
-            <option class="game-icon-hd_end" value="hd_end">hd_end</option>
-            <option class="game-icon-hd_flag" value="hd_flag">hd_flag</option>
-            <option class="game-icon-hd_join" value="hd_join">hd_join</option>
-            <option class="game-icon-hd_objective" value="hd_objective">hd_objective</option>
-            <option class="game-icon-hd_pickup" value="hd_pickup">hd_pickup</option>
-            <option class="game-icon-hd_start" value="hd_start">hd_start</option>
-            <option class="game-icon-hd_unknown" value="hd_unknown">hd_unknown</option>
-            <option class="game-icon-hd_warning" value="hd_warning">hd_warning</option>
-            <option class="game-icon-flag_aaf" value="flag_aaf">flag_aaf</option>
-            <option class="game-icon-flag_altis" value="flag_altis">flag_altis</option>
-            <option class="game-icon-flag_altiscolonial" value="flag_altiscolonial">flag_altiscolonial</option>
-            <option class="game-icon-flag_belgium" value="flag_belgium">flag_belgium</option>
-            <option class="game-icon-flag_canada" value="flag_canada">flag_canada</option>
-            <option class="game-icon-flag_catalonia" value="flag_catalonia">flag_catalonia</option>
-            <option class="game-icon-flag_croatia" value="flag_croatia">flag_croatia</option>
-            <option class="game-icon-flag_csat" value="flag_csat">flag_csat</option>
-            <option class="game-icon-flag_ctrg" value="flag_ctrg">flag_ctrg</option>
-            <option class="game-icon-flag_czechrepublic" value="flag_czechrepublic">flag_czechrepublic</option>
-            <option class="game-icon-flag_denmark" value="flag_denmark">flag_denmark</option>
-            <option class="game-icon-flag_eu" value="flag_eu">flag_eu</option>
-            <option class="game-icon-flag_fia" value="flag_fia">flag_fia</option>
-            <option class="game-icon-flag_france" value="flag_france">flag_france</option>
-            <option class="game-icon-flag_georgia" value="flag_georgia">flag_georgia</option>
-            <option class="game-icon-flag_germany" value="flag_germany">flag_germany</option>
-            <option class="game-icon-flag_greece" value="flag_greece">flag_greece</option>
-            <option class="game-icon-flag_hungary" value="flag_hungary">flag_hungary</option>
-            <option class="game-icon-flag_iceland" value="flag_iceland">flag_iceland</option>
-            <option class="game-icon-flag_italy" value="flag_italy">flag_italy</option>
-            <option class="game-icon-flag_luxembourg" value="flag_luxembourg">flag_luxembourg</option>
-            <option class="game-icon-flag_nato" value="flag_nato">flag_nato</option>
-            <option class="game-icon-flag_netherlands" value="flag_netherlands">flag_netherlands</option>
-            <option class="game-icon-flag_norway" value="flag_norway">flag_norway</option>
-            <option class="game-icon-flag_poland" value="flag_poland">flag_poland</option>
-            <option class="game-icon-flag_portugal" value="flag_portugal">flag_portugal</option>
-            <option class="game-icon-flag_russia" value="flag_russia">flag_russia</option>
-            <option class="game-icon-flag_slovakia" value="flag_slovakia">flag_slovakia</option>
-            <option class="game-icon-flag_slovenia" value="flag_slovenia">flag_slovenia</option>
-            <option class="game-icon-flag_spain" value="flag_spain">flag_spain</option>
-            <option class="game-icon-flag_syndicat" value="flag_syndicat">flag_syndicat</option>
-            <option class="game-icon-flag_tanoa" value="flag_tanoa">flag_tanoa</option>
-            <option class="game-icon-flag_tanoagendarmerie" value="flag_tanoagendarmerie">flag_tanoagendarmerie</option>
-            <option class="game-icon-flag_uk" value="flag_uk">flag_uk</option>
-            <option class="game-icon-flag_un" value="flag_un">flag_un</option>
-            <option class="game-icon-flag_usa" value="flag_usa">flag_usa</option>
-            <option class="game-icon-flag_viper" value="flag_viper">flag_viper</option>
+            <?php
+            if (isset($planopsData['markers']) && is_array($planopsData['markers'])) {
+                foreach ($planopsData['markers'] as $marker) {
+                    $val = htmlspecialchars($marker['name']);
+                    echo "<option class=\"game-icon-{$val}\" value=\"{$val}\">{$val}</option>\n";
+                }
+            }
+            ?>
           </select></div>
           <div class="form-col"><label>Color</label>
             <div class="color-picker-wrap">
-              <button class="color-btn active" data-color="#000000" style="background:#000000;border:2px solid #fff" title="Black"></button>
-              <button class="color-btn" data-color="#7f7f7f" style="background:#7f7f7f" title="Grey"></button>
-              <button class="color-btn" data-color="#e50000" style="background:#e50000" title="Red"></button>
-              <button class="color-btn" data-color="#7f3f00" style="background:#7f3f00" title="Brown"></button>
-              <button class="color-btn" data-color="#d86600" style="background:#d86600" title="Orange"></button>
-              <button class="color-btn" data-color="#d8d800" style="background:#d8d800" title="Yellow"></button>
-              <button class="color-btn" data-color="#7f9966" style="background:#7f9966" title="Khaki"></button>
-              <button class="color-btn" data-color="#00cc00" style="background:#00cc00" title="Green"></button>
-              <button class="color-btn" data-color="#0000ff" style="background:#0000ff" title="Blue"></button>
-              <button class="color-btn" data-color="#ff4c66" style="background:#ff4c66" title="Pink"></button>
-              <button class="color-btn" data-color="#ffffff" style="background:#ffffff" title="White"></button>
-              <button class="color-btn" data-color="#b29900" style="background:#b29900" title="UNKNOWN"></button>
-              <button class="color-btn" data-color="#004c99" style="background:#004c99" title="BLUFOR"></button>
-              <button class="color-btn" data-color="#7f0000" style="background:#7f0000" title="OPFOR"></button>
-              <button class="color-btn" data-color="#007f00" style="background:#007f00" title="Independent"></button>
-              <button class="color-btn" data-color="#66007f" style="background:#66007f" title="Civilian"></button>
+              <?php
+              if (isset($planopsData['colors']) && is_array($planopsData['colors'])) {
+                  $first = true;
+                  foreach ($planopsData['colors'] as $color) {
+                      $hex = htmlspecialchars($color['hexadecimal']);
+                      $name = htmlspecialchars($color['englishTitle']);
+                      $activeClass = $first ? ' active' : '';
+                      $border = $first ? ';border:2px solid #fff' : '';
+                      echo "<button class=\"color-btn{$activeClass}\" data-color=\"{$hex}\" style=\"background:{$hex}{$border}\" title=\"{$name}\"></button>\n";
+                      $first = false;
+                  }
+              }
+              ?>
             </div>
           </div>
           <div class="form-col"><label>Rotation (mil)</label><input type="number" id="basicRotation" value="0"></div>
