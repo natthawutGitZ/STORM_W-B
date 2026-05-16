@@ -26,6 +26,8 @@ require_once ROOT_PATH . '/includes/db.php';
 <script src="https://jetelain.github.io/Arma3Map/maps/all.js"></script>
 <script src="assets/js/milMissions.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/5.10.7/tinymce.min.js" referrerpolicy="origin"></script>
+<!-- PDF.js for Animated Book Viewer -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
 <div class="scanline"></div>
@@ -404,7 +406,14 @@ require_once ROOT_PATH . '/includes/db.php';
       </div>
       <!-- PDF Viewer -->
       <div class="pdf-viewer-container" id="pdfViewerContainer">
-        <iframe class="pdf-viewer" id="documentPdfViewer" src="assets/Role/Joint%20OPS%20plan%20[%20Edit-t%20].pdf#toolbar=0&navpanes=0&scrollbar=0&view=FitH" frameborder="0" scrolling="no"></iframe>
+        <div class="pdf-controls">
+          <button class="pdf-btn" id="pdfPrev" onclick="prevPage()"><i class="fas fa-chevron-left"></i> PREV</button>
+          <span class="pdf-page-info">PAGE <span id="pdfPageNum">1</span> / <span id="pdfPageCount">?</span></span>
+          <button class="pdf-btn" id="pdfNext" onclick="nextPage()">NEXT <i class="fas fa-chevron-right"></i></button>
+        </div>
+        <div class="pdf-canvas-wrap" id="pdfCanvasWrap">
+          <canvas id="pdfRenderCanvas" class="pdf-render-canvas"></canvas>
+        </div>
       </div>
     </div>
   </section>

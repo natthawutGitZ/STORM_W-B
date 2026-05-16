@@ -102,7 +102,101 @@ document.querySelectorAll('.tab-btn,.nav-item').forEach(btn=>{
   if(saved) switchTab(saved);
 })();
 
-// PDF Viewer toggles
+// PDF Viewer Logic (PDF.js)
+let pdfDoc = null,
+    pageNum = 1,
+    pageRendering = false,
+    pageNumPending = null,
+    pdfScale = 1.5,
+    pdfCanvas = null,
+    pdfCtx = null;
+
+// The workerSrc property shall be specified.
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+function renderPage(num, direction) {
+    pageRendering = true;
+    
+    // Setup animation
+    if (pdfCanvas && direction) {
+        pdfCanvas.classList.remove('pdf-anim-next', 'pdf-anim-prev');
+        void pdfCanvas.offsetWidth; // Trigger reflow
+        pdfCanvas.classList.add(direction === 'next' ? 'pdf-anim-next' : 'pdf-anim-prev');
+    }
+
+    // Fetch page
+    pdfDoc.getPage(num).then(function(page) {
+        // Find container width to adjust scale if needed, but 1.5 usually fits well
+        const container = document.getElementById('pdfCanvasWrap');
+        let viewport = page.getViewport({ scale: pdfScale });
+        
+        // Adjust scale to fit width if larger than container
+        if (container && viewport.width > container.clientWidth - 40) {
+             const newScale = (container.clientWidth - 40) / viewport.width * pdfScale;
+             viewport = page.getViewport({ scale: newScale });
+        }
+
+        pdfCanvas.height = viewport.height;
+        pdfCanvas.width = viewport.width;
+
+        const renderContext = {
+            canvasContext: pdfCtx,
+            viewport: viewport
+        };
+        const renderTask = page.render(renderContext);
+
+        renderTask.promise.then(function() {
+            pageRendering = false;
+            if (pageNumPending !== null) {
+                renderPage(pageNumPending, pageNumPending > num ? 'next' : 'prev');
+                pageNumPending = null;
+            }
+        });
+    });
+
+    // Update page counters
+    document.getElementById('pdfPageNum').textContent = num;
+    document.getElementById('pdfPrev').disabled = num <= 1;
+    document.getElementById('pdfNext').disabled = num >= pdfDoc.numPages;
+}
+
+function queueRenderPage(num, direction) {
+    if (pageRendering) {
+        pageNumPending = num;
+    } else {
+        renderPage(num, direction);
+    }
+}
+
+function prevPage() {
+    if (pageNum <= 1) return;
+    pageNum--;
+    queueRenderPage(pageNum, 'prev');
+}
+
+function nextPage() {
+    if (pageNum >= pdfDoc.numPages) return;
+    pageNum++;
+    queueRenderPage(pageNum, 'next');
+}
+
+// Load the PDF once DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    pdfCanvas = document.getElementById('pdfRenderCanvas');
+    if (pdfCanvas) {
+        pdfCtx = pdfCanvas.getContext('2d');
+        const url = 'assets/Role/Joint OPS plan [ Edit-t ].pdf';
+        
+        pdfjsLib.getDocument(url).promise.then(function(pdfDoc_) {
+            pdfDoc = pdfDoc_;
+            document.getElementById('pdfPageCount').textContent = pdfDoc.numPages;
+            renderPage(pageNum, null);
+        }).catch(function(err) {
+            console.error('Error loading PDF:', err);
+        });
+    }
+});
+
 function togglePdfFullscreen() {
     const container = document.getElementById('pdfViewerContainer');
     if (!document.fullscreenElement) {
@@ -126,15 +220,11 @@ function togglePdfFullscreen() {
 
 let pdfLangEn = true;
 function togglePdfLanguage() {
-    const iframe = document.getElementById('documentPdfViewer');
-    const btn = document.getElementById('btnPdfLang');
     pdfLangEn = !pdfLangEn;
-    
-    // For now, there is only one PDF. Just toggle the button appearance.
-    // If you add a TH version of the PDF later, you can update the src here:
-    // iframe.src = pdfLangEn ? 'assets/Role/Joint OPS plan [ Edit-t ].pdf#toolbar=0&navpanes=0&scrollbar=0&view=FitH' : 'assets/Role/Joint_OPS_plan_TH.pdf#toolbar=0...';
-    
-    btn.innerHTML = pdfLangEn ? '<i class="fas fa-language"></i> EN' : '<i class="fas fa-language"></i> TH';
+    document.getElementById('btnPdfLang').innerHTML = pdfLangEn ? '<i class="fas fa-language"></i> EN' : '<i class="fas fa-language"></i> TH';
+    // If you had a Thai PDF, you could load it here:
+    // const newUrl = pdfLangEn ? 'assets/Role/Joint OPS plan [ Edit-t ].pdf' : 'assets/Role/Joint OPS plan TH.pdf';
+    // pdfjsLib.getDocument(newUrl).promise.then(pdf => { pdfDoc = pdf; renderPage(1); });
 }
 
 function closeModal(id){document.getElementById(id).classList.remove('show');}

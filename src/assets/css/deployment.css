@@ -620,6 +620,8 @@
   margin-top: 10px;
   opacity: 0.9;
   transition: all 0.3s;
+  display: flex;
+  flex-direction: column;
 }
 
 .pdf-viewer-container:-webkit-full-screen {
@@ -640,10 +642,82 @@
   opacity: 1;
 }
 
-.pdf-viewer {
-  width: 100%;
-  height: 100%;
-  border: none;
-  overflow: hidden;
+.pdf-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 10px;
+  background: rgba(0, 255, 65, 0.05);
+  border-bottom: 1px solid rgba(0, 255, 65, 0.15);
+}
+
+.pdf-btn {
+  background: transparent;
+  border: 1px solid rgba(0, 255, 65, 0.3);
+  color: #00ff41;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  padding: 6px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 1px;
+}
+
+.pdf-btn:hover:not(:disabled) {
+  background: rgba(0, 255, 65, 0.15);
+  box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+}
+
+.pdf-btn:disabled {
+  color: #555;
+  border-color: #333;
+  cursor: not-allowed;
+}
+
+.pdf-page-info {
+  font-family: var(--heading);
+  font-size: 1.1rem;
+  color: #fff;
+  letter-spacing: 2px;
+}
+
+.pdf-canvas-wrap {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 20px;
+  position: relative;
+  perspective: 1000px;
+}
+
+.pdf-render-canvas {
+  max-width: 100%;
+  height: auto;
+  box-shadow: 0 0 30px rgba(0,0,0,0.8);
+  border: 1px solid rgba(255,255,255,0.1);
   filter: invert(0.95) hue-rotate(180deg);
+  transform-origin: center center;
+}
+
+/* Digital Slide & Fade Animations */
+.pdf-anim-next {
+  animation: pdfSlideNext 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+}
+
+.pdf-anim-prev {
+  animation: pdfSlidePrev 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+}
+
+@keyframes pdfSlideNext {
+  0% { transform: translateX(50px) scale(0.95); opacity: 0; filter: invert(0.95) hue-rotate(180deg) brightness(2); }
+  100% { transform: translateX(0) scale(1); opacity: 1; filter: invert(0.95) hue-rotate(180deg) brightness(1); }
+}
+
+@keyframes pdfSlidePrev {
+  0% { transform: translateX(-50px) scale(0.95); opacity: 0; filter: invert(0.95) hue-rotate(180deg) brightness(2); }
+  100% { transform: translateX(0) scale(1); opacity: 1; filter: invert(0.95) hue-rotate(180deg) brightness(1); }
 }
