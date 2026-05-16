@@ -61,6 +61,15 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+
+    // Initialize Choices.js for basic symbol dropdown if available
+    if (typeof Choices !== 'undefined' && document.getElementById('basicShape')) {
+        window.basicShapeChoices = new Choices('#basicShape', {
+            searchEnabled: false,
+            itemSelectText: '',
+            shouldSort: false
+        });
+    }
 });
 
 // Clock
@@ -775,7 +784,11 @@ function updateMarkerHandler(e, map, backend) {
         openMapModal('modalMeasure');
         document.getElementById('measureDeleteBtn').style.display = 'block';
     } else if (modalMarkerData.type === 'basic') {
-        document.getElementById('basicShape').value = modalMarkerData.symbol || 'mil_dot';
+        if (window.basicShapeChoices) {
+            window.basicShapeChoices.setChoiceByValue(modalMarkerData.symbol || 'mil_dot');
+        } else {
+            document.getElementById('basicShape').value = modalMarkerData.symbol || 'mil_dot';
+        }
         var colorBtns = document.querySelectorAll('#modalBasicSymbol .color-btn');
         colorBtns.forEach(function(b) { b.classList.remove('active'); if (b.dataset.color === colorToCss(modalMarkerData.config.color)) b.classList.add('active'); });
         document.getElementById('basicLabel').value = modalMarkerData.config.label || '';

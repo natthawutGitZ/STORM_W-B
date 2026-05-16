@@ -56,6 +56,9 @@ if (!is_array($planopsData)) {
 <script src="https://jetelain.github.io/Arma3Map/maps/all.js"></script>
 <script src="assets/js/milMissions.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/5.10.7/tinymce.min.js" referrerpolicy="origin"></script>
+<!-- Choices.js for select rendering -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
 <!-- PDF.js for Animated Book Viewer -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
