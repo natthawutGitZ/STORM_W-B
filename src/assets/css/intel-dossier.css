@@ -1284,11 +1284,100 @@
     }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 768px) {
+    /* Stack panels vertically */
     .dossier-layout {
         grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+        height: auto;
+        min-height: calc(100vh - 44px);
     }
-    .dossier-left, .dossier-middle {
+
+    /* Hide left panel on mobile */
+    .dossier-left {
         display: none;
     }
+
+    /* Middle panel: full-width horizontal scroll for assets */
+    .dossier-middle {
+        border-right: none;
+        border-bottom: 1px solid var(--r-border);
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .dossier-middle-header {
+        padding: 8px 12px;
+    }
+
+    .dossier-categories {
+        max-height: 140px;
+    }
+
+    /* Right panel: fill remaining space */
+    .dossier-right {
+        min-height: 0;
+    }
+
+    .dossier-content {
+        padding: 12px;
+    }
+
+    /* Photo + Core Data: stack vertically */
+    .dossier-photo-data {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .dossier-photo {
+        width: 100%;
+        max-width: 200px;
+        height: 200px;
+        margin: 0 auto;
+    }
+
+    /* Core data grid: single column */
+    .core-data-grid {
+        grid-template-columns: 1fr;
+    }
+
+    /* Intel stats: 2 columns */
+    .intel-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    /* Dossier detail header */
+    .dossier-detail-header {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .dossier-header-badges {
+        align-items: flex-start;
+        flex-direction: row;
+        gap: 6px;
+    }
+
+    /* Callsign title */
+    .dossier-callsign-title {
+        font-size: .9rem;
+    }
+
+    /* Evidence grid */
+    .evidence-grid {
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    }
+
+    /* Dossier modal */
+    .dossier-modal {
+        width: 95%;
+        max-height: 90vh;
+    }
+
+    /* Lightbox nav */
+    .intel-lightbox-nav { width: 36px; height: 36px; font-size: .8rem; }
+    .intel-lightbox-nav.prev { left: 6px; }
+    .intel-lightbox-nav.next { right: 6px; }
+    .intel-lightbox-img-wrap { max-width: 95vw; max-height: 75vh; }
+    .intel-lightbox-img-wrap img { max-width: 95vw; max-height: 75vh; }
 }

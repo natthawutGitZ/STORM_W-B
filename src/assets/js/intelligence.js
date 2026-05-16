@@ -47,6 +47,20 @@ function submitAuth() {
 document.addEventListener('DOMContentLoaded', function() {
     var inp = document.getElementById('authPassInput');
     if (inp) inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') submitAuth(); });
+
+    // Auto-collapse sidebar on mobile
+    if (window.innerWidth <= 768) {
+        document.body.classList.add('sidebar-collapsed');
+    }
+
+    // Close sidebar when nav-item is clicked on mobile
+    document.querySelectorAll('.nav-item').forEach(function(item) {
+        item.addEventListener('click', function() {
+            if (window.innerWidth <= 768) {
+                document.body.classList.add('sidebar-collapsed');
+            }
+        });
+    });
 });
 
 // Clock
@@ -245,6 +259,27 @@ document.addEventListener('DOMContentLoaded', () => {
             // Cooldown to prevent rapid-fire page changes
             setTimeout(() => { scrollCooldown = false; }, 350);
         }, { passive: false });
+
+        // Touch swipe support for mobile (swipe left = next, swipe right = prev)
+        let touchStartX = 0;
+        let touchStartY = 0;
+        canvasWrap.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, { passive: true });
+
+        canvasWrap.addEventListener('touchend', (e) => {
+            const deltaX = e.changedTouches[0].screenX - touchStartX;
+            const deltaY = e.changedTouches[0].screenY - touchStartY;
+            // Only trigger if horizontal swipe is dominant and > 50px
+            if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+                if (deltaX < 0) {
+                    nextPage(); // swipe left = next
+                } else {
+                    prevPage(); // swipe right = prev
+                }
+            }
+        }, { passive: true });
     }
 });
 

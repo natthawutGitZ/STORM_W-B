@@ -114,10 +114,103 @@ body.sidebar-collapsed .main{margin-left:0}
 .auth-input:focus{border-color:var(--accent);box-shadow:0 0 10px var(--accent-glow)}
 .auth-error{color:#ff4444;font-family:var(--mono);font-size:.75rem;margin-top:8px;display:none}
 @media(max-width:768px){
-  .sidebar{width:0;overflow:hidden}
-  .main{margin-left:0}
-  body:not(.sidebar-collapsed) .sidebar{width:var(--sidebar-w)}
-  .topbar-right{display:none}
+  :root { --sidebar-w: 200px; }
+  body { overflow-x: hidden; }
+
+  /* Sidebar: always hidden on mobile; toggle opens it as overlay */
+  .sidebar {
+    width: 0;
+    overflow: hidden;
+    position: fixed;
+    z-index: 200;
+    transition: width 0.25s ease;
+  }
+  /* Override desktop: when NOT collapsed, show sidebar on mobile */
+  body:not(.sidebar-collapsed) .sidebar {
+    width: var(--sidebar-w);
+    overflow: visible;
+    box-shadow: 4px 0 20px rgba(0,0,0,.6);
+  }
+  .main {
+    margin-left: 0 !important;
+    width: 100vw;
+  }
+
+  /* Topbar */
+  .topbar {
+    padding: 0 8px;
+    height: 44px;
+    gap: 6px;
+  }
+  .topbar-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex: 1;
+    min-width: 0;
+  }
+  .topbar-tabs::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    padding: 10px 10px;
+    font-size: .6rem;
+    white-space: nowrap;
+    letter-spacing: 1px;
+  }
+  .topbar-right { display: none; }
+
+  /* Tab content */
+  .tab-content { padding: 10px; }
+  .tab-content.active { display: block; }
+
+  /* MAIN OPS / Brief */
+  #tab-opshub { padding: 0; overflow-y: auto; height: calc(100vh - 44px); }
+  .brief-header {
+    flex-direction: column;
+    padding: 10px 14px;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  .brief-header-title { font-size: .7rem; }
+  .brief-header-actions { width: 100%; justify-content: flex-end; }
+  .brief-body {
+    padding: 14px;
+    height: calc(100vh - 140px);
+  }
+  .brief-section { padding: 14px; margin-bottom: 14px; }
+  .brief-op-name { font-size: 1.1rem; }
+  .brief-info-grid { grid-template-columns: repeat(2, 1fr); }
+  .brief-intel-cards { grid-template-columns: 1fr; }
+  .brief-sortie-row { flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px; }
+  .brief-sortie-right { width: 100%; justify-content: space-between; }
+
+  /* Modals */
+  .modal-box, .modal { max-width: 95vw; }
+
+  /* Intelligence Map */
+  .map-editor-wrap { height: calc(100vh - 44px); }
+  .map-toolbar-left { left: 8px; top: 8px; }
+  .map-toolbar-right { right: 4px; top: 8px; }
+  .map-tool-btn { width: 30px; height: 30px; font-size: 13px; }
+  .rt-users-panel { right: 4px; top: 48px; width: 200px; }
+  .layers-panel { width: 200px; }
+
+  /* NATO Modal */
+  #modalNatoSymbol .nato-modal { max-width: 95vw; }
+  .nato-form-grid { grid-template-columns: repeat(2, 1fr); }
+  .nato-form-grid-2 { grid-template-columns: 1fr; }
+  .nato-row-symbolset { grid-template-columns: 1fr; }
+  .nato-row-status { grid-template-columns: repeat(2, 1fr); }
+  .nato-row-desig { grid-template-columns: 1fr; }
+  .nato-row-bottom { grid-template-columns: 1fr 1fr; }
+  .aff-box-btn { min-width: 40px; padding: 6px 2px; font-size: 8px; }
+  .nato-modal-top .sidc-row { flex-wrap: wrap; }
+  .nato-modal-top .sidc-actions { flex-wrap: wrap; }
+  .sidc-bookmarks-label { display: none; }
+  .map-modal { max-width: 95vw; }
+  .form-row { flex-direction: column; gap: 8px; }
+
+  /* Map Modal Buttons */
+  .mission-btn { width: 100%; }
 }
 
 /* ========================================
