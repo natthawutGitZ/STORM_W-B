@@ -725,41 +725,61 @@ require_once ROOT_PATH . '/includes/db.php';
       <div class="map-modal-body">
         <div class="form-row">
           <div class="form-col"><label>Shape</label><select id="basicShape">
+            <optgroup label="MIL — Standard">
             <option value="mil_dot">● mil_dot</option>
+            <option value="mil_ambush">⩔ mil_ambush</option>
+            <option value="mil_arrow">➤ mil_arrow</option>
+            <option value="mil_arrow2">⬆ mil_arrow2</option>
+            <option value="mil_box">■ mil_box</option>
             <option value="mil_circle">○ mil_circle</option>
             <option value="mil_cross">✕ mil_cross</option>
-            <option value="mil_square">□ mil_square</option>
-            <option value="mil_triangle">▲ mil_triangle</option>
-            <option value="mil_diamond">◆ mil_diamond</option>
-            <option value="mil_arrow">➤ mil_arrow</option>
-            <option value="mil_objective">⊕ mil_objective</option>
-            <option value="mil_pickup">⬆ mil_pickup</option>
-            <option value="mil_start">⊙ mil_start</option>
-            <option value="mil_end">⊗ mil_end</option>
-            <option value="mil_unknown">? mil_unknown</option>
-            <option value="mil_warning">⚠ mil_warning</option>
-            <option value="mil_flag">⚑ mil_flag</option>
             <option value="mil_destroy">✖ mil_destroy</option>
+            <option value="mil_diamond">◆ mil_diamond</option>
+            <option value="mil_end">⊗ mil_end</option>
+            <option value="mil_flag">⚑ mil_flag</option>
             <option value="mil_join">⊞ mil_join</option>
             <option value="mil_marker">📍 mil_marker</option>
-            <option value="hd_ambush">↯ hd_ambush</option>
+            <option value="mil_objective">⊕ mil_objective</option>
+            <option value="mil_pickup">△ mil_pickup</option>
+            <option value="mil_square">□ mil_square</option>
+            <option value="mil_start">⊙ mil_start</option>
+            <option value="mil_triangle">▲ mil_triangle</option>
+            <option value="mil_unknown">? mil_unknown</option>
+            <option value="mil_warning">⚠ mil_warning</option>
+            </optgroup>
+            <optgroup label="HD — Heavy Duty">
+            <option value="hd_ambush">⩔ hd_ambush</option>
+            <option value="hd_arrow">➤ hd_arrow</option>
             <option value="hd_destroy">✖ hd_destroy</option>
-            <option value="hd_flag">⚑ hd_flag</option>
-            <option value="hd_start">⊙ hd_start</option>
+            <option value="hd_dot">⬤ hd_dot</option>
             <option value="hd_end">⊗ hd_end</option>
+            <option value="hd_flag">⚑ hd_flag</option>
+            <option value="hd_join">⊞ hd_join</option>
             <option value="hd_objective">⊕ hd_objective</option>
-            <option value="hd_pickup">⬆ hd_pickup</option>
-            <option value="hd_warning">⚠ hd_warning</option>
+            <option value="hd_pickup">△ hd_pickup</option>
+            <option value="hd_start">⊙ hd_start</option>
             <option value="hd_unknown">? hd_unknown</option>
+            <option value="hd_warning">⚠ hd_warning</option>
+            </optgroup>
           </select></div>
           <div class="form-col"><label>Color</label>
             <div class="color-picker-wrap">
-              <button class="color-btn active" data-color="#000000" style="background:#000;border:2px solid #fff" title="Black"></button>
-              <button class="color-btn" data-color="#ff0000" style="background:#ff0000" title="Red"></button>
-              <button class="color-btn" data-color="#0066ff" style="background:#0066ff" title="Blue"></button>
+              <button class="color-btn active" data-color="#000000" style="background:#000000;border:2px solid #fff" title="Black"></button>
+              <button class="color-btn" data-color="#7f7f7f" style="background:#7f7f7f" title="Grey"></button>
+              <button class="color-btn" data-color="#e50000" style="background:#e50000" title="Red"></button>
+              <button class="color-btn" data-color="#7f3f00" style="background:#7f3f00" title="Brown"></button>
+              <button class="color-btn" data-color="#d86600" style="background:#d86600" title="Orange"></button>
+              <button class="color-btn" data-color="#d8d800" style="background:#d8d800" title="Yellow"></button>
+              <button class="color-btn" data-color="#7f9966" style="background:#7f9966" title="Khaki"></button>
               <button class="color-btn" data-color="#00cc00" style="background:#00cc00" title="Green"></button>
-              <button class="color-btn" data-color="#ffff00" style="background:#ffff00" title="Yellow"></button>
-              <button class="color-btn" data-color="#ffffff" style="background:#fff" title="White"></button>
+              <button class="color-btn" data-color="#0000ff" style="background:#0000ff" title="Blue"></button>
+              <button class="color-btn" data-color="#ff4c66" style="background:#ff4c66" title="Pink"></button>
+              <button class="color-btn" data-color="#ffffff" style="background:#ffffff" title="White"></button>
+              <button class="color-btn" data-color="#b29900" style="background:#b29900" title="UNKNOWN"></button>
+              <button class="color-btn" data-color="#004c99" style="background:#004c99" title="BLUFOR"></button>
+              <button class="color-btn" data-color="#7f0000" style="background:#7f0000" title="OPFOR"></button>
+              <button class="color-btn" data-color="#007f00" style="background:#007f00" title="Independent"></button>
+              <button class="color-btn" data-color="#66007f" style="background:#66007f" title="Civilian"></button>
             </div>
           </div>
           <div class="form-col"><label>Rotation (mil)</label><input type="number" id="basicRotation" value="0"></div>
