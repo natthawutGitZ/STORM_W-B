@@ -47,7 +47,17 @@ function submitAuth() {
 function _getMarkerImgTag(symbolName, size) {
     if (window.PLANOPS_DATA && window.PLANOPS_DATA.markers) {
         var m = window.PLANOPS_DATA.markers.find(function(mk) { return mk.name === symbolName; });
-        if (m) return '<img src="' + (m.imageWebp || m.imagePng) + '" width="' + size + '" height="' + size + '" style="object-fit:contain;vertical-align:middle;" />';
+        if (m) {
+            var imgUrl = m.imageWebp || m.imagePng;
+            if (m.isColorCompatible) {
+                // Color-compatible markers are white/light — use CSS mask with dark color so they show on white bg
+                return '<span style="display:inline-block;width:' + size + 'px;height:' + size + 'px;background:#333;' +
+                       '-webkit-mask-image:url(' + imgUrl + ');mask-image:url(' + imgUrl + ');' +
+                       '-webkit-mask-size:contain;mask-size:contain;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;' +
+                       '-webkit-mask-position:center;mask-position:center;vertical-align:middle;"></span>';
+            }
+            return '<img src="' + imgUrl + '" width="' + size + '" height="' + size + '" style="object-fit:contain;vertical-align:middle;" />';
+        }
     }
     return '<span style="display:inline-block;width:' + size + 'px;height:' + size + 'px;background:#555;border-radius:50%;"></span>';
 }
@@ -613,7 +623,7 @@ function setTool(toolName, btnEl) {
         (toolName === 'pan') ? '' : 'crosshair';
     
     var colorPicker = document.getElementById('toolbarColorPicker');
-    if (colorPicker) colorPicker.style.display = (toolName === 'line' || toolName === 'measure' || toolName === 'freehand') ? 'flex' : 'none';
+    if (colorPicker) colorPicker.style.display = (toolName === 'line' || toolName === 'measure' || toolName === 'freehand') ? 'block' : 'none';
     
     if (toolName === 'mission') {
         missionSelection = null;
@@ -745,6 +755,35 @@ function generateMission(mission, points, size) {
     return {lines:[]};
 }
 
+// Lock button UI sync helper
+function _syncLockBtn(btnId, markerData) {
+    var btn = document.getElementById(btnId);
+    if (!btn) return;
+    btn.style.display = 'inline-flex';
+    var isLocked = markerData.config && markerData.config.locked;
+    if (isLocked) {
+        btn.classList.add('locked');
+        btn.innerHTML = '<i class="fas fa-lock"></i> Locked';
+    } else {
+        btn.classList.remove('locked');
+        btn.innerHTML = '<i class="fas fa-lock-open"></i> Unlock';
+    }
+}
+function _toggleLock() {
+    if (!modalMarkerData || !modalMarkerId) return;
+    if (!modalMarkerData.config) modalMarkerData.config = {};
+    modalMarkerData.config.locked = !modalMarkerData.config.locked;
+    backend.updateMarkerToLayer(modalMarkerId, null, modalMarkerData);
+    // Refresh the lock on the actual map marker
+    var m = allMarkers[modalMarkerId];
+    if (m) {
+        if (m.dragging) {
+            if (modalMarkerData.config.locked) m.dragging.disable();
+            else m.dragging.enable();
+        }
+    }
+}
+
 function updateMarkerHandler(e, map, backend) {
     var marker = e.target;
     if (!marker.options.interactive) return;
@@ -754,6 +793,7 @@ function updateMarkerHandler(e, map, backend) {
     if (modalMarkerData.type === 'mil') {
         document.getElementById('natoDeleteBtn').style.display = 'block';
         document.getElementById('natoInsertBtn').innerText = 'Update';
+        _syncLockBtn('natoLockBtn', modalMarkerData);
         // ---- Pre-populate NATO form from existing marker data ----
         var sidc = modalMarkerData.symbol || '';
         if (sidc.length >= 20) {
@@ -825,6 +865,7 @@ function updateMarkerHandler(e, map, backend) {
     } else if (modalMarkerData.type === 'line') {
         document.getElementById('lineDeleteBtn').style.display = 'block';
         document.getElementById('lineSaveBtn').innerText = 'Update';
+        _syncLockBtn('lineLockBtn', modalMarkerData);
         openMapModal('modalLineProps');
     } else if (modalMarkerData.type === 'mission') {
         // Just delete for now to recreate
@@ -850,6 +891,7 @@ function updateMarkerHandler(e, map, backend) {
         document.getElementById('basicScale').value = Math.round((modalMarkerData.scale || 1) * 100);
         document.getElementById('basicDeleteBtn').style.display = 'block';
         document.getElementById('basicInsertBtn').innerText = 'Update';
+        _syncLockBtn('basicLockBtn', modalMarkerData);
         openMapModal('modalBasicSymbol');
     }
 }
@@ -945,6 +987,8 @@ function addOrUpdateMarker(map, markers, marker, canEdit, backend, opacity, laye
     } else { // 'mil' or 'basic'
         var size = 32;
         if (markerData.scale) size = Number(markerData.scale) * size;
+        var isLocked = markerData.config && markerData.config.locked;
+        var canDrag = canEdit && !isLocked;
         var icon;
         if (markerData.type == 'mil') {
             var symbolConfig = Object.assign({ size: size }, markerData.config);
@@ -956,6 +1000,7 @@ function addOrUpdateMarker(map, markers, marker, canEdit, backend, opacity, laye
         
         if (existing) {
             existing.setIcon(icon); existing.setLatLng(markerData.pos); existing.options.markerData = markerData;
+            if (existing.dragging) { if (canDrag) existing.dragging.enable(); else existing.dragging.disable(); }
             if (markerData.type === 'basic' && markerData.config && markerData.config.label) {
                 if (existing.getTooltip()) existing.setTooltipContent(markerData.config.label);
                 else existing.bindTooltip(markerData.config.label, { permanent: true, direction: 'right', className: 'marker-text' });
@@ -963,7 +1008,7 @@ function addOrUpdateMarker(map, markers, marker, canEdit, backend, opacity, laye
                 existing.unbindTooltip();
             }
         } else {
-            var mapMarker = L.marker(markerData.pos, { icon: icon, draggable: canEdit, interactive: canEdit, markerId: markerId, markerData: markerData }).addTo(layer.group);
+            var mapMarker = L.marker(markerData.pos, { icon: icon, draggable: canDrag, interactive: canEdit, markerId: markerId, markerData: markerData }).addTo(layer.group);
             if (markerData.config && markerData.config.label) {
                  mapMarker.bindTooltip(markerData.config.label, { permanent: true, direction: 'right', className: 'marker-text' });
             }
@@ -2154,6 +2199,11 @@ document.getElementById('natoInsertBtn').onclick = function() {
     }
     closeMapModal('modalNatoSymbol');
 };
+
+// Lock button handlers
+document.getElementById('natoLockBtn').onclick = function() { _toggleLock(); _syncLockBtn('natoLockBtn', modalMarkerData); };
+document.getElementById('basicLockBtn').onclick = function() { _toggleLock(); _syncLockBtn('basicLockBtn', modalMarkerData); };
+document.getElementById('lineLockBtn').onclick = function() { _toggleLock(); _syncLockBtn('lineLockBtn', modalMarkerData); };
 
 document.getElementById('basicDeleteBtn').onclick = function() {
     if(modalMarkerId) backend.removeMarker(modalMarkerId);

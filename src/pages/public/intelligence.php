@@ -525,7 +525,19 @@ if (isset($planopsData['markers']) && is_array($planopsData['markers'])) {
         <div class="toolbar-group">
           <button class="map-tool-btn" id="toolMeasure" data-tool="measure" title="Measure Distance"><i class="fas fa-ruler"></i></button>
         </div>
-        <div class="toolbar-group toolbar-colorpicker" id="toolbarColorPicker" style="display:none;">
+        <!-- Color picker moved to floating popup -->
+        <div class="toolbar-group">
+          <button class="map-tool-btn" id="toolMission" data-tool="mission" title="Tactical Graphics"><i class="fas fa-plus-circle"></i></button>
+        </div>
+        <div class="toolbar-group">
+          <button class="map-tool-btn" id="toolNote" data-tool="note" title="Sticky Note"><i class="fas fa-sticky-note"></i></button>
+        </div>
+      </div>
+
+      <!-- FLOATING COLOR PICKER (for Line/Freehand/Measure) -->
+      <div class="tool-color-popup" id="toolbarColorPicker" style="display:none;">
+        <div class="tool-color-popup-header">Draw Color</div>
+        <div class="tool-color-popup-grid">
           <button class="tool-color-btn active" data-color="#000000" style="background:#000" title="Black"></button>
           <button class="tool-color-btn" data-color="#ff0000" style="background:#ff0000" title="Red"></button>
           <button class="tool-color-btn" data-color="#0066ff" style="background:#0066ff" title="Blue"></button>
@@ -535,13 +547,7 @@ if (isset($planopsData['markers']) && is_array($planopsData['markers'])) {
           <button class="tool-color-btn" data-color="#ffff00" style="background:#ff0" title="Yellow"></button>
           <button class="tool-color-btn" data-color="#00ffff" style="background:#0ff" title="Cyan"></button>
           <button class="tool-color-btn" data-color="#7f3f00" style="background:#7f3f00" title="Brown"></button>
-          <button class="tool-color-btn" data-color="#ffffff" style="background:#fff;border:1px solid #999" title="White"></button>
-        </div>
-        <div class="toolbar-group">
-          <button class="map-tool-btn" id="toolMission" data-tool="mission" title="Tactical Graphics"><i class="fas fa-plus-circle"></i></button>
-        </div>
-        <div class="toolbar-group">
-          <button class="map-tool-btn" id="toolNote" data-tool="note" title="Sticky Note"><i class="fas fa-sticky-note"></i></button>
+          <button class="tool-color-btn" data-color="#ffffff" style="background:#fff;border:1px solid #666" title="White"></button>
         </div>
       </div>
 
@@ -760,9 +766,12 @@ if (isset($planopsData['markers']) && is_array($planopsData['markers'])) {
             </div>
         </div>
       </div>
-      <div class="map-modal-footer">
-        <button class="mbtn mbtn-delete" id="natoDeleteBtn" style="display:none">Delete</button>
-        <div class="nato-footer-right">
+      <div class="map-modal-footer" style="display:flex; justify-content:space-between; width:100%">
+        <div style="display:flex; gap:6px;">
+          <button class="mbtn mbtn-delete" id="natoDeleteBtn" style="display:none">Delete</button>
+          <button class="mbtn mbtn-lock" id="natoLockBtn" style="display:none" title="Lock position"><i class="fas fa-lock-open"></i> Unlock</button>
+        </div>
+        <div class="nato-footer-right" style="display:flex; gap:6px;">
           <button class="mbtn mbtn-cancel" onclick="closeMapModal('modalNatoSymbol')">Cancel</button>
           <button class="mbtn mbtn-insert" id="natoInsertBtn">Insert</button>
         </div>
@@ -816,7 +825,10 @@ if (isset($planopsData['markers']) && is_array($planopsData['markers'])) {
         </div>
       </div>
       <div class="map-modal-footer" style="display:flex; justify-content:space-between; width:100%">
-        <button class="mbtn mbtn-delete" id="basicDeleteBtn" style="display:none">Delete</button>
+        <div style="display:flex; gap:6px;">
+          <button class="mbtn mbtn-delete" id="basicDeleteBtn" style="display:none">Delete</button>
+          <button class="mbtn mbtn-lock" id="basicLockBtn" style="display:none" title="Lock position"><i class="fas fa-lock-open"></i> Unlock</button>
+        </div>
         <div style="display:flex; gap:6px;">
           <button class="mbtn mbtn-cancel" onclick="closeMapModal('modalBasicSymbol')">Cancel</button>
           <button class="mbtn mbtn-insert" id="basicInsertBtn">Insert</button>
@@ -913,10 +925,15 @@ if (isset($planopsData['markers']) && is_array($planopsData['markers'])) {
           <div class="form-col"><label>Label</label><input type="text" id="lineLabel" placeholder=""></div>
         </div>
       </div>
-      <div class="map-modal-footer">
-        <button class="mbtn mbtn-delete" id="lineDeleteBtn" style="display:none">Delete</button>
-        <button class="mbtn mbtn-cancel" onclick="cancelLineDraw()">Cancel</button>
-        <button class="mbtn mbtn-insert" id="lineSaveBtn">Save</button>
+      <div class="map-modal-footer" style="display:flex; justify-content:space-between; width:100%">
+        <div style="display:flex; gap:6px;">
+          <button class="mbtn mbtn-delete" id="lineDeleteBtn" style="display:none">Delete</button>
+          <button class="mbtn mbtn-lock" id="lineLockBtn" style="display:none" title="Lock position"><i class="fas fa-lock-open"></i> Unlock</button>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button class="mbtn mbtn-cancel" onclick="cancelLineDraw()">Cancel</button>
+          <button class="mbtn mbtn-insert" id="lineSaveBtn">Save</button>
+        </div>
       </div>
     </div>
   </div>
