@@ -651,10 +651,15 @@ let freehandStraight = false;
 let freehandStartPoint = null;
 
 // ---- SHAPE DRAW STATE ----
-let shapeConfig = { sides: 4, strokeColor: '#000000', fillColor: '#0066ff', fillOpacity: 0.2, weight: 3 };
+let shapeConfig = { sides: 4, strokeColor: '#000000', fillColor: '#0066ff', fillOpacity: 0.2, weight: 3, rotation: 0 };
 let shapeDragging = false;
 let shapeCenter = null;
 let shapePreview = null;
+
+// ---- POLY DRAG STATE (for moving lines/shapes/polygons) ----
+let polyDragTarget = null;
+let polyDragStartLatLng = null;
+let polyDragOrigLatLngs = null;
 
 const backend = {
     addMarker: function(layerId, markerData) {
@@ -777,10 +782,14 @@ function _toggleLock() {
     // Refresh the lock on the actual map marker
     var m = allMarkers[modalMarkerId];
     if (m) {
+        var locked = modalMarkerData.config.locked;
+        // L.marker (mil/basic) — has .dragging handler
         if (m.dragging) {
-            if (modalMarkerData.config.locked) m.dragging.disable();
+            if (locked) m.dragging.disable();
             else m.dragging.enable();
         }
+        // L.polyline/polygon — uses options._locked flag
+        if (m.options) m.options._locked = !!locked;
     }
 }
 
@@ -931,18 +940,34 @@ function addOrUpdateMarker(map, markers, marker, canEdit, backend, opacity, laye
         var isArea = markerData.symbol === 'area' || markerData.symbol === 'shape' || markerData.config.fill;
         var fillColor = markerData.config.fillColor || color;
         var fillOpacity = (markerData.config.fillOpacity != null) ? markerData.config.fillOpacity : 0.12;
+        var isLocked = markerData.config && markerData.config.locked;
         if (existing) {
             if (isArea) existing.setLatLngs([posList]); else existing.setLatLngs(posList);
             existing.setStyle({ color: color, weight: markerData.config.weight||3, fillColor: fillColor, fillOpacity: fillOpacity });
             existing.options.markerData = markerData;
+            existing.options._locked = !!isLocked;
         } else {
             var mapMarker;
             if (isArea) {
-                mapMarker = L.polygon(posList, { color: color, weight: markerData.config.weight||3, fillColor: fillColor, fillOpacity: fillOpacity, interactive: canEdit, markerId: markerId, markerData: markerData }).addTo(layer.group);
+                mapMarker = L.polygon(posList, { color: color, weight: markerData.config.weight||3, fillColor: fillColor, fillOpacity: fillOpacity, interactive: canEdit, markerId: markerId, markerData: markerData, _locked: !!isLocked }).addTo(layer.group);
             } else {
-                mapMarker = L.polyline(posList, { color: color, weight: markerData.config.weight||3, interactive: canEdit, markerId: markerId, markerData: markerData }).addTo(layer.group);
+                mapMarker = L.polyline(posList, { color: color, weight: markerData.config.weight||3, interactive: canEdit, markerId: markerId, markerData: markerData, _locked: !!isLocked }).addTo(layer.group);
             }
-            if (canEdit) mapMarker.on('click', e => updateMarkerHandler(e,map,backend));
+            if (canEdit) {
+                mapMarker.on('click', e => updateMarkerHandler(e,map,backend));
+                // Custom drag for polylines/polygons
+                mapMarker.on('mousedown', function(ev) {
+                    if (ev.target.options._locked) return;
+                    if (currentDrawAction && currentDrawAction !== 'pan' && currentDrawAction !== 'select') return;
+                    L.DomEvent.stopPropagation(ev);
+                    polyDragTarget = ev.target;
+                    polyDragStartLatLng = ev.latlng;
+                    var lls = ev.target.getLatLngs();
+                    // Deep clone latlngs (handle nested arrays for polygons)
+                    polyDragOrigLatLngs = JSON.parse(JSON.stringify(lls));
+                    map.dragging.disable();
+                });
+            }
             markers[markerId] = existing = mapMarker;
         }
     } else if (markerData.type == 'measure') {
@@ -1000,7 +1025,13 @@ function addOrUpdateMarker(map, markers, marker, canEdit, backend, opacity, laye
         
         if (existing) {
             existing.setIcon(icon); existing.setLatLng(markerData.pos); existing.options.markerData = markerData;
-            if (existing.dragging) { if (canDrag) existing.dragging.enable(); else existing.dragging.disable(); }
+            // Update draggable state
+            if (canDrag) {
+                if (existing.dragging) existing.dragging.enable();
+                else { existing.options.draggable = true; if (existing._map) { existing.dragging = new L.Handler.MarkerDrag(existing); existing.dragging.enable(); } }
+            } else {
+                if (existing.dragging) existing.dragging.disable();
+            }
             if (markerData.type === 'basic' && markerData.config && markerData.config.label) {
                 if (existing.getTooltip()) existing.setTooltipContent(markerData.config.label);
                 else existing.bindTooltip(markerData.config.label, { permanent: true, direction: 'right', className: 'marker-text' });
@@ -1016,6 +1047,11 @@ function addOrUpdateMarker(map, markers, marker, canEdit, backend, opacity, laye
                 mapMarker.on('click', e => updateMarkerHandler(e, map, backend));
                 mapMarker.on('dragend', function (e) {
                     var marker = e.target;
+                    if (marker.options.markerData.config && marker.options.markerData.config.locked) {
+                        // Revert position if locked
+                        marker.setLatLng(marker.options.markerData.pos);
+                        return;
+                    }
                     marker.options.markerData.pos = [marker.getLatLng().lat, marker.getLatLng().lng];
                     backend.moveMarker(marker.options.markerId, marker.options.markerData);
                 });
@@ -1213,17 +1249,18 @@ function freehandMouseUp(e) {
 }
 
 // ---- SHAPE DRAW LOGIC ----
-function generateRegularPolygon(center, radius, sides) {
+function generateRegularPolygon(center, radius, sides, rotationDeg) {
     var pts = [];
+    var rotRad = (rotationDeg || 0) * Math.PI / 180;
     if (sides === 0) {
         // Circle approximation with 36 points
         for (var i = 0; i < 36; i++) {
-            var angle = (i / 36) * 2 * Math.PI - Math.PI / 2;
+            var angle = (i / 36) * 2 * Math.PI - Math.PI / 2 + rotRad;
             pts.push([center[0] + radius * Math.sin(angle), center[1] + radius * Math.cos(angle)]);
         }
     } else {
         for (var i = 0; i < sides; i++) {
-            var angle = (i / sides) * 2 * Math.PI - Math.PI / 2;
+            var angle = (i / sides) * 2 * Math.PI - Math.PI / 2 + rotRad;
             pts.push([center[0] + radius * Math.sin(angle), center[1] + radius * Math.cos(angle)]);
         }
     }
@@ -1234,7 +1271,7 @@ function shapeMouseDown(e) {
     if (currentDrawAction !== 'shapeDraw') return;
     shapeDragging = true;
     shapeCenter = [e.latlng.lat, e.latlng.lng];
-    var pts = generateRegularPolygon(shapeCenter, 0, shapeConfig.sides);
+    var pts = generateRegularPolygon(shapeCenter, 0, shapeConfig.sides, shapeConfig.rotation);
     var fillColor = shapeConfig.fillColor === 'none' ? 'transparent' : shapeConfig.fillColor;
     var fillOpacity = shapeConfig.fillColor === 'none' ? 0 : shapeConfig.fillOpacity;
     shapePreview = L.polygon(pts, {
@@ -1247,7 +1284,7 @@ function shapeMouseMove(e) {
     var dx = e.latlng.lng - shapeCenter[1];
     var dy = e.latlng.lat - shapeCenter[0];
     var radius = Math.sqrt(dx * dx + dy * dy);
-    var pts = generateRegularPolygon(shapeCenter, radius, shapeConfig.sides);
+    var pts = generateRegularPolygon(shapeCenter, radius, shapeConfig.sides, shapeConfig.rotation);
     shapePreview.setLatLngs([pts]);
 }
 function shapeMouseUp(e) {
@@ -1257,7 +1294,7 @@ function shapeMouseUp(e) {
     var dy = e.latlng.lat - shapeCenter[0];
     var radius = Math.sqrt(dx * dx + dy * dy);
     if (radius < 10) { shapePreview.remove(); shapePreview = null; return; }
-    var pts = generateRegularPolygon(shapeCenter, radius, shapeConfig.sides);
+    var pts = generateRegularPolygon(shapeCenter, radius, shapeConfig.sides, shapeConfig.rotation);
     var posFlat = pts.flat();
     shapePreview.remove(); shapePreview = null;
     var fillColor = shapeConfig.fillColor === 'none' ? 'transparent' : shapeConfig.fillColor;
@@ -1265,7 +1302,7 @@ function shapeMouseUp(e) {
     backend.addMarker(null, {
         type: 'line', symbol: 'shape', config: {
             color: shapeConfig.strokeColor, fill: true, fillColor: fillColor,
-            fillOpacity: fillOpacity, weight: shapeConfig.weight, sides: shapeConfig.sides
+            fillOpacity: fillOpacity, weight: shapeConfig.weight, sides: shapeConfig.sides, rotation: shapeConfig.rotation
         }, pos: posFlat
     });
 }
@@ -1332,6 +1369,23 @@ async function initIntelMap() {
         }
         freehandMouseMove(e);
         shapeMouseMove(e);
+        // PolyDrag move
+        if (polyDragTarget && polyDragStartLatLng) {
+            var dlat = e.latlng.lat - polyDragStartLatLng.lat;
+            var dlng = e.latlng.lng - polyDragStartLatLng.lng;
+            var orig = polyDragOrigLatLngs;
+            // Handle nested array (polygon) vs flat array (polyline)
+            if (Array.isArray(orig[0]) && Array.isArray(orig[0][0])) {
+                // Polygon: [[{lat,lng},...]]
+                var moved = orig.map(function(ring) {
+                    return ring.map(function(pt) { return [pt.lat + dlat, pt.lng + dlng]; });
+                });
+                polyDragTarget.setLatLngs(moved);
+            } else {
+                var moved = orig.map(function(pt) { return [pt.lat + dlat, pt.lng + dlng]; });
+                polyDragTarget.setLatLngs(moved);
+            }
+        }
     });
     mapInst.on('mouseup', function(e) {
         if (isPointing) {
@@ -1340,11 +1394,38 @@ async function initIntelMap() {
         }
         freehandMouseUp(e);
         shapeMouseUp(e);
+        // PolyDrag end — save new position
+        if (polyDragTarget && polyDragStartLatLng) {
+            var dlat = e.latlng.lat - polyDragStartLatLng.lat;
+            var dlng = e.latlng.lng - polyDragStartLatLng.lng;
+            var md = polyDragTarget.options.markerData;
+            if (md && md.pos) {
+                // Update pos array (flat pairs: lat,lng,lat,lng,...)
+                var newPos = [];
+                for (var i = 0; i < md.pos.length; i += 2) {
+                    newPos.push(md.pos[i] + dlat);
+                    newPos.push(md.pos[i + 1] + dlng);
+                }
+                md.pos = newPos;
+                backend.moveMarker(polyDragTarget.options.markerId, md);
+            }
+            polyDragTarget = null;
+            polyDragStartLatLng = null;
+            polyDragOrigLatLngs = null;
+            mapInst.dragging.enable();
+        }
     });
     mapInst.on('mouseout', function(e) {
         if (isPointing) {
             isPointing = false;
             if (pointingMarker) { pointingMarker.remove(); pointingMarker = null; }
+        }
+        // Cancel polyDrag on mouseout
+        if (polyDragTarget) {
+            polyDragTarget = null;
+            polyDragStartLatLng = null;
+            polyDragOrigLatLngs = null;
+            mapInst.dragging.enable();
         }
     });
     mapInst.on('contextmenu', function(e) {
@@ -2264,6 +2345,7 @@ document.getElementById('shapeStartBtn').onclick = function() {
     shapeConfig.fillColor = (document.querySelector('#shapeFillColorPicker .color-btn.active') || {}).dataset.color || '#0066ff';
     shapeConfig.fillOpacity = (parseInt(document.getElementById('shapeFillOpacity').value) || 20) / 100;
     shapeConfig.weight = parseInt(document.getElementById('shapeStrokeWeight').value) || 3;
+    shapeConfig.rotation = parseInt(document.getElementById('shapeRotation').value) || 0;
     closeMapModal('modalShapeTool');
     setTool('shapeDraw', document.getElementById('toolShape'));
 };

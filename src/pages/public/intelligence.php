@@ -890,6 +890,11 @@ if (isset($planopsData['markers']) && is_array($planopsData['markers'])) {
             <input type="number" id="shapeStrokeWeight" value="3" min="1" max="10">
           </div>
         </div>
+        <div class="form-row">
+          <div class="form-col"><label>Rotation (degrees)</label>
+            <input type="number" id="shapeRotation" value="0" min="0" max="360" step="5">
+          </div>
+        </div>
       </div>
       <div class="map-modal-footer" style="display:flex; justify-content:flex-end; width:100%">
         <div style="display:flex; gap:6px;">
