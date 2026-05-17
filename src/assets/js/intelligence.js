@@ -799,54 +799,28 @@ function updateMarkerHandler(e, map, backend) {
     }
 }
 
-const BASIC_SYMBOL_SVG = {
-    // ---- MIL (filled/standard) markers ----
-    'mil_dot':       '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="{c}"/></svg>',
-    'mil_ambush':    '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><path d="M4 4L12 20L20 4" fill="none" stroke="{c}" stroke-width="3" stroke-linejoin="round"/><line x1="12" y1="20" x2="12" y2="12" stroke="{c}" stroke-width="2.5"/></svg>',
-    'mil_arrow':     '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><path d="M12 2L20 22L12 16L4 22Z" fill="{c}"/></svg>',
-    'mil_arrow2':    '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><path d="M12 2L22 12H16V22H8V12H2Z" fill="{c}"/></svg>',
-    'mil_box':       '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" fill="{c}"/></svg>',
-    'mil_circle':    '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="{c}" stroke-width="2.5"/></svg>',
-    'mil_destroy':   '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="{c}" stroke-width="2"/><line x1="5" y1="5" x2="19" y2="19" stroke="{c}" stroke-width="3"/><line x1="19" y1="5" x2="5" y2="19" stroke="{c}" stroke-width="3"/></svg>',
-
-    'mil_end':       '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="{c}" stroke-width="2.5"/><line x1="5" y1="5" x2="19" y2="19" stroke="{c}" stroke-width="2"/><line x1="19" y1="5" x2="5" y2="19" stroke="{c}" stroke-width="2"/></svg>',
-    'mil_flag':      '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><line x1="5" y1="2" x2="5" y2="22" stroke="{c}" stroke-width="2"/><polygon points="5,2 20,7 5,12" fill="{c}"/></svg>',
-    'mil_join':      '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="{c}" stroke-width="2"/><line x1="7" y1="12" x2="17" y2="12" stroke="{c}" stroke-width="2.5"/><line x1="12" y1="7" x2="12" y2="17" stroke="{c}" stroke-width="2.5"/></svg>',
-    'mil_marker':    '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z" fill="{c}"/></svg>',
-    'mil_objective': '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="{c}" stroke-width="2"/><line x1="12" y1="3" x2="12" y2="21" stroke="{c}" stroke-width="2"/><line x1="3" y1="12" x2="21" y2="12" stroke="{c}" stroke-width="2"/></svg>',
-    'mil_pickup':    '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><polygon points="12,2 22,18 2,18" fill="none" stroke="{c}" stroke-width="2.5"/><circle cx="12" cy="11" r="3" fill="{c}"/></svg>',
-
-    'mil_start':     '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="{c}" stroke-width="2.5"/><circle cx="12" cy="12" r="3" fill="{c}"/></svg>',
-    'mil_triangle':  '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><polygon points="12,2 22,22 2,22" fill="{c}"/></svg>',
-    'mil_unknown':   '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="{c}" stroke-width="2"/><text x="12" y="17" text-anchor="middle" fill="{c}" font-size="16" font-weight="bold">?</text></svg>',
-    'mil_warning':   '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><polygon points="12,2 22,22 2,22" fill="none" stroke="{c}" stroke-width="2.5"/><text x="12" y="19" text-anchor="middle" fill="{c}" font-size="14" font-weight="bold">!</text></svg>',
-    // ---- HD (heavy-duty / bold-stroke) markers ----
-    'hd_ambush':     '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><path d="M4 4L12 20L20 4" fill="none" stroke="{c}" stroke-width="3" stroke-linejoin="round"/><line x1="12" y1="20" x2="12" y2="12" stroke="{c}" stroke-width="3"/></svg>',
-    'hd_arrow':      '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><path d="M12 2L20 22L12 16L4 22Z" fill="none" stroke="{c}" stroke-width="3" stroke-linejoin="round"/></svg>',
-    'hd_destroy':    '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><line x1="4" y1="4" x2="20" y2="20" stroke="{c}" stroke-width="3.5"/><line x1="20" y1="4" x2="4" y2="20" stroke="{c}" stroke-width="3.5"/></svg>',
-    'hd_dot':        '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="{c}"/><circle cx="12" cy="12" r="10" fill="none" stroke="{c}" stroke-width="1.5"/></svg>',
-    'hd_end':        '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" fill="none" stroke="{c}" stroke-width="3"/><line x1="4" y1="4" x2="20" y2="20" stroke="{c}" stroke-width="2"/><line x1="20" y1="4" x2="4" y2="20" stroke="{c}" stroke-width="2"/></svg>',
-    'hd_flag':       '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><line x1="5" y1="2" x2="5" y2="22" stroke="{c}" stroke-width="2.5"/><polygon points="5,2 20,7 5,12" fill="{c}" opacity="0.7"/></svg>',
-    'hd_join':       '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="{c}" stroke-width="3"/><line x1="7" y1="12" x2="17" y2="12" stroke="{c}" stroke-width="3"/><line x1="12" y1="7" x2="12" y2="17" stroke="{c}" stroke-width="3"/></svg>',
-    'hd_objective':  '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="{c}" stroke-width="3"/><line x1="12" y1="4" x2="12" y2="20" stroke="{c}" stroke-width="2"/><line x1="4" y1="12" x2="20" y2="12" stroke="{c}" stroke-width="2"/></svg>',
-    'hd_pickup':     '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><polygon points="12,4 20,18 4,18" fill="none" stroke="{c}" stroke-width="3"/></svg>',
-    'hd_start':      '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="{c}" stroke-width="3"/><circle cx="12" cy="12" r="3" fill="{c}"/></svg>',
-    'hd_unknown':    '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="{c}" stroke-width="2.5"/><text x="12" y="17" text-anchor="middle" fill="{c}" font-size="16" font-weight="bold">?</text></svg>',
-    'hd_warning':    '<svg width="{s}" height="{s}" viewBox="0 0 24 24"><polygon points="12,3 22,21 2,21" fill="none" stroke="{c}" stroke-width="2.5"/><line x1="12" y1="10" x2="12" y2="15" stroke="{c}" stroke-width="2.5"/><circle cx="12" cy="18" r="1.2" fill="{c}"/></svg>'
-};
-
 function getBasicSymbolSVG(symbol, color, size) {
-    // Check PLANOPS API data for dynamic image support (flags, etc.)
+    // Use PLANOPS API images for all markers
     if (window.PLANOPS_DATA && window.PLANOPS_DATA.markers) {
         var markerData = window.PLANOPS_DATA.markers.find(m => m.name === symbol);
-        if (markerData && !markerData.isColorCompatible) {
-            return '<img src="' + markerData.imageWebp + '" width="' + size + '" height="' + size + '" style="object-fit:contain;" />';
+        if (markerData) {
+            var imgUrl = markerData.imageWebp || markerData.imagePng;
+            if (!markerData.isColorCompatible) {
+                // Non-color-compatible (flags etc.) — render as-is
+                return '<img src="' + imgUrl + '" width="' + size + '" height="' + size + '" style="object-fit:contain;" />';
+            }
+            // Color-compatible — use CSS mask to apply the chosen color
+            return '<div style="width:' + size + 'px;height:' + size + 'px;' +
+                   'background-color:' + color + ';' +
+                   '-webkit-mask-image:url(' + imgUrl + ');' +
+                   'mask-image:url(' + imgUrl + ');' +
+                   '-webkit-mask-size:contain;mask-size:contain;' +
+                   '-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;' +
+                   '-webkit-mask-position:center;mask-position:center;"></div>';
         }
     }
-    
-    // Fallback to local SVG templates for color-compatible markers
-    var tmpl = BASIC_SYMBOL_SVG[symbol] || BASIC_SYMBOL_SVG['mil_dot'];
-    return tmpl.replace(/\{s\}/g, size).replace(/\{c\}/g, color);
+    // Minimal fallback if PLANOPS data unavailable
+    return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="' + color + '"/></svg>';
 }
 
 function addOrUpdateMarker(map, markers, marker, canEdit, backend, opacity, layer) {
