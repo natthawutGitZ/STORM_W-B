@@ -517,6 +517,12 @@ if (isset($planopsData['markers']) && is_array($planopsData['markers'])) {
           <button class="map-tool-btn" id="toolLine" data-tool="line" title="Line (Ctrl/Shift+click to add segments)" style="font-size:16px;font-weight:bold;">&#9585;</button>
         </div>
         <div class="toolbar-group">
+          <button class="map-tool-btn" id="toolFreehand" data-tool="freehand" title="Freehand Draw (Ctrl+Shift = straight line)"><i class="fas fa-pen-fancy"></i></button>
+        </div>
+        <div class="toolbar-group">
+          <button class="map-tool-btn" id="toolShape" data-tool="shape" title="Shape / Polygon"><i class="fas fa-draw-polygon"></i></button>
+        </div>
+        <div class="toolbar-group">
           <button class="map-tool-btn" id="toolMeasure" data-tool="measure" title="Measure Distance"><i class="fas fa-ruler"></i></button>
         </div>
         <div class="toolbar-group toolbar-colorpicker" id="toolbarColorPicker" style="display:none;">
@@ -814,6 +820,69 @@ if (isset($planopsData['markers']) && is_array($planopsData['markers'])) {
         <div style="display:flex; gap:6px;">
           <button class="mbtn mbtn-cancel" onclick="closeMapModal('modalBasicSymbol')">Cancel</button>
           <button class="mbtn mbtn-insert" id="basicInsertBtn">Insert</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SHAPE TOOL -->
+  <div class="map-modal-overlay" id="modalShapeTool">
+    <div class="map-modal">
+      <div class="map-modal-header">
+        <span>Shape / Polygon</span>
+        <button class="map-modal-close" onclick="closeMapModal('modalShapeTool')">&times;</button>
+      </div>
+      <div class="map-modal-body">
+        <div class="form-row">
+          <div class="form-col"><label>Sides</label>
+            <div class="shape-sides-picker" id="shapeSidesPicker">
+              <button class="shape-side-btn" data-sides="3" title="Triangle">&#9651; 3</button>
+              <button class="shape-side-btn active" data-sides="4" title="Rectangle">&#9633; 4</button>
+              <button class="shape-side-btn" data-sides="5" title="Pentagon">&#11040; 5</button>
+              <button class="shape-side-btn" data-sides="6" title="Hexagon">&#11043; 6</button>
+              <button class="shape-side-btn" data-sides="7" title="Heptagon">7</button>
+              <button class="shape-side-btn" data-sides="8" title="Octagon">&#9640; 8</button>
+              <button class="shape-side-btn" data-sides="0" title="Circle">&#9711;</button>
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label>Stroke Color</label>
+            <div class="color-picker-wrap" id="shapeStrokeColorPicker">
+              <button class="color-btn active" data-color="#000000" style="background:#000;border:2px solid #fff" title="Black"></button>
+              <button class="color-btn" data-color="#ff0000" style="background:#ff0000" title="Red"></button>
+              <button class="color-btn" data-color="#0066ff" style="background:#0066ff" title="Blue"></button>
+              <button class="color-btn" data-color="#00cc44" style="background:#00cc44" title="Green"></button>
+              <button class="color-btn" data-color="#ffaa00" style="background:#ffaa00" title="Orange"></button>
+              <button class="color-btn" data-color="#ffffff" style="background:#fff;border:1px solid #999" title="White"></button>
+            </div>
+          </div>
+          <div class="form-col"><label>Fill Color</label>
+            <div class="color-picker-wrap" id="shapeFillColorPicker">
+              <button class="color-btn active" data-color="#0066ff" style="background:#0066ff;border:2px solid #fff" title="Blue"></button>
+              <button class="color-btn" data-color="#ff0000" style="background:#ff0000" title="Red"></button>
+              <button class="color-btn" data-color="#00cc44" style="background:#00cc44" title="Green"></button>
+              <button class="color-btn" data-color="#ffaa00" style="background:#ffaa00" title="Orange"></button>
+              <button class="color-btn" data-color="#ffff00" style="background:#ffff00" title="Yellow"></button>
+              <button class="color-btn" data-color="#000000" style="background:#000" title="Black"></button>
+              <button class="color-btn" data-color="#ffffff" style="background:#fff;border:1px solid #999" title="White"></button>
+              <button class="color-btn" data-color="none" style="background:repeating-conic-gradient(#ccc 0% 25%,#fff 0% 50%) 50%/12px 12px" title="No Fill"></button>
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-col"><label>Fill Opacity: <span id="shapeFillOpacityVal">20%</span></label>
+            <input type="range" id="shapeFillOpacity" min="0" max="80" value="20" step="5" oninput="document.getElementById('shapeFillOpacityVal').textContent=this.value+'%'">
+          </div>
+          <div class="form-col"><label>Stroke Weight</label>
+            <input type="number" id="shapeStrokeWeight" value="3" min="1" max="10">
+          </div>
+        </div>
+      </div>
+      <div class="map-modal-footer" style="display:flex; justify-content:flex-end; width:100%">
+        <div style="display:flex; gap:6px;">
+          <button class="mbtn mbtn-cancel" onclick="closeMapModal('modalShapeTool')">Cancel</button>
+          <button class="mbtn mbtn-insert" id="shapeStartBtn">Draw on Map</button>
         </div>
       </div>
     </div>

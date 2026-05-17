@@ -43,6 +43,15 @@ function submitAuth() {
     });
 }
 
+// Helper: get PLANOPS marker image tag by symbol name
+function _getMarkerImgTag(symbolName, size) {
+    if (window.PLANOPS_DATA && window.PLANOPS_DATA.markers) {
+        var m = window.PLANOPS_DATA.markers.find(function(mk) { return mk.name === symbolName; });
+        if (m) return '<img src="' + (m.imageWebp || m.imagePng) + '" width="' + size + '" height="' + size + '" style="object-fit:contain;vertical-align:middle;" />';
+    }
+    return '<span style="display:inline-block;width:' + size + 'px;height:' + size + 'px;background:#555;border-radius:50%;"></span>';
+}
+
 // Enter key support for auth modal
 document.addEventListener('DOMContentLoaded', function() {
     var inp = document.getElementById('authPassInput');
@@ -62,12 +71,39 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Initialize Choices.js for basic symbol dropdown if available
+    // Initialize Choices.js for basic symbol dropdown with PLANOPS icon images
     if (typeof Choices !== 'undefined' && document.getElementById('basicShape')) {
         window.basicShapeChoices = new Choices('#basicShape', {
-            searchEnabled: false,
+            searchEnabled: true,
             itemSelectText: '',
-            shouldSort: false
+            shouldSort: false,
+            callbackOnCreateTemplates: function(template) {
+                var self = this;
+                return {
+                    item: function(classNames, data) {
+                        var imgHtml = _getMarkerImgTag(data.value, 20);
+                        var el = document.createElement('div');
+                        el.className = classNames.item + ' ' + (data.highlighted ? classNames.highlightedState : classNames.itemSelectable);
+                        el.dataset.item = '';
+                        el.dataset.id = data.id;
+                        el.dataset.value = data.value;
+                        el.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;">' + imgHtml + ' ' + data.label + '</span>';
+                        return el;
+                    },
+                    choice: function(classNames, data) {
+                        var imgHtml = _getMarkerImgTag(data.value, 22);
+                        var el = document.createElement('div');
+                        el.className = classNames.item + ' ' + classNames.itemChoice + ' ' + (data.disabled ? classNames.itemDisabled : classNames.itemSelectable);
+                        el.dataset.selectText = self.config.itemSelectText;
+                        el.dataset.choice = '';
+                        el.dataset.id = data.id;
+                        el.dataset.value = data.value;
+                        el.setAttribute('role', data.groupId > 0 ? 'treeitem' : 'option');
+                        el.innerHTML = '<span style="display:inline-flex;align-items:center;gap:8px;">' + imgHtml + ' ' + data.label + '</span>';
+                        return el;
+                    }
+                };
+            }
         });
     }
 });
@@ -565,20 +601,26 @@ function setTool(toolName, btnEl) {
     if (currentMeasure) { currentMeasure.remove(); currentMeasure = null; }
     if (currentMission) { currentMission.remove(); currentMission = null; }
     if (currentArea) { currentArea.remove(); currentArea = null; }
+    if (freehandLine) { freehandLine.remove(); freehandLine = null; }
+    if (shapePreview) { shapePreview.remove(); shapePreview = null; }
+    freehandDrawing = false; freehandPoints = []; shapeDragging = false;
     missionSelection = null;
     
-    if (toolName === 'select') { mapInst.dragging.disable(); } 
+    if (toolName === 'select' || toolName === 'freehand' || toolName === 'shapeDraw') { mapInst.dragging.disable(); } 
     else { mapInst.dragging.enable(); }
     
     document.getElementById('intelMap').style.cursor = 
         (toolName === 'pan') ? '' : 'crosshair';
     
     var colorPicker = document.getElementById('toolbarColorPicker');
-    if (colorPicker) colorPicker.style.display = (toolName === 'line' || toolName === 'measure') ? 'flex' : 'none';
+    if (colorPicker) colorPicker.style.display = (toolName === 'line' || toolName === 'measure' || toolName === 'freehand') ? 'flex' : 'none';
     
     if (toolName === 'mission') {
         missionSelection = null;
         openMapModal('modalMissionSelector');
+    }
+    if (toolName === 'shape') {
+        openMapModal('modalShapeTool');
     }
 }
 
@@ -590,6 +632,19 @@ let currentMission = null;
 let missionSelection = null;
 let modalMarkerId = null;
 let modalMarkerData = null;
+
+// ---- FREEHAND DRAW STATE ----
+let freehandDrawing = false;
+let freehandPoints = [];
+let freehandLine = null;
+let freehandStraight = false;
+let freehandStartPoint = null;
+
+// ---- SHAPE DRAW STATE ----
+let shapeConfig = { sides: 4, strokeColor: '#000000', fillColor: '#0066ff', fillOpacity: 0.2, weight: 3 };
+let shapeDragging = false;
+let shapeCenter = null;
+let shapePreview = null;
 
 const backend = {
     addMarker: function(layerId, markerData) {
@@ -831,14 +886,17 @@ function addOrUpdateMarker(map, markers, marker, canEdit, backend, opacity, laye
     if (markerData.type == 'line') {
         var posList = posToPoints(markerData.pos);
         var color = colorToCss(markerData.config.color);
-        var isArea = markerData.symbol === 'area' || markerData.config.fill;
+        var isArea = markerData.symbol === 'area' || markerData.symbol === 'shape' || markerData.config.fill;
+        var fillColor = markerData.config.fillColor || color;
+        var fillOpacity = (markerData.config.fillOpacity != null) ? markerData.config.fillOpacity : 0.12;
         if (existing) {
-            existing.setLatLngs(posList); existing.setStyle({ color: color, weight: markerData.config.weight||3 });
+            if (isArea) existing.setLatLngs([posList]); else existing.setLatLngs(posList);
+            existing.setStyle({ color: color, weight: markerData.config.weight||3, fillColor: fillColor, fillOpacity: fillOpacity });
             existing.options.markerData = markerData;
         } else {
             var mapMarker;
             if (isArea) {
-                mapMarker = L.polygon(posList, { color: color, weight: markerData.config.weight||3, fillOpacity: 0.12, interactive: canEdit, markerId: markerId, markerData: markerData }).addTo(layer.group);
+                mapMarker = L.polygon(posList, { color: color, weight: markerData.config.weight||3, fillColor: fillColor, fillOpacity: fillOpacity, interactive: canEdit, markerId: markerId, markerData: markerData }).addTo(layer.group);
             } else {
                 mapMarker = L.polyline(posList, { color: color, weight: markerData.config.weight||3, interactive: canEdit, markerId: markerId, markerData: markerData }).addTo(layer.group);
             }
@@ -1073,6 +1131,100 @@ function onMapMouseMove(e) {
     }
 }
 
+// ---- FREEHAND DRAW LOGIC ----
+function freehandMouseDown(e) {
+    if (currentDrawAction !== 'freehand') return;
+    freehandDrawing = true;
+    freehandStraight = e.originalEvent.ctrlKey && e.originalEvent.shiftKey;
+    freehandStartPoint = [e.latlng.lat, e.latlng.lng];
+    freehandPoints = [freehandStartPoint];
+    var toolColorBtn = document.querySelector('#toolbarColorPicker .tool-color-btn.active');
+    var color = toolColorBtn ? toolColorBtn.dataset.color : '#000000';
+    freehandLine = L.polyline(freehandPoints, { color: color, weight: 3, interactive: false }).addTo(mapInst);
+}
+function freehandMouseMove(e) {
+    if (!freehandDrawing || !freehandLine) return;
+    var pt = [e.latlng.lat, e.latlng.lng];
+    if (freehandStraight) {
+        freehandLine.setLatLngs([freehandStartPoint, pt]);
+        freehandPoints = [freehandStartPoint, pt];
+    } else {
+        freehandPoints.push(pt);
+        freehandLine.addLatLng(pt);
+    }
+}
+function freehandMouseUp(e) {
+    if (!freehandDrawing || !freehandLine) return;
+    freehandDrawing = false;
+    if (freehandPoints.length < 2) {
+        freehandLine.remove(); freehandLine = null; return;
+    }
+    var toolColorBtn = document.querySelector('#toolbarColorPicker .tool-color-btn.active');
+    var color = toolColorBtn ? toolColorBtn.dataset.color : '#000000';
+    var posFlat = freehandPoints.flat();
+    freehandLine.remove(); freehandLine = null;
+    backend.addMarker(null, { type: 'line', symbol: 'freehand', config: { color: color, weight: 3 }, pos: posFlat });
+    freehandPoints = [];
+}
+
+// ---- SHAPE DRAW LOGIC ----
+function generateRegularPolygon(center, radius, sides) {
+    var pts = [];
+    if (sides === 0) {
+        // Circle approximation with 36 points
+        for (var i = 0; i < 36; i++) {
+            var angle = (i / 36) * 2 * Math.PI - Math.PI / 2;
+            pts.push([center[0] + radius * Math.sin(angle), center[1] + radius * Math.cos(angle)]);
+        }
+    } else {
+        for (var i = 0; i < sides; i++) {
+            var angle = (i / sides) * 2 * Math.PI - Math.PI / 2;
+            pts.push([center[0] + radius * Math.sin(angle), center[1] + radius * Math.cos(angle)]);
+        }
+    }
+    return pts;
+}
+
+function shapeMouseDown(e) {
+    if (currentDrawAction !== 'shapeDraw') return;
+    shapeDragging = true;
+    shapeCenter = [e.latlng.lat, e.latlng.lng];
+    var pts = generateRegularPolygon(shapeCenter, 0, shapeConfig.sides);
+    var fillColor = shapeConfig.fillColor === 'none' ? 'transparent' : shapeConfig.fillColor;
+    var fillOpacity = shapeConfig.fillColor === 'none' ? 0 : shapeConfig.fillOpacity;
+    shapePreview = L.polygon(pts, {
+        color: shapeConfig.strokeColor, weight: shapeConfig.weight,
+        fillColor: fillColor, fillOpacity: fillOpacity, interactive: false
+    }).addTo(mapInst);
+}
+function shapeMouseMove(e) {
+    if (!shapeDragging || !shapePreview) return;
+    var dx = e.latlng.lng - shapeCenter[1];
+    var dy = e.latlng.lat - shapeCenter[0];
+    var radius = Math.sqrt(dx * dx + dy * dy);
+    var pts = generateRegularPolygon(shapeCenter, radius, shapeConfig.sides);
+    shapePreview.setLatLngs([pts]);
+}
+function shapeMouseUp(e) {
+    if (!shapeDragging || !shapePreview) return;
+    shapeDragging = false;
+    var dx = e.latlng.lng - shapeCenter[1];
+    var dy = e.latlng.lat - shapeCenter[0];
+    var radius = Math.sqrt(dx * dx + dy * dy);
+    if (radius < 10) { shapePreview.remove(); shapePreview = null; return; }
+    var pts = generateRegularPolygon(shapeCenter, radius, shapeConfig.sides);
+    var posFlat = pts.flat();
+    shapePreview.remove(); shapePreview = null;
+    var fillColor = shapeConfig.fillColor === 'none' ? 'transparent' : shapeConfig.fillColor;
+    var fillOpacity = shapeConfig.fillColor === 'none' ? 0 : shapeConfig.fillOpacity;
+    backend.addMarker(null, {
+        type: 'line', symbol: 'shape', config: {
+            color: shapeConfig.strokeColor, fill: true, fillColor: fillColor,
+            fillOpacity: fillOpacity, weight: shapeConfig.weight, sides: shapeConfig.sides
+        }, pos: posFlat
+    });
+}
+
 // ---- INIT MAP ----
 async function initIntelMap() {
     if (mapInst) { mapInst.remove(); mapInst = null; }
@@ -1126,13 +1278,25 @@ async function initIntelMap() {
                 pointingMarker.setLatLng(e.latlng);
             }
         }
+        freehandMouseDown(e);
+        shapeMouseDown(e);
     });
     mapInst.on('mousemove', function(e) {
         if (isPointing && pointingMarker) {
             pointingMarker.setLatLng(e.latlng);
         }
+        freehandMouseMove(e);
+        shapeMouseMove(e);
     });
-    mapInst.on('mouseup mouseout', function(e) {
+    mapInst.on('mouseup', function(e) {
+        if (isPointing) {
+            isPointing = false;
+            if (pointingMarker) { pointingMarker.remove(); pointingMarker = null; }
+        }
+        freehandMouseUp(e);
+        shapeMouseUp(e);
+    });
+    mapInst.on('mouseout', function(e) {
         if (isPointing) {
             isPointing = false;
             if (pointingMarker) { pointingMarker.remove(); pointingMarker = null; }
@@ -2022,6 +2186,36 @@ document.getElementById('lineSaveBtn').onclick = function() {
 document.getElementById('lineDeleteBtn').onclick = function() {
     if(modalMarkerId) backend.removeMarker(modalMarkerId);
     closeMapModal('modalLineProps');
+};
+
+// ---- SHAPE MODAL HANDLERS ----
+document.querySelectorAll('#shapeSidesPicker .shape-side-btn').forEach(function(btn) {
+    btn.onclick = function() {
+        document.querySelectorAll('#shapeSidesPicker .shape-side-btn').forEach(function(b) { b.classList.remove('active'); });
+        this.classList.add('active');
+    };
+});
+document.querySelectorAll('#shapeStrokeColorPicker .color-btn').forEach(function(btn) {
+    btn.onclick = function() {
+        document.querySelectorAll('#shapeStrokeColorPicker .color-btn').forEach(function(b) { b.classList.remove('active'); b.style.border = ''; });
+        this.classList.add('active'); this.style.border = '2px solid #fff';
+    };
+});
+document.querySelectorAll('#shapeFillColorPicker .color-btn').forEach(function(btn) {
+    btn.onclick = function() {
+        document.querySelectorAll('#shapeFillColorPicker .color-btn').forEach(function(b) { b.classList.remove('active'); b.style.border = ''; });
+        this.classList.add('active'); this.style.border = '2px solid #fff';
+    };
+});
+document.getElementById('shapeStartBtn').onclick = function() {
+    var sidesBtn = document.querySelector('#shapeSidesPicker .shape-side-btn.active');
+    shapeConfig.sides = sidesBtn ? parseInt(sidesBtn.dataset.sides) : 4;
+    shapeConfig.strokeColor = (document.querySelector('#shapeStrokeColorPicker .color-btn.active') || {}).dataset.color || '#000000';
+    shapeConfig.fillColor = (document.querySelector('#shapeFillColorPicker .color-btn.active') || {}).dataset.color || '#0066ff';
+    shapeConfig.fillOpacity = (parseInt(document.getElementById('shapeFillOpacity').value) || 20) / 100;
+    shapeConfig.weight = parseInt(document.getElementById('shapeStrokeWeight').value) || 3;
+    closeMapModal('modalShapeTool');
+    setTool('shapeDraw', document.getElementById('toolShape'));
 };
 
 document.querySelectorAll('.mission-btn').forEach(btn => {

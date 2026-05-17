@@ -642,6 +642,16 @@ body.sidebar-collapsed .main{margin-left:0}
 .rt-users-footer{padding:8px 12px;border-top:1px solid rgba(0,255,65,.15);text-align:center}
 .rt-status-text{font-size:.6rem;color:#00ff41;letter-spacing:.5px;animation:rt-pulse 2s ease infinite}
 
+/* SHAPE TOOL MODAL */
+.shape-sides-picker{display:flex;gap:4px;flex-wrap:wrap}
+.shape-side-btn{background:#f0f0f0;border:2px solid #ccc;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;min-width:42px;text-align:center;transition:all .15s;color:#333;font-weight:600}
+.shape-side-btn:hover{border-color:#0066ff;background:#e8f0ff}
+.shape-side-btn.active{background:#0066ff;color:#fff;border-color:#0066ff}
+
+/* Choices.js icon dropdown improvements */
+.choices__inner{min-height:36px!important}
+.choices__list--dropdown .choices__item{padding:6px 10px!important}
+
 /* MISSION BUTTONS in white-bg modal */
 .mission-btn{background:#f8f9fa;color:#333;border:1px solid #dee2e6;display:inline-flex;align-items:center;font-size:.8rem;padding:6px 10px;border-radius:4px;cursor:pointer;transition:all .15s}
 .mission-btn:hover{background:#e2e6ea;border-color:#adb5bd}
