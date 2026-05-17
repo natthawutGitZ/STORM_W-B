@@ -594,7 +594,7 @@ let modalMarkerData = null;
 const backend = {
     addMarker: function(layerId, markerData) {
         markerData.id = Date.now().toString() + Math.floor(Math.random()*1000);
-        fetch('api/mission_plan.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'save_marker', map:currentMap, user_id:'S2', data: markerData }) });
+        fetch('api/mission_plan.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'save_marker', map:currentMap, user_id: rtDisplayName || rtUserId, data: markerData }) });
         addOrUpdateMarker(mapInst, allMarkers, { id: markerData.id, data: markerData }, true, backend, {}, { group: drawLayer });
     },
     removeMarker: function(markerId) {
@@ -606,7 +606,7 @@ const backend = {
         }
     },
     updateMarkerToLayer: function(markerId, layerId, markerData) {
-        fetch('api/mission_plan.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'save_marker', map:currentMap, user_id:'S2', data: markerData }) });
+        fetch('api/mission_plan.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'save_marker', map:currentMap, user_id: rtDisplayName || rtUserId, data: markerData }) });
         addOrUpdateMarker(mapInst, allMarkers, { id: markerId, data: markerData }, true, backend, {}, { group: drawLayer });
     },
     moveMarker: function(markerId, markerData) {
@@ -2241,11 +2241,12 @@ function updateOnlineIndicator(count, users) {
 
 // Send leave signal when user closes tab
 window.addEventListener('beforeunload', function() {
-    navigator.sendBeacon('api/map_presence.php', JSON.stringify({
+    var blob = new Blob([JSON.stringify({
         action: 'leave',
         user_id: rtUserId,
         map: currentMap
-    }));
+    })], { type: 'application/json' });
+    navigator.sendBeacon('api/map_presence.php', blob);
 });
 
 // Hook map init
