@@ -660,6 +660,7 @@ let shapePreview = null;
 let polyDragTarget = null;
 let polyDragStartLatLng = null;
 let polyDragOrigLatLngs = null;
+let polyDragMoved = false;
 
 const backend = {
     addMarker: function(layerId, markerData) {
@@ -954,16 +955,19 @@ function addOrUpdateMarker(map, markers, marker, canEdit, backend, opacity, laye
                 mapMarker = L.polyline(posList, { color: color, weight: markerData.config.weight||3, interactive: canEdit, markerId: markerId, markerData: markerData, _locked: !!isLocked }).addTo(layer.group);
             }
             if (canEdit) {
-                mapMarker.on('click', e => updateMarkerHandler(e,map,backend));
+                mapMarker.on('click', function(e) {
+                    // If we just finished dragging, don't open modal
+                    if (polyDragMoved) { polyDragMoved = false; return; }
+                    updateMarkerHandler(e, map, backend);
+                });
                 // Custom drag for polylines/polygons
                 mapMarker.on('mousedown', function(ev) {
                     if (ev.target.options._locked) return;
                     if (currentDrawAction && currentDrawAction !== 'pan' && currentDrawAction !== 'select') return;
-                    L.DomEvent.stopPropagation(ev);
                     polyDragTarget = ev.target;
                     polyDragStartLatLng = ev.latlng;
+                    polyDragMoved = false;
                     var lls = ev.target.getLatLngs();
-                    // Deep clone latlngs (handle nested arrays for polygons)
                     polyDragOrigLatLngs = JSON.parse(JSON.stringify(lls));
                     map.dragging.disable();
                 });
@@ -1371,6 +1375,7 @@ async function initIntelMap() {
         shapeMouseMove(e);
         // PolyDrag move
         if (polyDragTarget && polyDragStartLatLng) {
+            polyDragMoved = true;
             var dlat = e.latlng.lat - polyDragStartLatLng.lat;
             var dlng = e.latlng.lng - polyDragStartLatLng.lng;
             var orig = polyDragOrigLatLngs;
