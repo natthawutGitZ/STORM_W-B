@@ -1,5 +1,66 @@
 <?php
+session_start();
 require_once ROOT_PATH . '/includes/db.php';
+require_once ROOT_PATH . '/includes/track_pageview.php';
+trackPageView($pdo, 'Intelligence Map');
+
+// --- PAGE AUTHORIZATION ---
+$PAGE_AUTH_PASS = 'Storm888'; // Using the same S2 password
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['page_auth_pass'])) {
+    if ($_POST['page_auth_pass'] === $PAGE_AUTH_PASS) {
+        $_SESSION['intel_page_auth'] = true;
+        header("Location: " . $_SERVER['REQUEST_URI']);
+        exit;
+    } else {
+        $auth_error = "ACCESS DENIED - Invalid authorization code.";
+    }
+}
+
+if (empty($_SESSION['intel_page_auth'])) {
+    ?>
+    <!DOCTYPE html>
+    <html lang="th">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>RESTRICTED ACCESS | STORMSURGE</title>
+        <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+        <style>
+            body { background: #050505; color: #0f0; font-family: 'Share Tech Mono', monospace; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow: hidden; }
+            .auth-container { border: 1px solid #0f0; padding: 3rem; background: rgba(0,255,0,0.05); text-align: center; box-shadow: 0 0 20px rgba(0,255,0,0.2); position: relative; z-index: 2; width: 400px; max-width: 90%; }
+            h1 { font-size: 1.8rem; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 1rem; color: #0f0; text-shadow: 0 0 5px rgba(0,255,0,0.5); }
+            p.desc { color: #0f0; margin-bottom: 2rem; opacity: 0.8; font-size: 0.9rem; }
+            input[type="password"] { background: #000; border: 1px solid #0f0; color: #0f0; padding: 12px; width: 80%; text-align: center; font-family: 'Share Tech Mono', monospace; letter-spacing: 5px; outline: none; margin-bottom: 1.5rem; font-size: 1.2rem; transition: box-shadow 0.3s; }
+            input[type="password"]:focus { box-shadow: 0 0 15px rgba(0,255,0,0.6); }
+            button { background: #0f0; color: #000; border: none; padding: 12px 30px; font-family: 'Share Tech Mono', monospace; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 1.1rem; transition: all 0.2s; width: 80%; }
+            button:hover { background: #fff; box-shadow: 0 0 15px rgba(255,255,255,0.8); }
+            .error { color: #ff3333; margin-top: 1.5rem; font-size: 1rem; text-shadow: 0 0 5px rgba(255,51,51,0.5); border: 1px solid #ff3333; padding: 10px; background: rgba(255,0,0,0.1); }
+            .scanline { width: 100%; height: 100px; z-index: 10; position: absolute; pointer-events: none; background: linear-gradient(0deg, rgba(0,0,0,0) 0%, rgba(0,255,0,0.1) 50%, rgba(0,0,0,0) 100%); opacity: 0.1; bottom: 100%; animation: scanline 10s linear infinite; }
+            @keyframes scanline { 0% { bottom: 100%; } 100% { bottom: -100px; } }
+            .crt-flicker { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,255,0,0.02); z-index: 1; pointer-events: none; animation: flicker 0.15s infinite; }
+            @keyframes flicker { 0% { opacity: 0.9; } 50% { opacity: 1; } 100% { opacity: 0.9; } }
+        </style>
+    </head>
+    <body>
+        <div class="crt-flicker"></div>
+        <div class="scanline"></div>
+        <div class="auth-container">
+            <h1>RESTRICTED SYSTEM</h1>
+            <p class="desc">TOP SECRET // SI // REL TO USA, FVEY</p>
+            <form method="POST">
+                <input type="password" name="page_auth_pass" placeholder="PASSWORD" autofocus required autocomplete="off">
+                <button type="submit">DECRYPT</button>
+            </form>
+            <?php if (!empty($auth_error)): ?>
+                <div class="error"><?php echo $auth_error; ?></div>
+            <?php endif; ?>
+        </div>
+    </body>
+    </html>
+    <?php
+    exit;
+}
 
 // PLANOPS API Integration with File Cache
 $planopsCacheFile = ROOT_PATH . '/planops_game_1_cache.json';
@@ -72,8 +133,9 @@ if (!is_array($planopsData)) {
 if (isset($planopsData['markers']) && is_array($planopsData['markers'])) {
     foreach ($planopsData['markers'] as $marker) {
         $img = htmlspecialchars($marker['imageWebp']);
+        $proxyImg = 'api/planops_proxy.php?url=' . urlencode($img);
         $name = htmlspecialchars($marker['name']);
-        echo ".game-icon-{$name} { background-image: url('{$img}') !important; background-size: contain; background-repeat: no-repeat; background-position: left center; padding-left: 30px !important; }\n";
+        echo ".game-icon-{$name} { background-image: url('{$proxyImg}') !important; background-size: contain; background-repeat: no-repeat; background-position: left center; padding-left: 30px !important; }\n";
     }
 }
 ?>
@@ -514,9 +576,6 @@ if (isset($planopsData['markers']) && is_array($planopsData['markers'])) {
           <button class="map-tool-btn" id="toolBasicSymbol" data-tool="basicSymbol" title="Basic Symbol" style="font-size:18px;line-height:32px;">&#9679;</button>
         </div>
         <div class="toolbar-group">
-          <button class="map-tool-btn" id="toolLine" data-tool="line" title="Line (Ctrl/Shift+click to add segments)" style="font-size:16px;font-weight:bold;">&#9585;</button>
-        </div>
-        <div class="toolbar-group">
           <button class="map-tool-btn" id="toolFreehand" data-tool="freehand" title="Freehand Draw (Ctrl+Shift = straight line)"><i class="fas fa-pen-fancy"></i></button>
         </div>
         <div class="toolbar-group">
@@ -534,20 +593,51 @@ if (isset($planopsData['markers']) && is_array($planopsData['markers'])) {
         </div>
       </div>
 
-      <!-- FLOATING COLOR PICKER (for Line/Freehand/Measure) -->
-      <div class="tool-color-popup" id="toolbarColorPicker" style="display:none;">
-        <div class="tool-color-popup-header">Draw Color</div>
-        <div class="tool-color-popup-grid">
-          <button class="tool-color-btn active" data-color="#000000" style="background:#000" title="Black"></button>
-          <button class="tool-color-btn" data-color="#ff0000" style="background:#ff0000" title="Red"></button>
-          <button class="tool-color-btn" data-color="#0066ff" style="background:#0066ff" title="Blue"></button>
-          <button class="tool-color-btn" data-color="#00cc44" style="background:#00cc44" title="Green"></button>
-          <button class="tool-color-btn" data-color="#ffaa00" style="background:#ffaa00" title="Orange"></button>
-          <button class="tool-color-btn" data-color="#aa00ff" style="background:#aa00ff" title="Purple"></button>
-          <button class="tool-color-btn" data-color="#ffff00" style="background:#ff0" title="Yellow"></button>
-          <button class="tool-color-btn" data-color="#00ffff" style="background:#0ff" title="Cyan"></button>
-          <button class="tool-color-btn" data-color="#7f3f00" style="background:#7f3f00" title="Brown"></button>
-          <button class="tool-color-btn" data-color="#ffffff" style="background:#fff;border:1px solid #666" title="White"></button>
+      <!-- MODAL: FREEHAND DRAW -->
+      <div class="map-modal-overlay" id="modalFreehandDraw">
+        <div class="map-modal">
+          <div class="map-modal-header">
+            <span>Freehand Draw</span>
+            <button class="map-modal-close" onclick="closeMapModal('modalFreehandDraw'); setTool('pan', document.getElementById('toolPan'));">&times;</button>
+          </div>
+          <div class="map-modal-body">
+            <div class="form-row">
+              <div class="form-col"><label>Color</label>
+                <div class="color-picker-wrap" id="freehandColorPicker">
+                  <button class="color-btn active" data-color="#000000" style="background:#000;border:2px solid #fff" title="Black"></button>
+                  <button class="color-btn" data-color="#ff0000" style="background:#ff0000" title="Red"></button>
+                  <button class="color-btn" data-color="#0066ff" style="background:#0066ff" title="Blue"></button>
+                  <button class="color-btn" data-color="#00cc44" style="background:#00cc44" title="Green"></button>
+                  <button class="color-btn" data-color="#ffaa00" style="background:#ffaa00" title="Orange"></button>
+                  <button class="color-btn" data-color="#aa00ff" style="background:#aa00ff" title="Purple"></button>
+                  <button class="color-btn" data-color="#ffff00" style="background:#ff0" title="Yellow"></button>
+                  <button class="color-btn" data-color="#00ffff" style="background:#0ff" title="Cyan"></button>
+                  <button class="color-btn" data-color="#7f3f00" style="background:#7f3f00" title="Brown"></button>
+                  <button class="color-btn" data-color="#ffffff" style="background:#fff;border:1px solid #666" title="White"></button>
+                </div>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-col" style="flex:1"><label>Line Style</label>
+                <div class="draw-line-style-row">
+                  <button class="draw-dash-btn active" data-dash="" title="Solid"><svg width="50" height="12"><line x1="0" y1="6" x2="50" y2="6" stroke="#333" stroke-width="2"/></svg></button>
+                  <button class="draw-dash-btn" data-dash="8,8" title="Dashed"><svg width="50" height="12"><line x1="0" y1="6" x2="50" y2="6" stroke="#333" stroke-width="2" stroke-dasharray="8,8"/></svg></button>
+                  <button class="draw-dash-btn" data-dash="3,6" title="Dotted"><svg width="50" height="12"><line x1="0" y1="6" x2="50" y2="6" stroke="#333" stroke-width="2" stroke-dasharray="3,6"/></svg></button>
+                  <button class="draw-dash-btn" data-dash="12,6,3,6" title="Dash-Dot"><svg width="50" height="12"><line x1="0" y1="6" x2="50" y2="6" stroke="#333" stroke-width="2" stroke-dasharray="12,6,3,6"/></svg></button>
+                </div>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-col"><label>Dash Gap</label><input type="number" id="drawDashGap" value="8" min="1" max="50"></div>
+              <div class="form-col"><label>Weight</label><input type="number" id="drawLineWeight" value="3" min="1" max="20"></div>
+            </div>
+          </div>
+          <div class="map-modal-footer" style="display:flex; justify-content:flex-end; width:100%">
+            <div style="display:flex; gap:6px;">
+              <button class="mbtn mbtn-cancel" onclick="closeMapModal('modalFreehandDraw'); setTool('pan', document.getElementById('toolPan'));">Cancel</button>
+              <button class="mbtn mbtn-insert" id="freehandDrawBtn">Draw</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -819,6 +909,7 @@ if (isset($planopsData['markers']) && is_array($planopsData['markers'])) {
         </div>
         <div class="form-row">
           <div class="form-col" style="flex:1"><label>Label</label><input type="text" id="basicLabel" placeholder="Label text"></div>
+          <div class="form-col" style="width:80px"><label>Size (px)</label><input type="number" id="basicLabelSize" value="12" min="8" max="48"></div>
         </div>
         <div class="form-row">
           <div class="form-col"><label>Scale</label><input type="number" id="basicScale" value="100" min="10" max="500"></div>
@@ -888,11 +979,6 @@ if (isset($planopsData['markers']) && is_array($planopsData['markers'])) {
           </div>
           <div class="form-col"><label>Stroke Weight</label>
             <input type="number" id="shapeStrokeWeight" value="3" min="1" max="10">
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-col"><label>Rotation (degrees)</label>
-            <input type="number" id="shapeRotation" value="0" min="0" max="360" step="5">
           </div>
         </div>
       </div>
