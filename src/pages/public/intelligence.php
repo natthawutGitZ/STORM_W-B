@@ -1,5 +1,7 @@
 <?php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 require_once ROOT_PATH . '/includes/db.php';
 require_once ROOT_PATH . '/includes/track_pageview.php';
 trackPageView($pdo, 'Intelligence Map');
