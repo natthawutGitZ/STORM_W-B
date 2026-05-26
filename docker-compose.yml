@@ -162,6 +162,9 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     networks:
       - app-network
     logging:
