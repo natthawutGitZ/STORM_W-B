@@ -15,9 +15,9 @@ class BotAPI
 
     /**
      * Send a request to the bot
-     * @param int $timeout Connection timeout in seconds. Default 3s for fast UI.
+     * @param int $timeout Connection timeout in seconds. Default 15s for stability.
      */
-    public function request($endpoint, $data = [], $method = 'POST', $timeout = 3)
+    public function request($endpoint, $data = [], $method = 'POST', $timeout = 15)
     {
         $url = $this->baseUrl . $endpoint;
         $ch = curl_init($url);
