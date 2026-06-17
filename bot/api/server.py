@@ -2045,6 +2045,61 @@ async def handle_steam_proxy(request):
         print(f"Steam Proxy error: {e}", flush=True)
         return web.json_response({'error': str(e)}, status=500)
 
+async def handle_dm_verify(request):
+    """Handle request to send DM verification button to a user."""
+    try:
+        data = await request.json()
+        bot = request.app['bot']
+        
+        user_id = data.get('user_id')
+        verify_id = data.get('verify_id')
+        form_title = data.get('form_title')
+        target_number = data.get('target_number')
+        buttons = data.get('buttons', [])
+        
+        if not user_id or not verify_id or not buttons:
+            return web.json_response({'error': 'Missing required fields'}, status=400)
+            
+        user = bot.get_user(int(user_id))
+        if not user:
+            try:
+                user = await bot.fetch_user(int(user_id))
+            except discord.NotFound:
+                return web.json_response({'error': 'User not found'}, status=404)
+            except discord.HTTPException as e:
+                return web.json_response({'error': f'Failed to fetch user: {e}'}, status=500)
+                
+        # Create embed
+        embed = discord.Embed(
+            title="🔐 ยืนยันตัวตน (Verification)",
+            description=f"คุณกำลังส่งแบบฟอร์ม: **{form_title}**\n\nโปรดกดปุ่มหมายเลข **{target_number}** ด้านล่างเพื่อให้การส่งแบบฟอร์มเสร็จสมบูรณ์\n\n*(หมายเหตุ: การกดปุ่มผิดอาจทำให้การส่งถูกปฏิเสธ)*",
+            color=0xc5a059
+        )
+        embed.set_footer(text="S.T.O.R.M System • กรุณายืนยันภายใน 5 นาที")
+        
+        # Create view with buttons
+        view = discord.ui.View(timeout=300) # 5 mins timeout
+        
+        for num in buttons:
+            # We encode verify_id and the number in the custom_id
+            custom_id = f"form_verify:{verify_id}:{num}"
+            button = discord.ui.Button(
+                label=str(num),
+                style=discord.ButtonStyle.primary,
+                custom_id=custom_id
+            )
+            view.add_item(button)
+            
+        try:
+            await user.send(embed=embed, view=view)
+            return web.json_response({'success': True})
+        except discord.Forbidden:
+            return web.json_response({'error': 'User has DMs disabled or blocked the bot'}, status=403)
+            
+    except Exception as e:
+        print(f"Error in handle_dm_verify: {e}", flush=True)
+        return web.json_response({'error': str(e)}, status=500)
+
 async def start_server(bot):
     try:
         app = web.Application(client_max_size=50 * 1024 * 1024, middlewares=[api_key_middleware])
@@ -2099,6 +2154,9 @@ async def start_server(bot):
         app.router.add_get('/feed/settings', handle_get_feed_settings)
         app.router.add_post('/feed/settings', handle_save_feed_settings)
         app.router.add_get('/feed/messages', handle_get_feed_messages)
+        
+        # DM Routes
+        app.router.add_post('/dm/verify', handle_dm_verify)
         
         # Role Assignment Route
         app.router.add_post('/roles/assign', handle_assign_role)
