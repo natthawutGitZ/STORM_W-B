@@ -1368,7 +1368,7 @@ function convertLinksToButtons($text) {
             
             // Check if discord picker is used to get discord ID
             let discordUserId = '';
-            const discordInputs = document.querySelectorAll('input[name^="q_"]');
+            const discordInputs = document.querySelectorAll('input[id^="discord-user-"]');
             for (let input of discordInputs) {
                 try {
                     const data = JSON.parse(input.value);
