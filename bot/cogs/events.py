@@ -178,6 +178,38 @@ class EventsCog(commands.Cog):
                         print(f"[ERROR] ticket_close interaction: {e}")
                         await interaction.followup.send(f'❌ Error closing ticket: {str(e)}', ephemeral=True)
 
+                # --- FORM VERIFY BUTTON ---
+                elif custom_id and custom_id.startswith('form_verify:'):
+                    parts = custom_id.split(':')
+                    if len(parts) >= 3:
+                        verify_id = parts[1]
+                        clicked_number = parts[2]
+                        
+                        await interaction.response.defer(ephemeral=True)
+                        
+                        try:
+                            # Forward to PHP callback API
+                            async with aiohttp.ClientSession() as session:
+                                payload = {
+                                    'verify_id': verify_id,
+                                    'clicked_number': clicked_number,
+                                    'discord_user_id': str(interaction.user.id)
+                                }
+                                async with session.post('http://web/api/discord_verify_callback.php', json=payload) as resp:
+                                    result = await resp.json()
+                                    
+                            if result.get('success'):
+                                if result.get('status') == 'success':
+                                    await interaction.followup.send("✅ ยืนยันตัวตนสำเร็จ! ระบบกำลังดำเนินการสร้างคำร้องของคุณ...", ephemeral=True)
+                                else:
+                                    await interaction.followup.send("❌ หมายเลขไม่ถูกต้อง หรือหมดเวลาการยืนยัน", ephemeral=True)
+                            else:
+                                await interaction.followup.send(f"❌ เกิดข้อผิดพลาด: {result.get('error', 'Unknown Error')}", ephemeral=True)
+                                
+                        except Exception as e:
+                            print(f"[ERROR] form_verify interaction: {e}")
+                            await interaction.followup.send(f"❌ Error communicating with web server: {str(e)}", ephemeral=True)
+
                 # --- ROLE ASSIGNMENT BUTTON ---
                 elif custom_id and custom_id.startswith('role_assign:'):
                     parts = custom_id.split(':')
