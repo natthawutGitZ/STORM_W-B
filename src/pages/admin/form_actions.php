@@ -570,7 +570,95 @@ try {
                 }
             }
 
-            echo json_encode(['success' => true]);
+            // --- 3.3 AUTO USER CREATION & LOGIN ---
+            $steamId = '';
+            $personaName = '';
+            
+            // Extract Steam ID and Persona Name from answers based on keywords
+            foreach ($answers as $qid => $ans) {
+                if (!isset($qMap[$qid])) continue;
+                $qText = strtolower($qMap[$qid]['question_text']);
+                $ansVal = is_array($ans) ? implode('', $ans) : $ans;
+                
+                if (strpos($qText, 'steam') !== false && empty($steamId)) {
+                    // Extract numbers only for steam ID
+                    preg_match('/\d{17}/', $ansVal, $matches);
+                    if (!empty($matches[0])) {
+                        $steamId = $matches[0];
+                    } else if (is_numeric(trim($ansVal))) {
+                        $steamId = trim($ansVal);
+                    }
+                }
+                
+                if (strpos($qText, 'ชื่อ') !== false && empty($personaName)) {
+                    $personaName = trim($ansVal);
+                }
+            }
+            
+            $loginToken = null;
+            
+            if (!empty($steamId) && !empty($personaName) && !isLoggedIn()) {
+                try {
+                    // Check if user already exists
+                    $stmt = $pdo->prepare("SELECT * FROM users WHERE steamid = ? OR username = ?");
+                    // Use personaName as base for username but remove spaces
+                    $baseUsername = str_replace(' ', '', $personaName);
+                    $stmt->execute([$steamId, $baseUsername]);
+                    $user = $stmt->fetch();
+                    
+                    if (!$user) {
+                        // Create new user
+                        // Generate random password
+                        if (function_exists('random_bytes')) {
+                            $gen_password = bin2hex(random_bytes(4));
+                        } else {
+                            $gen_password = substr(md5(mt_rand()), 0, 8);
+                        }
+                        
+                        $hashed_password = password_hash($gen_password, PASSWORD_DEFAULT);
+                        $avatar = $discordData['avatar'] ?? '/assets/images/default_avatar.png'; // Use discord avatar if available
+                        $profileUrl = "https://steamcommunity.com/profiles/" . $steamId;
+                        
+                        $stmt = $pdo->prepare("INSERT INTO users (steamid, personaname, avatar, profileurl, username, password, generated_password) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                        $stmt->execute([
+                            $steamId,
+                            $personaName,
+                            $avatar,
+                            $profileUrl,
+                            $baseUsername,
+                            $hashed_password,
+                            $gen_password
+                        ]);
+                        
+                        // Fetch the newly created user
+                        $stmt = $pdo->prepare("SELECT * FROM users WHERE steamid = ?");
+                        $stmt->execute([$steamId]);
+                        $user = $stmt->fetch();
+                        
+                        error_log("[AUTO_USER_CREATE] Created user {$baseUsername} from form {$form_id}");
+                    } else {
+                        // Update existing user with latest persona if needed
+                        if ($user['personaname'] !== $personaName) {
+                            $pdo->prepare("UPDATE users SET personaname = ? WHERE id = ?")->execute([$personaName, $user['id']]);
+                            $user['personaname'] = $personaName;
+                        }
+                    }
+                    
+                    // Auto Login the user
+                    if ($user) {
+                        $_SESSION['user'] = $user;
+                        $loginToken = 'success';
+                        require_once ROOT_PATH . '/includes/admin_log.php';
+                        logAdminAction($pdo, 'auto_login_form', 'user', $user['id'], ['name' => $user['personaname']]);
+                        error_log("[AUTO_USER_LOGIN] Logged in user {$user['username']} from form {$form_id}");
+                    }
+                    
+                } catch (Exception $e) {
+                    error_log("[AUTO_USER_ERROR] " . $e->getMessage());
+                }
+            }
+
+            echo json_encode(['success' => true, 'login_token' => $loginToken]);
             break;
 
         case 'update_response_status':
