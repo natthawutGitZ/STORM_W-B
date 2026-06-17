@@ -580,6 +580,25 @@ function convertLinksToButtons($text) {
             display: none;
         }
 
+        /* SweetAlert Custom Theme */
+        .storm-swal-popup {
+            background: rgba(20, 20, 24, 0.95) !important;
+            backdrop-filter: blur(20px) !important;
+            -webkit-backdrop-filter: blur(20px) !important;
+            border: 1px solid rgba(197, 160, 89, 0.2) !important;
+            border-radius: 16px !important;
+            color: #fff !important;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5) !important;
+        }
+
+        .storm-swal-popup .swal2-title {
+            color: #c5a059 !important;
+        }
+
+        .storm-swal-popup .swal2-html-container {
+            color: #ccc !important;
+        }
+
         /* Discord User Picker Styles */
         .discord-user-picker {
             margin-top: 10px;
@@ -1633,6 +1652,9 @@ function convertLinksToButtons($text) {
                             <p style="color: #f04747; font-size: 0.9rem; margin-top: 15px;">
                                 <i class="fas fa-exclamation-triangle"></i> หากกดผิด คุณจะต้องเลือก User ใหม่อีกครั้ง
                             </p>
+                            <p id="verify-countdown" style="color: #94a3b8; font-size: 0.95rem; margin-top: 15px; font-weight: 600;">
+                                เหลือเวลา 02:00
+                            </p>
                         </div>
                     `,
                     showConfirmButton: false,
@@ -1640,6 +1662,20 @@ function convertLinksToButtons($text) {
                     allowEscapeKey: false,
                     didOpen: () => {
                         Swal.showLoading();
+                        
+                        let timeLeft = 120;
+                        const countdownEl = document.getElementById('verify-countdown');
+                        const timerInterval = setInterval(() => {
+                            timeLeft--;
+                            if (timeLeft <= 0) {
+                                clearInterval(timerInterval);
+                                if (countdownEl) countdownEl.innerHTML = '<span style="color: #f04747;">หมดเวลา</span>';
+                            } else {
+                                const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+                                const s = (timeLeft % 60).toString().padStart(2, '0');
+                                if (countdownEl) countdownEl.innerHTML = `เหลือเวลา ${m}:${s}`;
+                            }
+                        }, 1000);
                         
                         // 3. Start Polling
                         const pollInterval = setInterval(async () => {
@@ -1650,6 +1686,7 @@ function convertLinksToButtons($text) {
                                 if (pollData.success) {
                                     if (pollData.status === 'success') {
                                         clearInterval(pollInterval);
+                                        clearInterval(timerInterval);
                                         
                                         Swal.fire({
                                             icon: 'success',
@@ -1684,6 +1721,7 @@ function convertLinksToButtons($text) {
                                         
                                     } else if (pollData.status === 'failed') {
                                         clearInterval(pollInterval);
+                                        clearInterval(timerInterval);
                                         Swal.fire({
                                             icon: 'error',
                                             title: '❌ ยืนยันไม่สำเร็จ',
@@ -1692,6 +1730,7 @@ function convertLinksToButtons($text) {
                                         });
                                     } else if (pollData.status === 'expired') {
                                         clearInterval(pollInterval);
+                                        clearInterval(timerInterval);
                                         Swal.fire({
                                             icon: 'warning',
                                             title: '⏱️ หมดเวลา',

@@ -71,7 +71,7 @@ $targetNumber = $allNumbers[0]; // First one is the target
 shuffle($allNumbers); // Shuffle so target position is random
 
 // Insert verification record
-$expiresAt = date('Y-m-d H:i:s', strtotime('+5 minutes'));
+$expiresAt = date('Y-m-d H:i:s', strtotime('+2 minutes'));
 $stmt = $pdo->prepare("INSERT INTO discord_verifications (discord_user_id, form_id, target_number, decoy_numbers, status, expires_at) VALUES (?, ?, ?, ?, 'pending', ?)");
 $stmt->execute([$discord_user_id, $form_id, $targetNumber, json_encode($allNumbers), $expiresAt]);
 $verifyId = $pdo->lastInsertId();
