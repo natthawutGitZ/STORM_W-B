@@ -320,5 +320,19 @@ class BotAPI
             'channel_id' => $channelId
         ]);
     }
+
+    /**
+     * Initiate a Discord DM verification request
+     */
+    public function sendDMVerify($userId, $verifyId, $formTitle, $targetNumber, $buttons)
+    {
+        return $this->request('/dm/verify', [
+            'user_id' => $userId,
+            'verify_id' => $verifyId,
+            'form_title' => $formTitle,
+            'target_number' => $targetNumber,
+            'buttons' => $buttons
+        ]);
+    }
 }
 ?>
