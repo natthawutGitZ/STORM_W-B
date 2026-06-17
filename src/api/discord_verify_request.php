@@ -86,13 +86,15 @@ $dmResult = $botApi->request('/dm/verify', [
     'buttons' => $allNumbers
 ]);
 
-if (!$dmResult['success']) {
+if (!$dmResult['success'] || (isset($dmResult['data']['success']) && !$dmResult['data']['success'])) {
     // Mark as failed if DM couldn't be sent
     $pdo->prepare("UPDATE discord_verifications SET status = 'failed' WHERE id = ?")->execute([$verifyId]);
+    
+    $detail = $dmResult['error'] ?? ($dmResult['data']['error'] ?? 'Bot DM failed');
     echo json_encode([
         'success' => false,
         'error' => 'ไม่สามารถส่งข้อความ DM ได้ กรุณาตรวจสอบว่าเปิด DM ใน Discord แล้ว',
-        'detail' => $dmResult['error'] ?? 'Bot DM failed'
+        'detail' => $detail
     ]);
     exit;
 }

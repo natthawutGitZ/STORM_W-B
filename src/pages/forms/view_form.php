@@ -1604,10 +1604,14 @@ function convertLinksToButtons($text) {
                 const reqData = await reqRes.json();
 
                 if (!reqData.success) {
+                    let errorText = reqData.error || 'Failed to initiate verification';
+                    if (reqData.detail) {
+                        errorText += '\n\nDetail: ' + reqData.detail;
+                    }
                     Swal.fire({
                         icon: 'error',
                         title: 'Error',
-                        text: reqData.error || 'Failed to initiate verification',
+                        text: errorText,
                         customClass: { popup: 'storm-swal-popup' }
                     });
                     return;
