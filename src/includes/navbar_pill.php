@@ -78,6 +78,10 @@ $is_admin = function_exists('isAdmin') ? isAdmin() : false;
         box-shadow: 0 0 25px rgba(197, 160, 89, 0.15);
         border-color: rgba(197, 160, 89, 0.5);
     }
+    @media (max-width: 767px) {
+        .pill-navbar-container { border-radius: 1rem; }
+        .pill-navbar-container.menu-open { border-radius: 1rem; }
+    }
     
     /* Mobile menu transition */
     #mobile-menu {
@@ -517,9 +521,11 @@ $is_admin = function_exists('isAdmin') ? isAdmin() : false;
     document.addEventListener('DOMContentLoaded', () => {
         const btn = document.getElementById('mobile-menu-btn');
         const menu = document.getElementById('mobile-menu');
+        const container = document.querySelector('.pill-navbar-container');
         if (btn && menu) {
             btn.addEventListener('click', () => {
                 menu.classList.toggle('open');
+                if (container) container.classList.toggle('menu-open');
             });
         }
     });

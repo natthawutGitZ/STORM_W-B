@@ -66,11 +66,6 @@ if (!isset($GLOBALS['_page_tracked'])) {
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 
-    <style>
-        body {
-            zoom: 0.8;
-        }
-    </style>
 
 </head>
 

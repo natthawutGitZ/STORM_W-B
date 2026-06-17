@@ -1,6 +1,15 @@
 const API='api/intelligence.php';
 let editState={};
 
+// ---- PLANOPS IMAGE PROXY (CORS fix) ----
+function planopsProxy(url) {
+    if (!url) return url;
+    if (url.indexOf('atlas.plan-ops.fr') !== -1) {
+        return 'api/planops_proxy.php?url=' + encodeURIComponent(url);
+    }
+    return url;
+}
+
 // ---- S2 AUTHORIZATION GATE ----
 let _authPass = sessionStorage.getItem('s2_auth') || '';
 let _authCallback = null;
@@ -48,7 +57,7 @@ function _getMarkerImgTag(symbolName, size) {
     if (window.PLANOPS_DATA && window.PLANOPS_DATA.markers) {
         var m = window.PLANOPS_DATA.markers.find(function(mk) { return mk.name === symbolName; });
         if (m) {
-            var imgUrl = m.imageWebp || m.imagePng;
+            var imgUrl = planopsProxy(m.imageWebp || m.imagePng);
             if (m.isColorCompatible) {
                 // Color-compatible markers are white/light — use CSS mask with dark color so they show on white bg
                 return '<span style="display:inline-block;width:' + size + 'px;height:' + size + 'px;background:#333;' +
@@ -177,12 +186,18 @@ let pdfDoc = null,
     pageRendering = false,
     pageNumPending = null,
     pdfCanvas = null,
-    pdfCtx = null;
+    pdfCtx = null,
+    currentRenderTask = null;
 
 // The workerSrc property shall be specified.
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 function renderPage(num, direction) {
+    // Cancel any in-progress render to avoid "Cannot use the same canvas" error
+    if (currentRenderTask) {
+        currentRenderTask.cancel();
+        currentRenderTask = null;
+    }
     pageRendering = true;
     
     // Setup animation
@@ -215,15 +230,22 @@ function renderPage(num, direction) {
             canvasContext: pdfCtx,
             viewport: viewport
         };
-        const renderTask = page.render(renderContext);
+        currentRenderTask = page.render(renderContext);
 
-        renderTask.promise.then(function() {
+        currentRenderTask.promise.then(function() {
+            currentRenderTask = null;
             pageRendering = false;
             if (pageNumPending !== null) {
                 const pendingDir = pageNumPending > num ? 'next' : 'prev';
                 const pending = pageNumPending;
                 pageNumPending = null;
                 renderPage(pending, pendingDir);
+            }
+        }).catch(function(err) {
+            currentRenderTask = null;
+            pageRendering = false;
+            if (err.name !== 'RenderingCancelled') {
+                console.error('PDF render error:', err);
             }
         });
     });
@@ -275,7 +297,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('resize', () => {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(() => {
-            if (pdfDoc) renderPage(pageNum, null);
+            if (pdfDoc) queueRenderPage(pageNum, null);
         }, 200);
     });
 
@@ -587,7 +609,7 @@ if (!rtUserColor) {
 // ---- PLANOPS MAP CONFIG ----
 // Uses MGRS_CRS from mapUtils.js (loaded from PLANOPS CDN)
 const MAP_CONFIG = {
-    tileUrl: 'https://atlas.plan-ops.fr/data/1/maps/118/118/{z}/{x}/{y}.webp',
+    tileUrl: 'api/planops_proxy.php?tile=1/maps/118/118/{z}/{x}/{y}.webp',
     tileSize: 323, maxZoom: 6, minZoom: 0, defaultZoom: 2,
     factorX: 0.01575, factorY: 0.01575, worldSize: 20480, center: [10250, 10250]
 };
@@ -607,6 +629,7 @@ function setTool(toolName, btnEl) {
     if (btnEl) btnEl.classList.add('active');
     
     // Clear pending drawings
+    clearVertexEditing();
     if (currentLine) { currentLine.remove(); currentLine = null; }
     if (currentMeasure) { currentMeasure.remove(); currentMeasure = null; }
     if (currentMission) { currentMission.remove(); currentMission = null; }
@@ -622,9 +645,9 @@ function setTool(toolName, btnEl) {
     document.getElementById('intelMap').style.cursor = 
         (toolName === 'pan') ? '' : 'crosshair';
     
-    var colorPicker = document.getElementById('toolbarColorPicker');
-    if (colorPicker) colorPicker.style.display = (toolName === 'line' || toolName === 'measure' || toolName === 'freehand') ? 'block' : 'none';
-    
+    if (toolName === 'freehand') {
+        openMapModal('modalFreehandDraw');
+    }
     if (toolName === 'mission') {
         missionSelection = null;
         openMapModal('modalMissionSelector');
@@ -651,16 +674,284 @@ let freehandStraight = false;
 let freehandStartPoint = null;
 
 // ---- SHAPE DRAW STATE ----
-let shapeConfig = { sides: 4, strokeColor: '#000000', fillColor: '#0066ff', fillOpacity: 0.2, weight: 3, rotation: 0 };
+let shapeConfig = { sides: 4, strokeColor: '#000000', fillColor: '#0066ff', fillOpacity: 0.2, weight: 3 };
 let shapeDragging = false;
 let shapeCenter = null;
 let shapePreview = null;
+
+// ---- VERTEX EDITING STATE ----
+let vertexMarkers = [];
+let vertexEditTarget = null;
+let vertexEditMarkerId = null;
+
+function clearVertexEditing() {
+    vertexMarkers.forEach(function(m) { m.remove(); });
+    vertexMarkers = [];
+    vertexEditTarget = null;
+    vertexEditMarkerId = null;
+}
+
+function showVertexHandles(polygon, markerId, markerData, backendRef) {
+    clearVertexEditing();
+    vertexEditTarget = polygon;
+    vertexEditMarkerId = markerId;
+    var isPolygonType = polygon.getLatLngs()[0] && Array.isArray(polygon.getLatLngs()[0]);
+    var latlngs = isPolygonType ? polygon.getLatLngs()[0] : polygon.getLatLngs();
+    latlngs.forEach(function(ll, idx) {
+        var handle = L.marker([ll.lat, ll.lng], {
+            draggable: true,
+            icon: L.divIcon({
+                className: 'vertex-handle',
+                iconSize: [12, 12],
+                iconAnchor: [6, 6]
+            })
+        }).addTo(mapInst);
+        handle._vertexIdx = idx;
+        handle.on('drag', function(e) {
+            var newLatLng = e.target.getLatLng();
+            var isPoly = vertexEditTarget.getLatLngs()[0] && Array.isArray(vertexEditTarget.getLatLngs()[0]);
+            var lls = isPoly ? vertexEditTarget.getLatLngs()[0] : vertexEditTarget.getLatLngs();
+            lls[idx] = newLatLng;
+            if (isPoly) vertexEditTarget.setLatLngs([lls]);
+            else vertexEditTarget.setLatLngs(lls);
+        });
+        handle.on('dragend', function() {
+            var isPoly = vertexEditTarget.getLatLngs()[0] && Array.isArray(vertexEditTarget.getLatLngs()[0]);
+            var lls = isPoly ? vertexEditTarget.getLatLngs()[0] : vertexEditTarget.getLatLngs();
+            var posFlat = lls.map(function(p) { return [p.lat, p.lng]; }).flat();
+            var md = vertexEditTarget.options.markerData;
+            md.pos = posFlat;
+            backendRef.moveMarker(vertexEditMarkerId, md);
+            // Sync all vertex handle positions
+            vertexMarkers.forEach(function(h, i) {
+                var pts = isPoly ? vertexEditTarget.getLatLngs()[0] : vertexEditTarget.getLatLngs();
+                if (pts[i]) h.setLatLng([pts[i].lat, pts[i].lng]);
+            });
+        });
+        vertexMarkers.push(handle);
+    });
+}
+
+// ---- CTRL+DRAG ROTATION STATE (Arma 3 style) ----
+let rotTarget = null;       // The Leaflet layer being rotated
+let rotMarkerId = null;     // Its marker ID
+let rotStartAngle = 0;     // Angle at rotation start (radians)
+let rotOrigAngle = 0;      // Original stored rotation (degrees)
+let rotCenter = null;       // Center point for rotation [lat, lng]
+let rotOrigLatLngs = null;  // For polygon: original points before rotation
+
+function getAngleFromCenter(center, latlng) {
+    var dx = latlng.lng - center[1];
+    var dy = latlng.lat - center[0];
+    return Math.atan2(dx, dy); // radians
+}
+
+// Helper: extract [lat, lng] from any format (LatLng object, [lat,lng] array, {lat,lng} object)
+function ptLat(p) { return Array.isArray(p) ? p[0] : p.lat; }
+function ptLng(p) { return Array.isArray(p) ? p[1] : p.lng; }
+
+// Check if latlngs is nested (polygon [[pts]] vs polyline [pts])
+function isNestedLatLngs(lls) {
+    return lls.length > 0 && Array.isArray(lls[0]);
+}
+
+function getPolygonCentroid(lls) {
+    var pts = isNestedLatLngs(lls) ? lls[0] : lls;
+    var lat = 0, lng = 0;
+    for (var i = 0; i < pts.length; i++) { lat += ptLat(pts[i]); lng += ptLng(pts[i]); }
+    return [lat / pts.length, lng / pts.length];
+}
+
+function rotatePointAround(center, point, angleDeg) {
+    var rad = angleDeg * Math.PI / 180;
+    var cos = Math.cos(rad), sin = Math.sin(rad);
+    var dy = ptLat(point) - center[0];
+    var dx = ptLng(point) - center[1];
+    return [
+        center[0] + dy * cos - dx * sin,
+        center[1] + dy * sin + dx * cos
+    ];
+}
+
+function startRotation(target, markerId, latlng) {
+    rotTarget = target;
+    rotMarkerId = markerId;
+    var md = target.options.markerData;
+
+    if (target.getLatLngs) {
+        // Polygon / Polyline
+        var lls = target.getLatLngs();
+        rotOrigLatLngs = JSON.parse(JSON.stringify(lls));
+        rotCenter = getPolygonCentroid(lls);
+        rotOrigAngle = 0;
+    } else {
+        // Point marker (mil/basic)
+        rotCenter = [target.getLatLng().lat, target.getLatLng().lng];
+        rotOrigAngle = md.config ? (md.config._rotation || 0) : 0;
+    }
+    rotStartAngle = getAngleFromCenter(rotCenter, latlng);
+    mapInst.dragging.disable();
+}
+
+function doRotation(latlng) {
+    if (!rotTarget) return;
+    var currentAngle = getAngleFromCenter(rotCenter, latlng);
+    var deltaRad = currentAngle - rotStartAngle;
+    var deltaDeg = deltaRad * 180 / Math.PI;
+
+    if (rotTarget.getLatLngs) {
+        // Rotate polygon/polyline points (rotOrigLatLngs is JSON-parsed: points are [lat,lng] arrays)
+        var orig = rotOrigLatLngs;
+        if (isNestedLatLngs(orig)) {
+            var rotated = orig.map(function(ring) {
+                return ring.map(function(pt) { return rotatePointAround(rotCenter, pt, deltaDeg); });
+            });
+            rotTarget.setLatLngs(rotated);
+        } else {
+            var rotated = orig.map(function(pt) { return rotatePointAround(rotCenter, pt, deltaDeg); });
+            rotTarget.setLatLngs(rotated);
+        }
+    } else {
+        // Point marker — apply CSS rotation to inner wrapper (not _icon, which Leaflet controls)
+        var totalDeg = rotOrigAngle + deltaDeg;
+        var wrap = rotTarget._icon ? rotTarget._icon.querySelector('.marker-rotate-wrap') : null;
+        if (wrap) wrap.style.transform = 'rotate(' + totalDeg + 'deg)';
+    }
+}
+
+function endRotation(latlng) {
+    if (!rotTarget) return;
+    var currentAngle = getAngleFromCenter(rotCenter, latlng);
+    var deltaRad = currentAngle - rotStartAngle;
+    var deltaDeg = deltaRad * 180 / Math.PI;
+    var md = rotTarget.options.markerData;
+
+    if (rotTarget.getLatLngs) {
+        // Save rotated polygon points
+        var lls = rotTarget.getLatLngs();
+        var pts = isNestedLatLngs(lls) ? lls[0] : lls;
+        var posFlat = pts.map(function(p) { return [p.lat, p.lng]; }).flat();
+        md.pos = posFlat;
+        backend.updateMarkerToLayer(rotMarkerId, null, md);
+    } else {
+        // Save rotation for point markers
+        if (!md.config) md.config = {};
+        md.config._rotation = (rotOrigAngle + deltaDeg) % 360;
+        backend.updateMarkerToLayer(rotMarkerId, null, md);
+    }
+    rotTarget = null;
+    rotMarkerId = null;
+    rotOrigLatLngs = null;
+    mapInst.dragging.enable();
+}
+
+// ---- CTRL+SHIFT+DRAG SCALE STATE ----
+let scaleTarget = null;
+let scaleMarkerId = null;
+let scaleCenter = null;
+let scaleStartDist = 0;
+let scaleOrigLatLngs = null;
+
+function getDistFromCenter(center, latlng) {
+    var dx = latlng.lng - center[1];
+    var dy = latlng.lat - center[0];
+    return Math.sqrt(dx * dx + dy * dy);
+}
+
+function scalePointAround(center, point, factor) {
+    var lat = ptLat(point), lng = ptLng(point);
+    return [
+        center[0] + (lat - center[0]) * factor,
+        center[1] + (lng - center[1]) * factor
+    ];
+}
+
+function startScale(target, markerId, latlng) {
+    scaleTarget = target;
+    scaleMarkerId = markerId;
+    var lls = target.getLatLngs();
+    scaleOrigLatLngs = JSON.parse(JSON.stringify(lls));
+    scaleCenter = getPolygonCentroid(lls);
+    scaleStartDist = getDistFromCenter(scaleCenter, latlng);
+    if (scaleStartDist < 1) scaleStartDist = 1;
+    mapInst.dragging.disable();
+}
+
+function doScale(latlng) {
+    if (!scaleTarget) return;
+    var currentDist = getDistFromCenter(scaleCenter, latlng);
+    var factor = currentDist / scaleStartDist;
+    if (factor < 0.05) factor = 0.05;
+    var orig = scaleOrigLatLngs;
+    if (isNestedLatLngs(orig)) {
+        var scaled = orig.map(function(ring) {
+            return ring.map(function(pt) { return scalePointAround(scaleCenter, pt, factor); });
+        });
+        scaleTarget.setLatLngs(scaled);
+    } else {
+        var scaled = orig.map(function(pt) { return scalePointAround(scaleCenter, pt, factor); });
+        scaleTarget.setLatLngs(scaled);
+    }
+}
+
+function endScale(latlng) {
+    if (!scaleTarget) return;
+    var lls = scaleTarget.getLatLngs();
+    var pts = isNestedLatLngs(lls) ? lls[0] : lls;
+    var posFlat = pts.map(function(p) { return [p.lat, p.lng]; }).flat();
+    var md = scaleTarget.options.markerData;
+    md.pos = posFlat;
+    backend.updateMarkerToLayer(scaleMarkerId, null, md);
+    scaleTarget = null;
+    scaleMarkerId = null;
+    scaleOrigLatLngs = null;
+    mapInst.dragging.enable();
+}
+
+// ---- POINT MARKER DRAG STATE ----
+let ptDragActiveId = null;
 
 // ---- POLY DRAG STATE (for moving lines/shapes/polygons) ----
 let polyDragTarget = null;
 let polyDragStartLatLng = null;
 let polyDragOrigLatLngs = null;
 let polyDragMoved = false;
+let polyDragLiveTimer = null;
+
+// Throttled live position broadcast during drag (so other users see movement)
+function broadcastDragPosition() {
+    if (!polyDragTarget || !polyDragMoved) return;
+    var md = polyDragTarget.options.markerData;
+    var mid = polyDragTarget.options.markerId;
+    if (!md || !md.pos) return;
+    var dlat = 0, dlng = 0;
+    if (polyDragStartLatLng && polyDragOrigLatLngs) {
+        var lls = polyDragTarget.getLatLngs ? polyDragTarget.getLatLngs() : null;
+        if (lls) {
+            // Compute flat pos from current visual latlngs
+            var flat = [];
+            var pts = lls;
+            if (Array.isArray(pts[0]) && Array.isArray(pts[0][0])) {
+                pts = pts[0]; // unwrap polygon ring
+            } else if (Array.isArray(pts[0]) && pts[0].lat !== undefined) {
+                pts = pts[0];
+            }
+            // Handle nested polygon vs polyline
+            if (pts[0] && pts[0].lat !== undefined) {
+                pts.forEach(function(p) { flat.push(p.lat, p.lng); });
+            } else if (Array.isArray(pts[0])) {
+                pts.forEach(function(p) { flat.push(ptLat(p), ptLng(p)); });
+            } else {
+                pts.forEach(function(p) { flat.push(ptLat(p), ptLng(p)); });
+            }
+            if (flat.length > 0) {
+                var liveData = JSON.parse(JSON.stringify(md));
+                liveData.pos = flat;
+                fetch('api/mission_plan.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'save_marker', map:currentMap, user_id: rtDisplayName || rtUserId, data: liveData }) });
+            }
+        }
+    }
+}
 
 const backend = {
     addMarker: function(layerId, markerData) {
@@ -700,21 +991,28 @@ function colorToCss(color) {
 
 function posToPoints(pos) {
     var points = [];
-    for (var i = 0; i < pos.length; i += 2) { points.push([pos[i], pos[i + 1]]); }
+    for (var i = 0; i < pos.length; i += 2) {
+        var lat = Number(pos[i]), lng = Number(pos[i + 1]);
+        if (isNaN(lat) || isNaN(lng)) continue;
+        points.push([lat, lng]);
+    }
     return points;
 }
 
 function computeDistanceAndShowTooltip(map, marker, posList, isEdit, markerId, markerData) {
     function toLL(p) { return p.lat !== undefined ? p : L.latLng(p[0], p[1]); }
+    var totalDist = 0;
+    for (var i = 1; i < posList.length; i++) {
+        totalDist += map.distance(toLL(posList[i - 1]), toLL(posList[i]));
+    }
     var p0 = toLL(posList[0]);
     var p1 = toLL(posList[posList.length - 1]);
-    var distance = map.distance(p0, p1).toFixed();
     var dx = p1.lat - p0.lat;
     var dy = p1.lng - p0.lng;
     var heading = Math.round(Math.atan2(dy, dx) * 3200 / Math.PI);
     if (heading < 0) heading = 6400 + heading;
-    var distNum = Number(distance);
-    var miles = (distNum * 0.000621371).toFixed(3);
+    var distNum = Math.round(totalDist);
+    var miles = (totalDist * 0.000621371).toFixed(3);
     var formatedDistance = '<div class="measure-line"><i class="fas fa-arrows-left-right"></i> <span>' + distNum.toLocaleString() + ' m</span></div>' +
         '<div class="measure-line"><i class="fas fa-arrows-left-right"></i> <span>' + miles + ' mil</span></div>';
     if (marker.getTooltip()) {
@@ -898,6 +1196,7 @@ function updateMarkerHandler(e, map, backend) {
         var colorBtns = document.querySelectorAll('#modalBasicSymbol .color-btn');
         colorBtns.forEach(function(b) { b.classList.remove('active'); if (b.dataset.color === colorToCss(modalMarkerData.config.color)) b.classList.add('active'); });
         document.getElementById('basicLabel').value = modalMarkerData.config.label || '';
+        document.getElementById('basicLabelSize').value = modalMarkerData.config.labelSize || 12;
         document.getElementById('basicScale').value = Math.round((modalMarkerData.scale || 1) * 100);
         document.getElementById('basicDeleteBtn').style.display = 'block';
         document.getElementById('basicInsertBtn').innerText = 'Update';
@@ -911,7 +1210,7 @@ function getBasicSymbolSVG(symbol, color, size) {
     if (window.PLANOPS_DATA && window.PLANOPS_DATA.markers) {
         var markerData = window.PLANOPS_DATA.markers.find(m => m.name === symbol);
         if (markerData) {
-            var imgUrl = markerData.imageWebp || markerData.imagePng;
+            var imgUrl = planopsProxy(markerData.imageWebp || markerData.imagePng);
             if (!markerData.isColorCompatible) {
                 // Non-color-compatible (flags etc.) — render as-is
                 return '<img src="' + imgUrl + '" width="' + size + '" height="' + size + '" style="object-fit:contain;" />';
@@ -944,7 +1243,10 @@ function addOrUpdateMarker(map, markers, marker, canEdit, backend, opacity, laye
         var isLocked = markerData.config && markerData.config.locked;
         if (existing) {
             if (isArea) existing.setLatLngs([posList]); else existing.setLatLngs(posList);
-            existing.setStyle({ color: color, weight: markerData.config.weight||3, fillColor: fillColor, fillOpacity: fillOpacity });
+            var lineStyle = { color: color, weight: markerData.config.weight||3, fillColor: fillColor, fillOpacity: fillOpacity };
+            if (markerData.config.dashArray) lineStyle.dashArray = markerData.config.dashArray;
+            else lineStyle.dashArray = null;
+            existing.setStyle(lineStyle);
             existing.options.markerData = markerData;
             existing.options._locked = !!isLocked;
         } else {
@@ -952,18 +1254,43 @@ function addOrUpdateMarker(map, markers, marker, canEdit, backend, opacity, laye
             if (isArea) {
                 mapMarker = L.polygon(posList, { color: color, weight: markerData.config.weight||3, fillColor: fillColor, fillOpacity: fillOpacity, interactive: canEdit, markerId: markerId, markerData: markerData, _locked: !!isLocked }).addTo(layer.group);
             } else {
-                mapMarker = L.polyline(posList, { color: color, weight: markerData.config.weight||3, interactive: canEdit, markerId: markerId, markerData: markerData, _locked: !!isLocked }).addTo(layer.group);
+                var polyOpts = { color: color, weight: markerData.config.weight||3, interactive: canEdit, markerId: markerId, markerData: markerData, _locked: !!isLocked };
+                if (markerData.config.dashArray) polyOpts.dashArray = markerData.config.dashArray;
+                mapMarker = L.polyline(posList, polyOpts).addTo(layer.group);
             }
             if (canEdit) {
                 mapMarker.on('click', function(e) {
                     // If we just finished dragging, don't open modal
                     if (polyDragMoved) { polyDragMoved = false; return; }
+                    // Show vertex handles for all polygon/polyline types (single click = edit vertices)
+                    var md = e.target.options.markerData;
+                    if (md && md.type === 'line') {
+                        showVertexHandles(e.target, e.target.options.markerId, md, backend);
+                        return;
+                    }
                     updateMarkerHandler(e, map, backend);
                 });
-                // Custom drag for polylines/polygons
+                mapMarker.on('dblclick', function(e) {
+                    L.DomEvent.stopPropagation(e);
+                    updateMarkerHandler(e, map, backend);
+                });
+                // Custom drag / Ctrl+drag rotation for polylines/polygons
                 mapMarker.on('mousedown', function(ev) {
                     if (ev.target.options._locked) return;
                     if (currentDrawAction && currentDrawAction !== 'pan' && currentDrawAction !== 'select') return;
+                    // Don't start drag if vertex editing is active on this polygon
+                    if (vertexEditTarget === ev.target) return;
+                    // Ctrl+Shift+Click = scale, Ctrl+Click = rotation (Arma 3 style)
+                    if (ev.originalEvent.ctrlKey && ev.originalEvent.shiftKey) {
+                        L.DomEvent.stopPropagation(ev);
+                        startScale(ev.target, ev.target.options.markerId, ev.latlng);
+                        return;
+                    }
+                    if (ev.originalEvent.ctrlKey) {
+                        L.DomEvent.stopPropagation(ev);
+                        startRotation(ev.target, ev.target.options.markerId, ev.latlng);
+                        return;
+                    }
                     polyDragTarget = ev.target;
                     polyDragStartLatLng = ev.latlng;
                     polyDragMoved = false;
@@ -1018,13 +1345,16 @@ function addOrUpdateMarker(map, markers, marker, canEdit, backend, opacity, laye
         if (markerData.scale) size = Number(markerData.scale) * size;
         var isLocked = markerData.config && markerData.config.locked;
         var canDrag = canEdit && !isLocked;
+        var rotDeg = (markerData.config && markerData.config._rotation) || 0;
         var icon;
         if (markerData.type == 'mil') {
             var symbolConfig = Object.assign({ size: size }, markerData.config);
             var sym = new ms.Symbol(markerData.symbol, symbolConfig);
-            icon = L.divIcon({ className: 'nato-icon', html: sym.asSVG(), iconSize: [sym.width, sym.height], iconAnchor: [sym.getAnchor().x, sym.getAnchor().y] });
+            var innerHtml = '<div class="marker-rotate-wrap" style="transform:rotate(' + rotDeg + 'deg)">' + sym.asSVG() + '</div>';
+            icon = L.divIcon({ className: 'nato-icon', html: innerHtml, iconSize: [sym.width, sym.height], iconAnchor: [sym.getAnchor().x, sym.getAnchor().y] });
         } else {
-            icon = L.divIcon({ className: 'basic-symbol-icon', html: getBasicSymbolSVG(markerData.symbol, colorToCss(markerData.config.color), size), iconSize: [size, size], iconAnchor: [size/2, size/2] });
+            var innerHtml = '<div class="marker-rotate-wrap" style="transform:rotate(' + rotDeg + 'deg)">' + getBasicSymbolSVG(markerData.symbol, colorToCss(markerData.config.color), size) + '</div>';
+            icon = L.divIcon({ className: 'basic-symbol-icon', html: innerHtml, iconSize: [size, size], iconAnchor: [size/2, size/2] });
         }
         
         if (existing) {
@@ -1037,19 +1367,43 @@ function addOrUpdateMarker(map, markers, marker, canEdit, backend, opacity, laye
                 if (existing.dragging) existing.dragging.disable();
             }
             if (markerData.type === 'basic' && markerData.config && markerData.config.label) {
-                if (existing.getTooltip()) existing.setTooltipContent(markerData.config.label);
-                else existing.bindTooltip(markerData.config.label, { permanent: true, direction: 'right', className: 'marker-text' });
+                var lblSize = markerData.config.labelSize || 12;
+                var lblColor = colorToCss(markerData.config.color) || '#000';
+                if (existing.getTooltip()) {
+                    existing.setTooltipContent(markerData.config.label);
+                    var tip = existing.getTooltip().getElement();
+                    if (tip) { tip.style.fontSize = lblSize + 'px'; tip.style.color = lblColor; }
+                } else {
+                    existing.bindTooltip(markerData.config.label, { permanent: true, direction: 'right', className: 'marker-text' });
+                    existing.on('tooltipopen', function() { var el = this.getTooltip().getElement(); if (el) { el.style.fontSize = lblSize + 'px'; el.style.color = lblColor; } });
+                }
             } else if (markerData.type === 'basic' && existing.getTooltip()) {
                 existing.unbindTooltip();
             }
         } else {
             var mapMarker = L.marker(markerData.pos, { icon: icon, draggable: canDrag, interactive: canEdit, markerId: markerId, markerData: markerData }).addTo(layer.group);
             if (markerData.config && markerData.config.label) {
-                 mapMarker.bindTooltip(markerData.config.label, { permanent: true, direction: 'right', className: 'marker-text' });
+                var lblSize = markerData.config.labelSize || 12;
+                var lblColor = colorToCss(markerData.config.color) || '#000';
+                mapMarker.bindTooltip(markerData.config.label, { permanent: true, direction: 'right', className: 'marker-text' });
+                mapMarker.on('tooltipopen', function() { var el = this.getTooltip().getElement(); if (el) { el.style.fontSize = lblSize + 'px'; el.style.color = lblColor; } });
             }
             if (canEdit) {
                 mapMarker.on('click', e => updateMarkerHandler(e, map, backend));
+                var ptDragTimer = null;
+                mapMarker.on('dragstart', function(e) {
+                    var marker = e.target;
+                    ptDragActiveId = marker.options.markerId;
+                    ptDragTimer = setInterval(function() {
+                        var ll = marker.getLatLng();
+                        var liveData = JSON.parse(JSON.stringify(marker.options.markerData));
+                        liveData.pos = [ll.lat, ll.lng];
+                        fetch('api/mission_plan.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'save_marker', map:currentMap, user_id: rtDisplayName || rtUserId, data: liveData }) });
+                    }, 400);
+                });
                 mapMarker.on('dragend', function (e) {
+                    if (ptDragTimer) { clearInterval(ptDragTimer); ptDragTimer = null; }
+                    ptDragActiveId = null;
                     var marker = e.target;
                     if (marker.options.markerData.config && marker.options.markerData.config.locked) {
                         // Revert position if locked
@@ -1058,6 +1412,15 @@ function addOrUpdateMarker(map, markers, marker, canEdit, backend, opacity, laye
                     }
                     marker.options.markerData.pos = [marker.getLatLng().lat, marker.getLatLng().lng];
                     backend.moveMarker(marker.options.markerId, marker.options.markerData);
+                });
+                // Ctrl+Click = rotation (Arma 3 style) for point markers
+                mapMarker.on('mousedown', function(ev) {
+                    if (ev.originalEvent.ctrlKey) {
+                        if (ev.target.options.markerData.config && ev.target.options.markerData.config.locked) return;
+                        L.DomEvent.stopPropagation(ev);
+                        if (ev.target.dragging) ev.target.dragging.disable();
+                        startRotation(ev.target, ev.target.options.markerId, ev.latlng);
+                    }
                 });
             }
             markers[markerId] = existing = mapMarker;
@@ -1077,13 +1440,14 @@ function cancelLineDraw() {
 function onMapClick(e) {
     var latlng = e.latlng;
     var tool = currentDrawAction;
+    // Clear vertex editing when clicking on empty map area
+    if (vertexEditTarget) { clearVertexEditing(); }
     if (!tool || tool === 'pan') return;
     
     if (tool === 'line') {
         var point = [latlng.lat, latlng.lng];
         var append = e.originalEvent.ctrlKey || e.originalEvent.shiftKey;
-        var toolColorBtn = document.querySelector('#toolbarColorPicker .tool-color-btn.active');
-        var lineColor = toolColorBtn ? toolColorBtn.dataset.color : '#000000';
+        var lineColor = '#000000';
         if (!currentLine) {
             currentLine = L.polyline([point, point], { color: lineColor, weight: 3, interactive: false }).addTo(mapInst);
         } else if (append) {
@@ -1099,12 +1463,20 @@ function onMapClick(e) {
         }
     } else if (tool === 'measure') {
         var point = [latlng.lat, latlng.lng];
-        var toolColorBtn = document.querySelector('#toolbarColorPicker .tool-color-btn.active');
-        var measureColor = toolColorBtn ? toolColorBtn.dataset.color : '#ffff00';
+        var measureColor = '#ffff00';
+        var append = e.originalEvent.ctrlKey;
         if (!currentMeasure) {
             currentMeasure = L.polyline([point, point], { color: measureColor, weight: 2, dashArray: '4', interactive: false }).addTo(mapInst);
-        } else {
+        } else if (append) {
+            // Ctrl+Click: add waypoint and continue
             var data = currentMeasure.getLatLngs();
+            data[data.length - 1] = L.latLng(point[0], point[1]);
+            data.push(L.latLng(point[0], point[1]));
+            currentMeasure.setLatLngs(data);
+        } else {
+            // Normal click: finalize
+            var data = currentMeasure.getLatLngs();
+            data[data.length - 1] = L.latLng(point[0], point[1]);
             currentMeasure.remove(); currentMeasure = null;
             backend.addMarker(null, { type: 'measure', symbol: 'measure', config: { color: measureColor }, pos: data.map(function (p) { var ll = L.latLng(p); return [ll.lat, ll.lng]; }).flat() });
             setTool('pan', document.getElementById('toolPan'));
@@ -1217,15 +1589,32 @@ function onMapMouseMove(e) {
 }
 
 // ---- FREEHAND DRAW LOGIC ----
+function getDrawLineSettings() {
+    var toolColorBtn = document.querySelector('#freehandColorPicker .color-btn.active');
+    var color = toolColorBtn ? toolColorBtn.dataset.color : '#000000';
+    var dashBtn = document.querySelector('.draw-dash-btn.active');
+    var dashBase = dashBtn ? dashBtn.dataset.dash : '';
+    var gap = parseInt(document.getElementById('drawDashGap').value) || 8;
+    var weight = parseInt(document.getElementById('drawLineWeight').value) || 3;
+    var dashArray = '';
+    if (dashBase) {
+        dashArray = dashBase.split(',').map(function(v) {
+            return Math.max(1, Math.round(parseInt(v) * gap / 8));
+        }).join(',');
+    }
+    return { color: color, weight: weight, dashArray: dashArray };
+}
+
 function freehandMouseDown(e) {
     if (currentDrawAction !== 'freehand') return;
     freehandDrawing = true;
     freehandStraight = e.originalEvent.ctrlKey && e.originalEvent.shiftKey;
     freehandStartPoint = [e.latlng.lat, e.latlng.lng];
     freehandPoints = [freehandStartPoint];
-    var toolColorBtn = document.querySelector('#toolbarColorPicker .tool-color-btn.active');
-    var color = toolColorBtn ? toolColorBtn.dataset.color : '#000000';
-    freehandLine = L.polyline(freehandPoints, { color: color, weight: 3, interactive: false }).addTo(mapInst);
+    var s = getDrawLineSettings();
+    var opts = { color: s.color, weight: s.weight, interactive: false };
+    if (s.dashArray) opts.dashArray = s.dashArray;
+    freehandLine = L.polyline(freehandPoints, opts).addTo(mapInst);
 }
 function freehandMouseMove(e) {
     if (!freehandDrawing || !freehandLine) return;
@@ -1244,11 +1633,12 @@ function freehandMouseUp(e) {
     if (freehandPoints.length < 2) {
         freehandLine.remove(); freehandLine = null; return;
     }
-    var toolColorBtn = document.querySelector('#toolbarColorPicker .tool-color-btn.active');
-    var color = toolColorBtn ? toolColorBtn.dataset.color : '#000000';
+    var s = getDrawLineSettings();
     var posFlat = freehandPoints.flat();
     freehandLine.remove(); freehandLine = null;
-    backend.addMarker(null, { type: 'line', symbol: 'freehand', config: { color: color, weight: 3 }, pos: posFlat });
+    var cfg = { color: s.color, weight: s.weight };
+    if (s.dashArray) cfg.dashArray = s.dashArray;
+    backend.addMarker(null, { type: 'line', symbol: 'freehand', config: cfg, pos: posFlat });
     freehandPoints = [];
 }
 
@@ -1275,9 +1665,15 @@ function shapeMouseDown(e) {
     if (currentDrawAction !== 'shapeDraw') return;
     shapeDragging = true;
     shapeCenter = [e.latlng.lat, e.latlng.lng];
-    var pts = generateRegularPolygon(shapeCenter, 0, shapeConfig.sides, shapeConfig.rotation);
     var fillColor = shapeConfig.fillColor === 'none' ? 'transparent' : shapeConfig.fillColor;
     var fillOpacity = shapeConfig.fillColor === 'none' ? 0 : shapeConfig.fillOpacity;
+    var pts;
+    if (shapeConfig.sides === 4) {
+        // Rectangle: start as a point (corner-to-corner)
+        pts = [shapeCenter, shapeCenter, shapeCenter, shapeCenter];
+    } else {
+        pts = generateRegularPolygon(shapeCenter, 0, shapeConfig.sides, 0);
+    }
     shapePreview = L.polygon(pts, {
         color: shapeConfig.strokeColor, weight: shapeConfig.weight,
         fillColor: fillColor, fillOpacity: fillOpacity, interactive: false
@@ -1285,20 +1681,41 @@ function shapeMouseDown(e) {
 }
 function shapeMouseMove(e) {
     if (!shapeDragging || !shapePreview) return;
-    var dx = e.latlng.lng - shapeCenter[1];
-    var dy = e.latlng.lat - shapeCenter[0];
-    var radius = Math.sqrt(dx * dx + dy * dy);
-    var pts = generateRegularPolygon(shapeCenter, radius, shapeConfig.sides, shapeConfig.rotation);
-    shapePreview.setLatLngs([pts]);
+    if (shapeConfig.sides === 4) {
+        // Rectangle: corner1 = shapeCenter, corner2 = mouse position (axis-aligned)
+        var lat1 = shapeCenter[0], lng1 = shapeCenter[1];
+        var lat2 = e.latlng.lat, lng2 = e.latlng.lng;
+        var pts = [
+            [lat1, lng1], [lat1, lng2],
+            [lat2, lng2], [lat2, lng1]
+        ];
+        shapePreview.setLatLngs([pts]);
+    } else {
+        var dx = e.latlng.lng - shapeCenter[1];
+        var dy = e.latlng.lat - shapeCenter[0];
+        var radius = Math.sqrt(dx * dx + dy * dy);
+        var pts = generateRegularPolygon(shapeCenter, radius, shapeConfig.sides, 0);
+        shapePreview.setLatLngs([pts]);
+    }
 }
 function shapeMouseUp(e) {
     if (!shapeDragging || !shapePreview) return;
     shapeDragging = false;
-    var dx = e.latlng.lng - shapeCenter[1];
-    var dy = e.latlng.lat - shapeCenter[0];
-    var radius = Math.sqrt(dx * dx + dy * dy);
-    if (radius < 10) { shapePreview.remove(); shapePreview = null; return; }
-    var pts = generateRegularPolygon(shapeCenter, radius, shapeConfig.sides, shapeConfig.rotation);
+    var pts;
+    if (shapeConfig.sides === 4) {
+        var lat1 = shapeCenter[0], lng1 = shapeCenter[1];
+        var lat2 = e.latlng.lat, lng2 = e.latlng.lng;
+        if (Math.abs(lat2 - lat1) < 5 && Math.abs(lng2 - lng1) < 5) {
+            shapePreview.remove(); shapePreview = null; return;
+        }
+        pts = [[lat1, lng1], [lat1, lng2], [lat2, lng2], [lat2, lng1]];
+    } else {
+        var dx = e.latlng.lng - shapeCenter[1];
+        var dy = e.latlng.lat - shapeCenter[0];
+        var radius = Math.sqrt(dx * dx + dy * dy);
+        if (radius < 10) { shapePreview.remove(); shapePreview = null; return; }
+        pts = generateRegularPolygon(shapeCenter, radius, shapeConfig.sides, 0);
+    }
     var posFlat = pts.flat();
     shapePreview.remove(); shapePreview = null;
     var fillColor = shapeConfig.fillColor === 'none' ? 'transparent' : shapeConfig.fillColor;
@@ -1306,7 +1723,7 @@ function shapeMouseUp(e) {
     backend.addMarker(null, {
         type: 'line', symbol: 'shape', config: {
             color: shapeConfig.strokeColor, fill: true, fillColor: fillColor,
-            fillOpacity: fillOpacity, weight: shapeConfig.weight, sides: shapeConfig.sides, rotation: shapeConfig.rotation
+            fillOpacity: fillOpacity, weight: shapeConfig.weight, sides: shapeConfig.sides
         }, pos: posFlat
     });
 }
@@ -1318,12 +1735,14 @@ async function initIntelMap() {
     drawLayer = L.featureGroup();
 
     var bounds = [[0, 0], [MAP_CONFIG.worldSize, MAP_CONFIG.worldSize]];
+    var pad = MAP_CONFIG.worldSize * 0.1;
+    var paddedBounds = [[-pad, -pad], [MAP_CONFIG.worldSize + pad, MAP_CONFIG.worldSize + pad]];
 
     mapInst = L.map('intelMap', {
         crs: ArmaCRS, minZoom: MAP_CONFIG.minZoom, maxZoom: MAP_CONFIG.maxZoom + 1,
         attributionControl: false, zoomControl: false,
         doubleClickZoom: false, zoomSnap: 0.2, zoomDelta: 0.2,
-        maxBounds: bounds, maxBoundsViscosity: 1.0
+        maxBounds: paddedBounds, maxBoundsViscosity: 0.8
     });
     
     // Create a custom pane for the white background so it sits behind the tiles (tilePane z-index is 200)
@@ -1371,23 +1790,30 @@ async function initIntelMap() {
         if (isPointing && pointingMarker) {
             pointingMarker.setLatLng(e.latlng);
         }
+        // Ctrl+Shift+Drag scale / Ctrl+Drag rotation
+        if (scaleTarget) { doScale(e.latlng); return; }
+        if (rotTarget) { doRotation(e.latlng); return; }
         freehandMouseMove(e);
         shapeMouseMove(e);
         // PolyDrag move
         if (polyDragTarget && polyDragStartLatLng) {
-            polyDragMoved = true;
             var dlat = e.latlng.lat - polyDragStartLatLng.lat;
             var dlng = e.latlng.lng - polyDragStartLatLng.lng;
+            // Only count as drag if moved more than a small threshold (prevents blocking click)
+            if (!polyDragMoved && Math.abs(dlat) < 3 && Math.abs(dlng) < 3) return;
+            polyDragMoved = true;
+            if (!polyDragLiveTimer) { polyDragLiveTimer = setInterval(broadcastDragPosition, 400); }
             var orig = polyDragOrigLatLngs;
-            // Handle nested array (polygon) vs flat array (polyline)
-            if (Array.isArray(orig[0]) && Array.isArray(orig[0][0])) {
-                // Polygon: [[{lat,lng},...]]
+            // Detect nested: polygon [[pts]] vs polyline [pts]
+            // orig[0] is array AND its first element is not a number → nested polygon ring
+            var isNested = Array.isArray(orig[0]) && orig[0].length > 0 && typeof orig[0][0] !== 'number';
+            if (isNested) {
                 var moved = orig.map(function(ring) {
-                    return ring.map(function(pt) { return [pt.lat + dlat, pt.lng + dlng]; });
+                    return ring.map(function(pt) { return [ptLat(pt) + dlat, ptLng(pt) + dlng]; });
                 });
                 polyDragTarget.setLatLngs(moved);
             } else {
-                var moved = orig.map(function(pt) { return [pt.lat + dlat, pt.lng + dlng]; });
+                var moved = orig.map(function(pt) { return [ptLat(pt) + dlat, ptLng(pt) + dlng]; });
                 polyDragTarget.setLatLngs(moved);
             }
         }
@@ -1397,23 +1823,36 @@ async function initIntelMap() {
             isPointing = false;
             if (pointingMarker) { pointingMarker.remove(); pointingMarker = null; }
         }
+        // End Ctrl+Shift+Drag scale
+        if (scaleTarget) { endScale(e.latlng); return; }
+        // End Ctrl+Drag rotation
+        if (rotTarget) {
+            var wasMarker = !rotTarget.getLatLngs;
+            var target = rotTarget;
+            endRotation(e.latlng);
+            // Re-enable dragging for point markers
+            if (wasMarker && target.dragging) target.dragging.enable();
+            return;
+        }
         freehandMouseUp(e);
         shapeMouseUp(e);
-        // PolyDrag end — save new position
+        // PolyDrag end — save new position only if actually dragged
         if (polyDragTarget && polyDragStartLatLng) {
-            var dlat = e.latlng.lat - polyDragStartLatLng.lat;
-            var dlng = e.latlng.lng - polyDragStartLatLng.lng;
-            var md = polyDragTarget.options.markerData;
-            if (md && md.pos) {
-                // Update pos array (flat pairs: lat,lng,lat,lng,...)
-                var newPos = [];
-                for (var i = 0; i < md.pos.length; i += 2) {
-                    newPos.push(md.pos[i] + dlat);
-                    newPos.push(md.pos[i + 1] + dlng);
+            if (polyDragMoved) {
+                var dlat = e.latlng.lat - polyDragStartLatLng.lat;
+                var dlng = e.latlng.lng - polyDragStartLatLng.lng;
+                var md = polyDragTarget.options.markerData;
+                if (md && md.pos) {
+                    var newPos = [];
+                    for (var i = 0; i < md.pos.length; i += 2) {
+                        newPos.push(md.pos[i] + dlat);
+                        newPos.push(md.pos[i + 1] + dlng);
+                    }
+                    md.pos = newPos;
+                    backend.moveMarker(polyDragTarget.options.markerId, md);
                 }
-                md.pos = newPos;
-                backend.moveMarker(polyDragTarget.options.markerId, md);
             }
+            if (polyDragLiveTimer) { clearInterval(polyDragLiveTimer); polyDragLiveTimer = null; }
             polyDragTarget = null;
             polyDragStartLatLng = null;
             polyDragOrigLatLngs = null;
@@ -1424,6 +1863,15 @@ async function initIntelMap() {
         if (isPointing) {
             isPointing = false;
             if (pointingMarker) { pointingMarker.remove(); pointingMarker = null; }
+        }
+        // Cancel scale/rotation on mouseout
+        if (scaleTarget) {
+            scaleTarget = null; scaleMarkerId = null; scaleOrigLatLngs = null;
+            mapInst.dragging.enable();
+        }
+        if (rotTarget) {
+            rotTarget = null; rotMarkerId = null; rotOrigLatLngs = null;
+            mapInst.dragging.enable();
         }
         // Cancel polyDrag on mouseout
         if (polyDragTarget) {
@@ -1448,12 +1896,21 @@ async function initIntelMap() {
     document.getElementById('toolZoomIn').onclick = () => mapInst.zoomIn();
     document.getElementById('toolZoomOut').onclick = () => mapInst.zoomOut();
     
-    document.querySelectorAll('.tool-color-btn').forEach(btn => {
+    document.querySelectorAll('#freehandColorPicker .color-btn').forEach(btn => {
         btn.onclick = function() {
-            document.querySelectorAll('.tool-color-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('#freehandColorPicker .color-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
         };
     });
+    document.querySelectorAll('.draw-dash-btn').forEach(btn => {
+        btn.onclick = function() {
+            document.querySelectorAll('.draw-dash-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+        };
+    });
+    document.getElementById('freehandDrawBtn').onclick = function() {
+        closeMapModal('modalFreehandDraw');
+    };
     document.getElementById('toolFullscreen').onclick = () => {
         var mapEl = document.querySelector('.map-editor-wrap');
         if (!document.fullscreenElement) { if(mapEl.requestFullscreen) mapEl.requestFullscreen(); } 
@@ -2278,7 +2735,11 @@ document.getElementById('natoInsertBtn').onclick = function() {
     if (reinf) config.reinforcedReduced = reinf;
 
     if(modalMarkerId) {
+        var locked = modalMarkerData.config && modalMarkerData.config.locked;
+        var savedRotation = modalMarkerData.config && modalMarkerData.config._rotation;
         modalMarkerData.symbol = sidc; modalMarkerData.config = config; modalMarkerData.scale = scale/100;
+        if (locked) modalMarkerData.config.locked = true;
+        if (savedRotation) modalMarkerData.config._rotation = savedRotation;
         backend.updateMarkerToLayer(modalMarkerId, null, modalMarkerData);
     } else {
         backend.addMarker(null, { type: 'mil', symbol: sidc, config: config, scale: scale/100, pos: clickPosition });
@@ -2300,12 +2761,13 @@ document.getElementById('basicInsertBtn').onclick = function() {
     var color = document.querySelector('#modalBasicSymbol .color-btn.active').dataset.color;
     var text = document.getElementById('basicLabel').value;
     var scale = parseInt(document.getElementById('basicScale').value) || 100;
+    var labelSize = parseInt(document.getElementById('basicLabelSize').value) || 12;
 
     if(modalMarkerId) {
-        modalMarkerData.symbol = shape; modalMarkerData.config.color = color; modalMarkerData.config.label = text; modalMarkerData.scale = scale/100;
+        modalMarkerData.symbol = shape; modalMarkerData.config.color = color; modalMarkerData.config.label = text; modalMarkerData.config.labelSize = labelSize; modalMarkerData.scale = scale/100;
         backend.updateMarkerToLayer(modalMarkerId, null, modalMarkerData);
     } else {
-        backend.addMarker(null, { type: 'basic', symbol: shape, config: {color: color, label: text}, scale: scale/100, pos: clickPosition });
+        backend.addMarker(null, { type: 'basic', symbol: shape, config: {color: color, label: text, labelSize: labelSize}, scale: scale/100, pos: clickPosition });
     }
     closeMapModal('modalBasicSymbol');
 };
@@ -2350,7 +2812,6 @@ document.getElementById('shapeStartBtn').onclick = function() {
     shapeConfig.fillColor = (document.querySelector('#shapeFillColorPicker .color-btn.active') || {}).dataset.color || '#0066ff';
     shapeConfig.fillOpacity = (parseInt(document.getElementById('shapeFillOpacity').value) || 20) / 100;
     shapeConfig.weight = parseInt(document.getElementById('shapeStrokeWeight').value) || 3;
-    shapeConfig.rotation = parseInt(document.getElementById('shapeRotation').value) || 0;
     closeMapModal('modalShapeTool');
     setTool('shapeDraw', document.getElementById('toolShape'));
 };
@@ -2437,11 +2898,16 @@ async function pollDrawings() {
                 }
             });
             d.markers.forEach(function(m) {
+                // Skip marker currently being dragged/rotated/scaled to avoid overwriting visual position
+                var dragId = polyDragTarget ? polyDragTarget.options.markerId : null;
+                var rotId = rotTarget ? (rotTarget.options ? rotTarget.options.markerId : rotMarkerId) : null;
+                var scaleId = scaleTarget ? scaleTarget.options.markerId : null;
+                if (m.id === dragId || m.id === rotId || m.id === scaleId || m.id === ptDragActiveId) return;
                 addOrUpdateMarker(mapInst, allMarkers, { id: m.id, data: m }, true, backend, {}, { group: drawLayer });
             });
         }
     } catch(e) {}
-    drawPollTimer = setTimeout(pollDrawings, 2000);
+    drawPollTimer = setTimeout(pollDrawings, 1000);
 }
 
 // ---- REAL-TIME PRESENCE SYSTEM ----

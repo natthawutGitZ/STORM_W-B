@@ -1,6 +1,8 @@
 <?php
 require_once ROOT_PATH . '/includes/db.php';
 require_once ROOT_PATH . '/includes/functions.php';
+require_once ROOT_PATH . '/includes/track_pageview.php';
+trackPageView($pdo, 'Campaigns');
 
 // Fetch public campaigns
 try {

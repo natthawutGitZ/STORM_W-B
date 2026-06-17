@@ -304,7 +304,7 @@ body.sidebar-collapsed .main{margin-left:0}
 /* PLANOPS graticule handles grid labels on canvas (no custom HTML needed) */
 
 /* MARKERS */
-.marker-text{background:transparent;border:none;box-shadow:none;color:#333;font-family:var(--mono);font-weight:bold;font-size:12px;text-shadow:0 0 3px #fff,0 0 3px #fff}
+.marker-text{background:transparent;border:none;box-shadow:none;font-family:var(--mono);font-weight:bold;font-size:12px;text-shadow:0 0 3px #fff,0 0 3px #fff}
 
 /* LEAFLET OVERRIDES (hide default controls) */
 .leaflet-bar a,.leaflet-bar a:hover{background-color:rgba(255,255,255,0.9);color:#333;border-bottom:1px solid #ccc}
@@ -619,7 +619,7 @@ body.sidebar-collapsed .main{margin-left:0}
 .measure-tooltip .measure-line:first-child{background:#fff;color:#333}
 .measure-tooltip .measure-line:last-child{background:#e8c50b;color:#333}
 .measure-tooltip .measure-line i{font-size:10px;opacity:.6}
-.marker-text{background:transparent!important;border:none!important;box-shadow:none!important;font-family:var(--mono)!important;font-size:11px!important;color:#fff!important;text-shadow:0 0 3px #000,0 0 3px #000!important}
+.marker-text{background:transparent!important;border:none!important;box-shadow:none!important;font-family:var(--mono)!important;font-weight:bold!important;text-shadow:0 0 3px #fff,0 0 3px #fff!important}
 
 /* ---- REAL-TIME MULTIPLAYER ---- */
 .rt-online-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#ffaa00;margin-right:3px;animation:rt-pulse 2s ease infinite}
@@ -659,11 +659,27 @@ body.sidebar-collapsed .main{margin-left:0}
 .tool-color-popup .tool-color-btn{width:24px;height:24px;border-radius:4px;border:2px solid transparent;cursor:pointer;padding:0;transition:border-color .15s}
 .tool-color-popup .tool-color-btn:hover{border-color:rgba(255,255,255,.6)}
 .tool-color-popup .tool-color-btn.active{border-color:#00ff41;box-shadow:0 0 6px rgba(0,255,65,.4)}
+.draw-line-style-row{display:flex;gap:6px;flex-wrap:wrap}
+.draw-dash-btn{background:rgba(0,0,0,.05);border:2px solid #ccc;border-radius:4px;cursor:pointer;padding:4px 6px;transition:border-color .15s}
+.draw-dash-btn:hover{border-color:#666}
+.draw-dash-btn.active{border-color:#1864c7;box-shadow:0 0 4px rgba(24,100,199,.4)}
 
 /* LOCK BUTTON */
 .mbtn-lock{background:#555;color:#fff;border:1px solid #777;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:.75rem;display:inline-flex;align-items:center;gap:4px;transition:all .15s}
 .mbtn-lock:hover{background:#666}
 .mbtn-lock.locked{background:#ff6600;border-color:#ff8800;color:#fff}
+
+/* SMOOTH MARKER ANIMATION (for other users seeing movement) */
+.leaflet-marker-icon,.leaflet-marker-shadow{transition:transform 0.4s ease-out}
+.leaflet-marker-icon.leaflet-marker-draggable:active,.leaflet-marker-shadow.leaflet-marker-draggable:active,
+.leaflet-drag-target{transition:none!important}
+
+/* MARKER ROTATION WRAPPER (survives Leaflet zoom/pan/drag) */
+.marker-rotate-wrap{display:inline-block;transform-origin:center center;will-change:transform}
+
+/* VERTEX EDITING HANDLES */
+.vertex-handle{width:12px;height:12px;background:#fff;border:2px solid #0066ff;border-radius:2px;cursor:move;box-shadow:0 0 4px rgba(0,0,0,.5);z-index:1000!important}
+.vertex-handle:hover{background:#0066ff;border-color:#fff}
 
 /* MISSION BUTTONS in white-bg modal */
 .mission-btn{background:#f8f9fa;color:#333;border:1px solid #dee2e6;display:inline-flex;align-items:center;font-size:.8rem;padding:6px 10px;border-radius:4px;cursor:pointer;transition:all .15s}
