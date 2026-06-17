@@ -1366,11 +1366,148 @@ function convertLinksToButtons($text) {
             const btn = document.getElementById('submitBtn');
             const loadingOverlay = document.getElementById('loadingOverlay');
             
+            // Check if discord picker is used to get discord ID
+            let discordUserId = '';
+            const discordInputs = document.querySelectorAll('input[name^="q_"]');
+            for (let input of discordInputs) {
+                try {
+                    const data = JSON.parse(input.value);
+                    if (data && data.id) {
+                        discordUserId = data.id;
+                        break;
+                    }
+                } catch (e) {
+                    // Not a JSON input
+                }
+            }
+
+            // If we found a discord user ID, initiate verification flow
+            if (discordUserId) {
+                btn.disabled = true;
+                
+                // Show a loading alert while initiating request
+                Swal.fire({
+                    title: 'กำลังเชื่อมต่อ...',
+                    text: 'กำลังส่งคำขอยืนยันตัวตนไปยัง Discord',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    },
+                    customClass: { popup: 'storm-swal-popup' }
+                });
+
+                try {
+                    // 1. Request verification
+                    const verifyForm = new FormData();
+                    verifyForm.append('discord_user_id', discordUserId);
+                    verifyForm.append('form_id', formId);
+                    verifyForm.append('form_title', "<?php echo addslashes($form['title']); ?>");
+
+                    const reqRes = await fetch('api/discord_verify_request.php', {
+                        method: 'POST',
+                        body: verifyForm
+                    });
+                    const reqData = await reqRes.json();
+
+                    if (!reqData.success) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: reqData.error || 'Failed to initiate verification',
+                            customClass: { popup: 'storm-swal-popup' }
+                        });
+                        btn.disabled = false;
+                        return;
+                    }
+
+                    const verifyId = reqData.verify_id;
+                    const targetNumber = reqData.target_number;
+
+                    // 2. Show polling alert to user
+                    Swal.fire({
+                        title: '🔐 ยืนยันตัวตนใน Discord',
+                        html: `
+                            <div style="margin: 20px 0;">
+                                <p>บอทได้ส่งข้อความ DM ไปหาคุณแล้ว</p>
+                                <p style="font-size: 1.1rem; margin-top: 15px;">กรุณากดปุ่มหมายเลข:</p>
+                                <div style="font-size: 3.5rem; font-weight: bold; color: #c5a059; letter-spacing: 5px; text-shadow: 0 0 20px rgba(197,160,89,0.5); margin: 10px 0;">
+                                    ${targetNumber}
+                                </div>
+                                <p style="color: #f04747; font-size: 0.9rem; margin-top: 15px;">
+                                    <i class="fas fa-exclamation-triangle"></i> หากกดผิดคำร้องของคุณจะถูกยกเลิก
+                                </p>
+                            </div>
+                        `,
+                        showConfirmButton: false,
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                            
+                            // 3. Start Polling
+                            const pollInterval = setInterval(async () => {
+                                try {
+                                    const pollRes = await fetch(`api/discord_verify_status.php?verify_id=${verifyId}`);
+                                    const pollData = await pollRes.json();
+                                    
+                                    if (pollData.success) {
+                                        if (pollData.status === 'success') {
+                                            clearInterval(pollInterval);
+                                            Swal.close();
+                                            // Proceed to submit form
+                                            submitActualForm(this);
+                                        } else if (pollData.status === 'failed') {
+                                            clearInterval(pollInterval);
+                                            Swal.fire({
+                                                icon: 'error',
+                                                title: '❌ ยืนยันไม่สำเร็จ',
+                                                text: 'คุณกดหมายเลขไม่ถูกต้อง กรุณาส่งแบบฟอร์มใหม่อีกครั้ง',
+                                                customClass: { popup: 'storm-swal-popup' }
+                                            });
+                                            btn.disabled = false;
+                                        } else if (pollData.status === 'expired') {
+                                            clearInterval(pollInterval);
+                                            Swal.fire({
+                                                icon: 'warning',
+                                                title: '⏱️ หมดเวลา',
+                                                text: 'หมดเวลายืนยันตัวตน กรุณาส่งแบบฟอร์มใหม่อีกครั้ง',
+                                                customClass: { popup: 'storm-swal-popup' }
+                                            });
+                                            btn.disabled = false;
+                                        }
+                                    }
+                                } catch (e) {
+                                    console.error('Polling error:', e);
+                                }
+                            }, 2000); // Poll every 2 seconds
+                        },
+                        customClass: { popup: 'storm-swal-popup' }
+                    });
+                } catch (e) {
+                    console.error('Verification flow error:', e);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Connection Error',
+                        text: 'ไม่สามารถติดต่อเซิร์ฟเวอร์ได้',
+                        customClass: { popup: 'storm-swal-popup' }
+                    });
+                    btn.disabled = false;
+                }
+            } else {
+                // No discord user id found in form, submit normally
+                submitActualForm(this);
+            }
+        });
+        
+        async function submitActualForm(formElement) {
+            const btn = document.getElementById('submitBtn');
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            
             // Show modern loading overlay
             loadingOverlay.classList.add('active');
             btn.disabled = true;
 
-            const formData = new FormData(this);
+            const formData = new FormData(formElement);
 
             try {
                 const res = await fetch('admin/form_actions.php', {
@@ -1381,6 +1518,13 @@ function convertLinksToButtons($text) {
 
                 if (data.success) {
                     localStorage.removeItem(storageKey); // Clear saved data on success
+                    
+                    // If login info returned, handle it
+                    if (data.login_token) {
+                        // We could potentially set a session here via fetch, but the backend handles session creation
+                        // So we just show success and redirect
+                    }
+                    
                     // Hide loading, show success
                     loadingOverlay.classList.remove('active');
                     document.getElementById('successOverlay').style.display = 'flex';
@@ -1395,7 +1539,7 @@ function convertLinksToButtons($text) {
                 alert('An error occurred.');
                 btn.disabled = false;
             }
-        });
+        }
 
         // ===== DISCORD USER PICKER =====
         let discordUsersCache = null;
