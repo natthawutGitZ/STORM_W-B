@@ -3,6 +3,7 @@
  * discord_verify_callback.php
  * Receives webhook callback from Discord Bot when a user clicks a verification button.
  */
+define('ROOT_PATH', dirname(__DIR__));
 require_once ROOT_PATH . '/includes/db.php';
 
 header('Content-Type: application/json');

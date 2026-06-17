@@ -3,6 +3,7 @@
  * discord_verify_status.php
  * Polling endpoint for frontend to check the status of a verification request.
  */
+define('ROOT_PATH', dirname(__DIR__));
 require_once ROOT_PATH . '/includes/db.php';
 
 header('Content-Type: application/json');

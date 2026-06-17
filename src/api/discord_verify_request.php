@@ -8,6 +8,7 @@
  * - Calls Bot API to send DM with 3 buttons to the user
  * - Returns the target number to display on the web page
  */
+define('ROOT_PATH', dirname(__DIR__));
 require_once ROOT_PATH . '/includes/db.php';
 require_once ROOT_PATH . '/includes/bot_api.php';
 
