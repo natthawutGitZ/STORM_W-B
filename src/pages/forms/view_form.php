@@ -1363,17 +1363,19 @@ function convertLinksToButtons($text) {
 
         document.getElementById('publicForm').addEventListener('submit', async function (e) {
             e.preventDefault();
-            const btn = document.getElementById('submitBtn');
-            const loadingOverlay = document.getElementById('loadingOverlay');
             
             // Check if discord picker is used to get discord ID
             let discordUserId = '';
+            let discordVerified = false;
             const discordInputs = document.querySelectorAll('input[id^="discord-user-"]');
             for (let input of discordInputs) {
                 try {
                     const data = JSON.parse(input.value);
                     if (data && data.id) {
                         discordUserId = data.id;
+                        if (data.verified) {
+                            discordVerified = true;
+                        }
                         break;
                     }
                 } catch (e) {
@@ -1381,122 +1383,18 @@ function convertLinksToButtons($text) {
                 }
             }
 
-            // If we found a discord user ID, initiate verification flow
-            if (discordUserId) {
-                btn.disabled = true;
-                
-                // Show a loading alert while initiating request
+            // If a discord user is selected but not verified, prevent submission
+            if (discordUserId && !discordVerified) {
                 Swal.fire({
-                    title: 'กำลังเชื่อมต่อ...',
-                    text: 'กำลังส่งคำขอยืนยันตัวตนไปยัง Discord',
-                    allowOutsideClick: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    },
+                    icon: 'warning',
+                    title: 'ยังไม่ได้ยืนยันตัวตน',
+                    text: 'กรุณาเลือก Discord Account และยืนยันตัวตนให้สำเร็จก่อนส่งฟอร์ม',
                     customClass: { popup: 'storm-swal-popup' }
                 });
-
-                try {
-                    // 1. Request verification
-                    const verifyForm = new FormData();
-                    verifyForm.append('discord_user_id', discordUserId);
-                    verifyForm.append('form_id', formId);
-                    verifyForm.append('form_title', "<?php echo addslashes($form['title']); ?>");
-
-                    const reqRes = await fetch('api/discord_verify_request.php', {
-                        method: 'POST',
-                        body: verifyForm
-                    });
-                    const reqData = await reqRes.json();
-
-                    if (!reqData.success) {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: reqData.error || 'Failed to initiate verification',
-                            customClass: { popup: 'storm-swal-popup' }
-                        });
-                        btn.disabled = false;
-                        return;
-                    }
-
-                    const verifyId = reqData.verify_id;
-                    const targetNumber = reqData.target_number;
-
-                    // 2. Show polling alert to user
-                    Swal.fire({
-                        title: '🔐 ยืนยันตัวตนใน Discord',
-                        html: `
-                            <div style="margin: 20px 0;">
-                                <p>บอทได้ส่งข้อความ DM ไปหาคุณแล้ว</p>
-                                <p style="font-size: 1.1rem; margin-top: 15px;">กรุณากดปุ่มหมายเลข:</p>
-                                <div style="font-size: 3.5rem; font-weight: bold; color: #c5a059; letter-spacing: 5px; text-shadow: 0 0 20px rgba(197,160,89,0.5); margin: 10px 0;">
-                                    ${targetNumber}
-                                </div>
-                                <p style="color: #f04747; font-size: 0.9rem; margin-top: 15px;">
-                                    <i class="fas fa-exclamation-triangle"></i> หากกดผิดคำร้องของคุณจะถูกยกเลิก
-                                </p>
-                            </div>
-                        `,
-                        showConfirmButton: false,
-                        allowOutsideClick: false,
-                        allowEscapeKey: false,
-                        didOpen: () => {
-                            Swal.showLoading();
-                            
-                            // 3. Start Polling
-                            const pollInterval = setInterval(async () => {
-                                try {
-                                    const pollRes = await fetch(`api/discord_verify_status.php?verify_id=${verifyId}`);
-                                    const pollData = await pollRes.json();
-                                    
-                                    if (pollData.success) {
-                                        if (pollData.status === 'success') {
-                                            clearInterval(pollInterval);
-                                            Swal.close();
-                                            // Proceed to submit form
-                                            submitActualForm(this);
-                                        } else if (pollData.status === 'failed') {
-                                            clearInterval(pollInterval);
-                                            Swal.fire({
-                                                icon: 'error',
-                                                title: '❌ ยืนยันไม่สำเร็จ',
-                                                text: 'คุณกดหมายเลขไม่ถูกต้อง กรุณาส่งแบบฟอร์มใหม่อีกครั้ง',
-                                                customClass: { popup: 'storm-swal-popup' }
-                                            });
-                                            btn.disabled = false;
-                                        } else if (pollData.status === 'expired') {
-                                            clearInterval(pollInterval);
-                                            Swal.fire({
-                                                icon: 'warning',
-                                                title: '⏱️ หมดเวลา',
-                                                text: 'หมดเวลายืนยันตัวตน กรุณาส่งแบบฟอร์มใหม่อีกครั้ง',
-                                                customClass: { popup: 'storm-swal-popup' }
-                                            });
-                                            btn.disabled = false;
-                                        }
-                                    }
-                                } catch (e) {
-                                    console.error('Polling error:', e);
-                                }
-                            }, 2000); // Poll every 2 seconds
-                        },
-                        customClass: { popup: 'storm-swal-popup' }
-                    });
-                } catch (e) {
-                    console.error('Verification flow error:', e);
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Connection Error',
-                        text: 'ไม่สามารถติดต่อเซิร์ฟเวอร์ได้',
-                        customClass: { popup: 'storm-swal-popup' }
-                    });
-                    btn.disabled = false;
-                }
-            } else {
-                // No discord user id found in form, submit normally
-                submitActualForm(this);
+                return;
             }
+
+            submitActualForm(this);
         });
         
         async function submitActualForm(formElement) {
@@ -1672,33 +1570,147 @@ function convertLinksToButtons($text) {
             renderDiscordUsers(questionId, filtered);
         }
 
-        function selectDiscordUser(questionId, userId, displayName, avatar, username) {
-            // Set hidden input value (store as JSON with all info)
-            const hiddenInput = document.getElementById(`discord-user-${questionId}`);
-            if (hiddenInput) {
-                hiddenInput.value = JSON.stringify({
-                    id: userId,
-                    display_name: displayName,
-                    username: username,
-                    avatar: avatar
-                });
-            }
-            
-            // Update selected display
-            const selectedContent = document.querySelector(`#discord-picker-${questionId} .discord-selected-content`);
-            if (selectedContent) {
-                selectedContent.innerHTML = `
-                    <img src="${avatar || 'assets/images/default_avatar.png'}" class="discord-selected-avatar" onerror="this.src='assets/images/default_avatar.png'">
-                    <span class="discord-selected-text" style="color: #fff;">${displayName} <span style="color: var(--text-muted);">@${username}</span></span>
-                `;
-            }
-            
+        async function selectDiscordUser(questionId, userId, displayName, avatar, username) {
             // Close dropdown and remove z-index from parent
             const container = document.querySelector(`#discord-picker-${questionId} .discord-dropdown-container`);
             if (container) {
                 container.classList.remove('open');
                 const parentCard = container.closest('.question-card');
                 if (parentCard) parentCard.classList.remove('has-dropdown-open');
+            }
+
+            // Trigger Verification Flow
+            Swal.fire({
+                title: 'กำลังเชื่อมต่อ...',
+                text: 'กำลังส่งคำขอยืนยันตัวตนไปยัง Discord',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                },
+                customClass: { popup: 'storm-swal-popup' }
+            });
+
+            try {
+                // 1. Request verification
+                const verifyForm = new FormData();
+                verifyForm.append('discord_user_id', userId);
+                verifyForm.append('form_id', formId);
+                verifyForm.append('form_title', "<?php echo addslashes($form['title']); ?>");
+
+                const reqRes = await fetch('api/discord_verify_request.php', {
+                    method: 'POST',
+                    body: verifyForm
+                });
+                const reqData = await reqRes.json();
+
+                if (!reqData.success) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: reqData.error || 'Failed to initiate verification',
+                        customClass: { popup: 'storm-swal-popup' }
+                    });
+                    return;
+                }
+
+                const verifyId = reqData.verify_id;
+                const targetNumber = reqData.target_number;
+
+                // 2. Show polling alert to user
+                Swal.fire({
+                    title: '🔐 ยืนยันตัวตนใน Discord',
+                    html: `
+                        <div style="margin: 20px 0;">
+                            <p>บอทได้ส่งข้อความ DM ไปหาคุณแล้ว</p>
+                            <p style="font-size: 1.1rem; margin-top: 15px;">กรุณากดปุ่มหมายเลข:</p>
+                            <div style="font-size: 3.5rem; font-weight: bold; color: #c5a059; letter-spacing: 5px; text-shadow: 0 0 20px rgba(197,160,89,0.5); margin: 10px 0;">
+                                ${targetNumber}
+                            </div>
+                            <p style="color: #f04747; font-size: 0.9rem; margin-top: 15px;">
+                                <i class="fas fa-exclamation-triangle"></i> หากกดผิด คุณจะต้องเลือก User ใหม่อีกครั้ง
+                            </p>
+                        </div>
+                    `,
+                    showConfirmButton: false,
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                        
+                        // 3. Start Polling
+                        const pollInterval = setInterval(async () => {
+                            try {
+                                const pollRes = await fetch(`api/discord_verify_status.php?verify_id=${verifyId}`);
+                                const pollData = await pollRes.json();
+                                
+                                if (pollData.success) {
+                                    if (pollData.status === 'success') {
+                                        clearInterval(pollInterval);
+                                        
+                                        Swal.fire({
+                                            icon: 'success',
+                                            title: '✅ ยืนยันสำเร็จ',
+                                            text: 'ยืนยันตัวตน Discord เรียบร้อยแล้ว',
+                                            timer: 2000,
+                                            showConfirmButton: false,
+                                            customClass: { popup: 'storm-swal-popup' }
+                                        });
+
+                                        // Set hidden input value (store as JSON with all info)
+                                        const hiddenInput = document.getElementById(`discord-user-${questionId}`);
+                                        if (hiddenInput) {
+                                            hiddenInput.value = JSON.stringify({
+                                                id: userId,
+                                                display_name: displayName,
+                                                username: username,
+                                                avatar: avatar,
+                                                verified: true
+                                            });
+                                        }
+                                        
+                                        // Update selected display
+                                        const selectedContent = document.querySelector(`#discord-picker-${questionId} .discord-selected-content`);
+                                        if (selectedContent) {
+                                            selectedContent.innerHTML = `
+                                                <img src="${avatar || 'assets/images/default_avatar.png'}" class="discord-selected-avatar" onerror="this.src='assets/images/default_avatar.png'">
+                                                <span class="discord-selected-text" style="color: #fff;">${displayName} <span style="color: var(--text-muted);">@${username}</span></span>
+                                                <i class="fas fa-check-circle" style="color: #22c55e; margin-left: 10px;" title="Verified"></i>
+                                            `;
+                                        }
+                                        
+                                    } else if (pollData.status === 'failed') {
+                                        clearInterval(pollInterval);
+                                        Swal.fire({
+                                            icon: 'error',
+                                            title: '❌ ยืนยันไม่สำเร็จ',
+                                            text: 'คุณกดหมายเลขไม่ถูกต้อง กรุณาเลือก User ใหม่อีกครั้ง',
+                                            customClass: { popup: 'storm-swal-popup' }
+                                        });
+                                    } else if (pollData.status === 'expired') {
+                                        clearInterval(pollInterval);
+                                        Swal.fire({
+                                            icon: 'warning',
+                                            title: '⏱️ หมดเวลา',
+                                            text: 'หมดเวลายืนยันตัวตน กรุณาเลือก User ใหม่อีกครั้ง',
+                                            customClass: { popup: 'storm-swal-popup' }
+                                        });
+                                    }
+                                }
+                            } catch (e) {
+                                console.error('Polling error:', e);
+                            }
+                        }, 2000); // Poll every 2 seconds
+                    },
+                    customClass: { popup: 'storm-swal-popup' }
+                });
+            } catch (e) {
+                console.error('Verification flow error:', e);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Connection Error',
+                    text: 'ไม่สามารถติดต่อเซิร์ฟเวอร์ได้',
+                    customClass: { popup: 'storm-swal-popup' }
+                });
             }
         }
 
