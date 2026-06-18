@@ -1114,9 +1114,13 @@ try {
                     }
                 }
 
-                if (strpos($qText, 'ชื่อ') !== false && empty($personaName) && strpos($qText, 'discord') === false && $qType !== 'discord_user') {
+                if (strpos($qText, 'ชื่อ') !== false && strpos($qText, 'discord') === false && $qType !== 'discord_user') {
                     if (strpos(trim($ansVal), '{') !== 0) {
-                        $personaName = trim($ansVal);
+                        if (strpos($qText, 'ตัวละคร') !== false) {
+                            $personaName = trim($ansVal);
+                        } elseif (empty($personaName)) {
+                            $personaName = trim($ansVal);
+                        }
                     }
                 }
             }
