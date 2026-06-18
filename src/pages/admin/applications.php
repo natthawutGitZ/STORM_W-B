@@ -781,6 +781,24 @@ $view = $_GET['view'] ?? 'applications'; // applications, forms, form_builder, f
                                                     <i class="fas fa-times"></i>
                                                 </button>
 
+                                                <?php if ($app['status'] === 'accepted'): ?>
+                                                    <?php if (empty($app['promoted_user_id'])): ?>
+                                                        <!-- Promote -->
+                                                        <button onclick="promoteToMember(<?php echo $app['id']; ?>)"
+                                                            class="btn-action-square" title="Promote to Member"
+                                                            style="border-color: #c5a059; color: #c5a059;">
+                                                            <i class="fas fa-medal"></i>
+                                                        </button>
+                                                    <?php else: ?>
+                                                        <!-- View Promoted Member -->
+                                                        <a href="edit_member.php?id=<?php echo $app['promoted_user_id']; ?>"
+                                                            class="btn-action-square" title="View Promoted Member"
+                                                            style="border-color: #c5a059; background: rgba(197, 160, 89, 0.1); color: #c5a059;">
+                                                            <i class="fas fa-user-check"></i>
+                                                        </a>
+                                                    <?php endif; ?>
+                                                <?php endif; ?>
+
                                                 <!-- Delete -->
                                                 <button onclick="deleteResponse(<?php echo $app['id']; ?>)"
                                                     class="btn-action-square text-danger" title="Delete Application"
@@ -927,6 +945,48 @@ $view = $_GET['view'] ?? 'applications'; // applications, forms, form_builder, f
                                 }
                             } catch (e) {
                                 Swal.fire('Error', 'Failed to update status', 'error');
+                            }
+                        }
+                    });
+                }
+
+                function promoteToMember(id) {
+                    Swal.fire({
+                        title: 'Promote to Member?',
+                        text: 'This will create or update a user account based on the application data.',
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#c5a059',
+                        confirmButtonText: 'Yes, Promote',
+                        background: '#151515',
+                        color: '#fff'
+                    }).then(async (result) => {
+                        if (result.isConfirmed) {
+                            try {
+                                const res = await fetch('form_actions.php', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                    body: `action=promote_to_member&response_id=${id}`
+                                });
+                                const data = await res.json();
+                                if (data.success) {
+                                    let htmlContent = `User has been successfully ${data.is_new ? 'created' : 'updated'}.<br><br>`;
+                                    if (data.is_new) {
+                                        htmlContent += `<b>Username:</b> ${data.username}<br><b>Password:</b> ${data.password}`;
+                                    }
+                                    
+                                    Swal.fire({
+                                        icon: 'success', 
+                                        title: 'Promoted!',
+                                        html: htmlContent,
+                                        background: '#151515', 
+                                        color: '#fff'
+                                    }).then(() => location.reload());
+                                } else {
+                                    Swal.fire('Error', data.message || 'Unknown error occurred.', 'error');
+                                }
+                            } catch (e) {
+                                Swal.fire('Error', 'Failed to promote member', 'error');
                             }
                         }
                     });
