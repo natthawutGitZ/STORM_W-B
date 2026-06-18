@@ -1203,7 +1203,7 @@ try {
                 // Log admin action
                 if (file_exists(ROOT_PATH . '/includes/admin_log.php')) {
                     require_once ROOT_PATH . '/includes/admin_log.php';
-                    $currentAdmin = getUser();
+                    $currentAdmin = function_exists('getUser') ? getUser() : ($_SESSION['user'] ?? null);
                     $adminId = $currentAdmin ? $currentAdmin['id'] : 0;
                     if (function_exists('logAdminAction')) {
                         logAdminAction($pdo, 'promote_application_to_member', 'application', $response_id, ['promoted_user_id' => $userId]);
