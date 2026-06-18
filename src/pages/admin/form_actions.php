@@ -573,13 +573,24 @@ try {
             // --- 3.3 AUTO USER CREATION & LOGIN ---
             $steamId = '';
             $personaName = '';
+            $discordData = null;
             
             // Extract Steam ID and Persona Name from answers based on keywords
             foreach ($answers as $qid => $ans) {
                 if (!isset($qMap[$qid])) continue;
                 $qText = strtolower($qMap[$qid]['question_text']);
                 $ansVal = is_array($ans) ? implode('', $ans) : $ans;
+                $qType = $qMap[$qid]['question_type'];
                 
+                if ($qType === 'discord_user') {
+                    $discordData = @json_decode($ansVal, true);
+                } elseif (strpos($qText, 'discord') !== false && !$discordData) {
+                    $dData = @json_decode($ansVal, true);
+                    if ($dData && !empty($dData['id'])) {
+                        $discordData = $dData;
+                    }
+                }
+
                 if (strpos($qText, 'steam') !== false && empty($steamId)) {
                     // Extract numbers only for steam ID
                     preg_match('/\d{17}/', $ansVal, $matches);
@@ -590,8 +601,14 @@ try {
                     }
                 }
                 
-                if (strpos($qText, 'ชื่อ') !== false && empty($personaName)) {
-                    $personaName = trim($ansVal);
+                if (strpos($qText, 'ชื่อ') !== false && strpos($qText, 'discord') === false && $qType !== 'discord_user') {
+                    if (strpos(trim($ansVal), '{') !== 0) {
+                        if (strpos($qText, 'ตัวละคร') !== false) {
+                            $personaName = trim($ansVal);
+                        } elseif (empty($personaName)) {
+                            $personaName = trim($ansVal);
+                        }
+                    }
                 }
             }
             
@@ -599,16 +616,35 @@ try {
             
             if (!empty($steamId) && !empty($personaName) && !isLoggedIn()) {
                 try {
+                    // Ensure columns exist
+                    try {
+                        $pdo->exec("ALTER TABLE users ADD COLUMN discord_id VARCHAR(30) DEFAULT NULL");
+                    } catch (PDOException $e) {}
+                    try {
+                        $pdo->exec("ALTER TABLE form_responses ADD COLUMN promoted_user_id INT(11) DEFAULT NULL");
+                    } catch (PDOException $e) {}
+
                     // Check if user already exists
-                    $stmt = $pdo->prepare("SELECT * FROM users WHERE steamid = ? OR username = ?");
-                    // Use personaName as base for username but remove spaces
-                    $baseUsername = str_replace(' ', '', $personaName);
-                    $stmt->execute([$steamId, $baseUsername]);
+                    $stmt = $pdo->prepare("SELECT * FROM users WHERE steamid = ?");
+                    $stmt->execute([$steamId]);
                     $user = $stmt->fetch();
+                    
+                    $rank = 'Private (PV2)';
+                    $status = 'Active';
+                    $role = 'user';
+                    $discordId = $discordData['id'] ?? null;
+                    $avatar = $discordData['avatar'] ?? '/assets/images/default_avatar.png';
                     
                     if (!$user) {
                         // Create new user
-                        // Generate random password
+                        $baseUsername = str_replace(' ', '', $personaName);
+                        // Make sure username doesn't exist
+                        $uCheck = $pdo->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
+                        $uCheck->execute([$baseUsername]);
+                        if ($uCheck->fetchColumn() > 0) {
+                            $baseUsername .= rand(100, 999);
+                        }
+
                         if (function_exists('random_bytes')) {
                             $gen_password = bin2hex(random_bytes(4));
                         } else {
@@ -616,10 +652,9 @@ try {
                         }
                         
                         $hashed_password = password_hash($gen_password, PASSWORD_DEFAULT);
-                        $avatar = $discordData['avatar'] ?? '/assets/images/default_avatar.png'; // Use discord avatar if available
                         $profileUrl = "https://steamcommunity.com/profiles/" . $steamId;
                         
-                        $stmt = $pdo->prepare("INSERT INTO users (steamid, personaname, avatar, profileurl, username, password, generated_password) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                        $stmt = $pdo->prepare("INSERT INTO users (steamid, personaname, avatar, profileurl, username, password, generated_password, `rank`, status, `role`, discord_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                         $stmt->execute([
                             $steamId,
                             $personaName,
@@ -627,29 +662,50 @@ try {
                             $profileUrl,
                             $baseUsername,
                             $hashed_password,
-                            $gen_password
+                            $gen_password,
+                            $rank,
+                            $status,
+                            $role,
+                            $discordId
                         ]);
                         
+                        $userId = $pdo->lastInsertId();
+
                         // Fetch the newly created user
-                        $stmt = $pdo->prepare("SELECT * FROM users WHERE steamid = ?");
-                        $stmt->execute([$steamId]);
+                        $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
+                        $stmt->execute([$userId]);
                         $user = $stmt->fetch();
                         
                         error_log("[AUTO_USER_CREATE] Created user {$baseUsername} from form {$form_id}");
                     } else {
-                        // Update existing user with latest persona if needed
-                        if ($user['personaname'] !== $personaName) {
-                            $pdo->prepare("UPDATE users SET personaname = ? WHERE id = ?")->execute([$personaName, $user['id']]);
-                            $user['personaname'] = $personaName;
+                        // Update existing user
+                        $userId = $user['id'];
+                        $newRank = $user['rank'];
+                        if (empty($newRank) || $newRank === 'Recruit' || $newRank === '') {
+                            $newRank = $rank;
                         }
+
+                        $pdo->prepare("UPDATE users SET personaname = ?, avatar = ?, status = ?, `rank` = ? WHERE id = ?")
+                            ->execute([$personaName, $avatar, $status, $newRank, $userId]);
+                            
+                        $user['personaname'] = $personaName;
+                        $user['avatar'] = $avatar;
+                        $user['rank'] = $newRank;
+                        $user['status'] = $status;
                     }
                     
+                    // Mark form as accepted and link user immediately
+                    $stmt = $pdo->prepare("UPDATE form_responses SET status = 'accepted', promoted_user_id = ? WHERE id = ?");
+                    $stmt->execute([$userId, $response_id]);
+
                     // Auto Login the user
                     if ($user) {
                         $_SESSION['user'] = $user;
                         $loginToken = 'success';
                         require_once ROOT_PATH . '/includes/admin_log.php';
-                        logAdminAction($pdo, 'auto_login_form', 'user', $user['id'], ['name' => $user['personaname']]);
+                        if (function_exists('logAdminAction')) {
+                            logAdminAction($pdo, 'auto_login_form', 'user', $user['id'], ['name' => $user['personaname']]);
+                        }
                         error_log("[AUTO_USER_LOGIN] Logged in user {$user['username']} from form {$form_id}");
                     }
                     
