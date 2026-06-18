@@ -630,7 +630,7 @@ try {
                     $user = $stmt->fetch();
                     
                     $rank = 'Private (PV2)';
-                    $status = 'Active';
+                    $status = 'รอตรวจสอบ';
                     $role = 'user';
                     $discordId = $discordData['id'] ?? null;
                     $avatar = $discordData['avatar'] ?? '/assets/images/default_avatar.png';
@@ -694,8 +694,8 @@ try {
                         $user['status'] = $status;
                     }
                     
-                    // Mark form as accepted and link user immediately
-                    $stmt = $pdo->prepare("UPDATE form_responses SET status = 'accepted', promoted_user_id = ? WHERE id = ?");
+                    // Link user to form, but keep form status as pending
+                    $stmt = $pdo->prepare("UPDATE form_responses SET promoted_user_id = ? WHERE id = ?");
                     $stmt->execute([$userId, $response_id]);
 
                     // Auto Login the user
@@ -744,6 +744,20 @@ try {
             } else {
                 $stmt = $pdo->prepare("UPDATE form_responses SET status = ? WHERE id = ?");
                 $stmt->execute([$status, $id]);
+            }
+            
+            // --- Update Linked User Status ---
+            // If the form has an auto-created user, update their status to Active (if accepted) or Inactive (if rejected)
+            $uStmt = $pdo->prepare("SELECT promoted_user_id FROM form_responses WHERE id = ?");
+            $uStmt->execute([$id]);
+            $linkedUserId = $uStmt->fetchColumn();
+            
+            if ($linkedUserId) {
+                if ($status === 'accepted') {
+                    $pdo->prepare("UPDATE users SET status = 'Active' WHERE id = ?")->execute([$linkedUserId]);
+                } elseif ($status === 'rejected') {
+                    $pdo->prepare("UPDATE users SET status = 'Inactive' WHERE id = ?")->execute([$linkedUserId]);
+                }
             }
 
             // --- RECORD ADMIN WHO REVIEWED ---
