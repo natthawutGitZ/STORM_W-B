@@ -1,0 +1,78 @@
+# 📝 ระบบสร้างบัญชีอัตโนมัติและยืนยันตัวตนผ่าน Discord (Auto User Creation & Discord Verification)
+
+เพิ่มระบบในการรับสมัครเพื่อสร้างบัญชีผู้ใช้อัตโนมัติและบังคับยืนยันตัวตนผ่าน Discord DM ก่อนส่งแบบฟอร์มสำเร็จ โดยจะใช้ **"ระบบกดปุ่มตัวเลข"** แทนการพิมพ์ OTP ตามที่คุณต้องการครับ
+
+## User Review Required
+
+> [!IMPORTANT]
+> ระบบนี้จะอิงชื่อ **Steam ID** และ **ชื่อตัวละคร** จากแบบฟอร์มโดยการตรวจจับคำว่า "steam" และ "ชื่อ" ในหัวข้อคำถาม (Question Text) ดังนั้นในระบบสร้างฟอร์มจะต้องมีคำถามที่สื่อถึงสองสิ่งนี้
+> ตัวอย่างเช่น: 
+> - "กรอก Steam ID (64 Bit)"
+> - "ชื่อตัวละคร (Character Name)"
+
+## Open Questions
+
+> [!WARNING]
+> 1. **รหัสผ่านเริ่มต้น**: หลังจากสร้างบัญชีอัตโนมัติ ระบบจะให้รหัสผ่านเป็นแบบสุ่ม (Random) หรืออยากให้ตั้งเป็นรหัสผ่านเดียวกันกับ Steam ID ก่อน แล้วให้ผู้ใช้ไปเปลี่ยนทีหลังครับ? (แผนนี้จะให้เป็นแบบสุ่มแต่เนื่องจากมีการ Auto-Login เลยเข้าใช้งานได้ทันที)
+
+---
+
+## Proposed Changes
+
+### 1. Bot API Updates (`bot/api/server.py` & `bot/cogs/events.py`)
+เพิ่มการรองรับการส่งปุ่ม (Buttons) แบบมี `custom_id` ไปใน DM และรับการกดปุ่ม
+
+#### [MODIFY] [server.py](file:///c:/Users/limitrack/Desktop/webconfig/bot/api/server.py)
+- อัปเดต `handle_embed_request` ให้รองรับปุ่มแบบที่กดเพื่อส่งค่ากลับ (Callback) ไม่ใช่แค่ URL
+- เพิ่มการส่งเข้า DM เฉพาะบุคคล (`dm_user`)
+
+#### [MODIFY] [events.py](file:///c:/Users/limitrack/Desktop/webconfig/bot/cogs/events.py)
+- เพิ่ม Event Listener ดักจับ `on_interaction` เมื่อมีการกดปุ่ม `form_verify:<id>:<result>` ใน Discord
+- ส่ง HTTP Request กลับมาแจ้ง PHP API ว่าผู้ใช้กดปุ่มถูกต้องหรือไม่
+
+### 2. PHP APIs สำหรับ Discord Verification (`src/api/`)
+ใช้ฐานข้อมูลเพื่อบันทึกสถานะการยืนยัน และทำระบบ Polling เพื่อให้หน้าเว็บรอรับคำตอบ
+
+#### [NEW] [discord_verify_request.php](file:///c:/Users/limitrack/Desktop/webconfig/src/api/discord_verify_request.php)
+- สร้าง Record ใหม่ในฐานข้อมูล `discord_verifications` (สถานะ pending)
+- สุ่มตัวเลขเป้าหมาย 1 ตัว (เช่น "05") และตัวเลขหลอกอีก 2 ตัว (เช่น "01", "09")
+- ส่งตัวเลขเป้าหมายกลับไปแสดงผลที่หน้าเว็บ
+- ยิง API สั่งให้บอทส่ง DM พร้อม Embed และ **3 ปุ่มกด** 
+
+#### [NEW] [discord_verify_callback.php](file:///c:/Users/limitrack/Desktop/webconfig/src/api/discord_verify_callback.php)
+- รับข้อมูลจาก Bot (Python) ว่าผู้ใช้กดปุ่มถูกหรือผิด แล้วอัปเดตสถานะในตาราง `discord_verifications`
+
+#### [NEW] [discord_verify_status.php](file:///c:/Users/limitrack/Desktop/webconfig/src/api/discord_verify_status.php)
+- ให้หน้าเว็บใช้สุ่มเช็ค (Polling) ทุกๆ 2 วินาที ว่าสถานะเปลี่ยนจาก pending เป็น success หรือ failed หรือยัง
+
+### 3. Frontend & Form Submission (`src/pages/forms/view_form.php`)
+ปรับหน้าเว็บให้รอการกดยืนยันจาก Discord
+
+#### [MODIFY] [view_form.php](file:///c:/Users/limitrack/Desktop/webconfig/src/pages/forms/view_form.php)
+- เมื่อกด Submit จะเรียก `discord_verify_request.php`
+- หน้าเว็บจะขึ้น Popup SweetAlert2 แจ้งว่า **"ให้ไปกดปุ่มหมายเลข [05] ในกล่องข้อความ Discord"**
+- สุ่มเช็คผลเรื่อยๆ จนกว่าจะขึ้น Success จึงค่อยส่ง Form ต่อไปให้เสร็จ
+
+### 4. User Creation & Auto-Login (`src/pages/admin/form_actions.php`)
+เมื่อส่งฟอร์มเสร็จสมบูรณ์ ระบบจะสร้าง User อัตโนมัติ
+
+#### [MODIFY] [form_actions.php](file:///c:/Users/limitrack/Desktop/webconfig/src/pages/admin/form_actions.php)
+- ใน `case 'submit_response':`
+- สร้าง Logic ควานหาคำตอบในฟอร์มของ `steamid` และ `personaname`
+- ดำเนินการ `INSERT INTO users`
+- จำลองการเข้าสู่ระบบโดยตั้งค่า `$_SESSION['user']` ให้อัตโนมัติ เพื่อให้ผู้ใช้กดไปหน้า Dashboard ได้ทันทีโดยไม่ต้อง Login ใหม่
+
+---
+
+## Verification Plan
+
+### Automated Tests
+- สร้างตาราง `discord_verifications` ชั่วคราว
+
+### Manual Verification
+1. เปิดหน้าแบบฟอร์ม
+2. ทดลองกรอกข้อมูล (Steam ID, ชื่อตัวละคร, เลือก Discord User)
+3. กด Submit ระบบจะต้องเด้ง Popup ให้ไปกดปุ่มตัวเลขเป้าหมาย (เช่น "05") ใน Discord
+4. เช็คข้อความ DM ใน Discord ของตัวเองว่าได้รับปุ่มหรือไม่
+5. ลองกดปุ่ม **ที่ผิด** หน้าเว็บจะต้องแจ้งเตือนว่ากดผิด
+6. ลองกดปุ่ม **ที่ถูก** หน้าเว็บจะประมวลผลต่อ อัปโหลดฟอร์ม สร้าง User และ Auto-login

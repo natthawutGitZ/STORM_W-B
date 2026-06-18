@@ -1114,8 +1114,10 @@ try {
                     }
                 }
 
-                if (strpos($qText, 'ชื่อ') !== false && empty($personaName)) {
-                    $personaName = trim($ansVal);
+                if (strpos($qText, 'ชื่อ') !== false && empty($personaName) && strpos($qText, 'discord') === false && $qType !== 'discord_user') {
+                    if (strpos(trim($ansVal), '{') !== 0) {
+                        $personaName = trim($ansVal);
+                    }
                 }
             }
 
@@ -1124,7 +1126,8 @@ try {
                 exit;
             }
 
-            $displayName = $discordData['display_name'] ?? $discordData['username'] ?? $personaName ?? 'New Member';
+            // Prioritize Character Name (personaName) over Discord Display Name
+            $displayName = !empty($personaName) ? $personaName : ($discordData['display_name'] ?? $discordData['username'] ?? 'New Member');
             $username = $discordData['username'] ?? str_replace(' ', '', $displayName);
             $avatar = $discordData['avatar'] ?? '/assets/images/default_avatar.png';
             $discordId = $discordData['id'] ?? null;
