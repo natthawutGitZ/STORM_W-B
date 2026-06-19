@@ -248,31 +248,7 @@ try {
 
     </div><!-- end nav-scroll -->
 
-    <!-- Bottom Pinned Section -->
-    <div class="storm-sidebar__bottom">
-        <!-- Settings -->
-        <a href="/admin/bot_controls?tab=bot" class="storm-sidebar__item <?php echo ($current_tab === 'bot' && isSidebarActive('admin/bot_controls', $active_path)) ? 'active' : ''; ?>">
-            <span class="storm-sidebar__item-icon"><i class="fas fa-cog"></i></span>
-            <span class="storm-sidebar__item-label">Settings</span>
-            <span class="storm-sidebar__tooltip">Settings</span>
-        </a>
 
-        <!-- Help / Back to Site -->
-        <a href="/" class="storm-sidebar__item">
-            <span class="storm-sidebar__item-icon"><i class="fas fa-external-link-alt"></i></span>
-            <span class="storm-sidebar__item-label">Back to Site</span>
-            <span class="storm-sidebar__tooltip">Back to Site</span>
-        </a>
-
-        <div class="storm-sidebar__divider"></div>
-
-        <!-- Log Out -->
-        <a href="/logout" class="storm-sidebar__item storm-sidebar__item--logout">
-            <span class="storm-sidebar__item-icon"><i class="fas fa-sign-out-alt"></i></span>
-            <span class="storm-sidebar__item-label">Log Out</span>
-            <span class="storm-sidebar__tooltip">Log Out</span>
-        </a>
-    </div>
 
 </aside>
 

@@ -1,6 +1,6 @@
 /* ============================================================
    STORM Admin Topbar — Top Navigation Bar
-   Matches sidebar design: #141414 bg, #12b886 teal accent
+   Matches sidebar design: #141414 bg, #c5a059 gold accent
    ============================================================ */
 
 /* ---------- Page Body Wrapper ---------- */
@@ -15,8 +15,8 @@
     --topbar-border: rgba(255, 255, 255, 0.06);
     --topbar-text: rgba(255, 255, 255, 0.55);
     --topbar-text-hover: rgba(255, 255, 255, 0.9);
-    --topbar-accent: #12b886;
-    --topbar-accent-bg: rgba(18, 184, 134, 0.1);
+    --topbar-accent: #c5a059;
+    --topbar-accent-bg: rgba(197, 160, 89, 0.1);
     --topbar-transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -716,7 +716,7 @@
 
 .storm-topbar__search-item:hover small,
 .storm-topbar__search-item.focused small {
-    color: rgba(18, 184, 134, 0.5);
+    color: rgba(197, 160, 89, 0.5);
 }
 
 .storm-topbar__search-item.hidden {
