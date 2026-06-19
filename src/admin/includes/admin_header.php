@@ -74,11 +74,13 @@ if (!isset($GLOBALS['_page_tracked'])) {
 <body>
 
     <link rel="stylesheet" href="<?php echo $assetsPath; ?>/css/admin_sidebar.css?v=<?php echo time(); ?>">
+    <link rel="stylesheet" href="<?php echo $assetsPath; ?>/css/admin_topbar.css?v=<?php echo time(); ?>">
 
     <div class="storm-admin-layout">
         <?php include __DIR__ . '/admin_sidebar_v3.php'; ?>
         
         <main class="storm-admin-content">
-            <div style="padding-top: 30px;">
+            <?php include __DIR__ . '/admin_topbar.php'; ?>
+            <div class="storm-admin-page-body">
                 <?php include __DIR__ . '/modals.php'; ?>
                 <!-- Main page content continues below, footer must close </main></div> -->
