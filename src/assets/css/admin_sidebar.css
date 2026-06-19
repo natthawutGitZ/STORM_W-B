@@ -350,6 +350,7 @@
     padding: 10px 0;
     margin: 1px auto;
     width: 44px;
+    gap: 0;
 }
 
 .storm-sidebar.collapsed .storm-sidebar__item-icon {
