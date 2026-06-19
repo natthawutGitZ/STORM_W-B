@@ -423,7 +423,8 @@ try {
 
                 try {
                     $mpdfTemp = ROOT_PATH . '/tmp/mpdf';
-                    if (!is_dir($mpdfTemp)) mkdir($mpdfTemp, 0777, true);
+                    if (!is_dir($mpdfTemp))
+                        mkdir($mpdfTemp, 0777, true);
                     $mpdf = new \Mpdf\Mpdf(['mode' => 'utf-8', 'format' => 'A4', 'default_font' => 'garuda', 'tempDir' => $mpdfTemp]);
                     $mpdf->autoLangToFont = true;
                     $mpdf->WriteHTML($css, \Mpdf\HTMLParserMode::HEADER_CSS);
@@ -574,14 +575,15 @@ try {
             $steamId = '';
             $personaName = '';
             $discordData = null;
-            
+
             // Extract Steam ID and Persona Name from answers based on keywords
             foreach ($answers as $qid => $ans) {
-                if (!isset($qMap[$qid])) continue;
+                if (!isset($qMap[$qid]))
+                    continue;
                 $qText = strtolower($qMap[$qid]['question_text']);
                 $ansVal = is_array($ans) ? implode('', $ans) : $ans;
                 $qType = $qMap[$qid]['question_type'];
-                
+
                 if ($qType === 'discord_user') {
                     $discordData = @json_decode($ansVal, true);
                 } elseif (strpos($qText, 'discord') !== false && !$discordData) {
@@ -600,7 +602,7 @@ try {
                         $steamId = trim($ansVal);
                     }
                 }
-                
+
                 if (strpos($qText, 'ชื่อ') !== false && strpos($qText, 'discord') === false && $qType !== 'discord_user') {
                     if (strpos(trim($ansVal), '{') !== 0) {
                         if (strpos($qText, 'ตัวละคร') !== false) {
@@ -611,30 +613,32 @@ try {
                     }
                 }
             }
-            
+
             $loginToken = null;
-            
+
             if (!empty($steamId) && !empty($personaName) && !isLoggedIn()) {
                 try {
                     // Ensure columns exist
                     try {
                         $pdo->exec("ALTER TABLE users ADD COLUMN discord_id VARCHAR(30) DEFAULT NULL");
-                    } catch (PDOException $e) {}
+                    } catch (PDOException $e) {
+                    }
                     try {
                         $pdo->exec("ALTER TABLE form_responses ADD COLUMN promoted_user_id INT(11) DEFAULT NULL");
-                    } catch (PDOException $e) {}
+                    } catch (PDOException $e) {
+                    }
 
                     // Check if user already exists
                     $stmt = $pdo->prepare("SELECT * FROM users WHERE steamid = ?");
                     $stmt->execute([$steamId]);
                     $user = $stmt->fetch();
-                    
+
                     $rank = 'Private (PV2)';
-                    $status = 'รอตรวจสอบ';
+                    $status = 'Pending ';
                     $role = 'user';
                     $discordId = $discordData['id'] ?? null;
                     $avatar = $discordData['avatar'] ?? '/assets/images/default_avatar.png';
-                    
+
                     if (!$user) {
                         // Create new user
                         $baseUsername = str_replace(' ', '', $personaName);
@@ -650,10 +654,10 @@ try {
                         } else {
                             $gen_password = substr(md5(mt_rand()), 0, 8);
                         }
-                        
+
                         $hashed_password = password_hash($gen_password, PASSWORD_DEFAULT);
                         $profileUrl = "https://steamcommunity.com/profiles/" . $steamId;
-                        
+
                         $stmt = $pdo->prepare("INSERT INTO users (steamid, personaname, avatar, profileurl, username, password, generated_password, `rank`, status, `role`, discord_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                         $stmt->execute([
                             $steamId,
@@ -668,14 +672,14 @@ try {
                             $role,
                             $discordId
                         ]);
-                        
+
                         $userId = $pdo->lastInsertId();
 
                         // Fetch the newly created user
                         $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
                         $stmt->execute([$userId]);
                         $user = $stmt->fetch();
-                        
+
                         error_log("[AUTO_USER_CREATE] Created user {$baseUsername} from form {$form_id}");
                     } else {
                         // Update existing user
@@ -687,13 +691,13 @@ try {
 
                         $pdo->prepare("UPDATE users SET personaname = ?, avatar = ?, status = ?, `rank` = ? WHERE id = ?")
                             ->execute([$personaName, $avatar, $status, $newRank, $userId]);
-                            
+
                         $user['personaname'] = $personaName;
                         $user['avatar'] = $avatar;
                         $user['rank'] = $newRank;
                         $user['status'] = $status;
                     }
-                    
+
                     // Link user to form, but keep form status as pending
                     $stmt = $pdo->prepare("UPDATE form_responses SET promoted_user_id = ? WHERE id = ?");
                     $stmt->execute([$userId, $response_id]);
@@ -708,7 +712,7 @@ try {
                         }
                         error_log("[AUTO_USER_LOGIN] Logged in user {$user['username']} from form {$form_id}");
                     }
-                    
+
                 } catch (Exception $e) {
                     error_log("[AUTO_USER_ERROR] " . $e->getMessage());
                 }
@@ -745,13 +749,13 @@ try {
                 $stmt = $pdo->prepare("UPDATE form_responses SET status = ? WHERE id = ?");
                 $stmt->execute([$status, $id]);
             }
-            
+
             // --- Update Linked User Status ---
             // If the form has an auto-created user, update their status to Active (if accepted) or Inactive (if rejected)
             $uStmt = $pdo->prepare("SELECT promoted_user_id FROM form_responses WHERE id = ?");
             $uStmt->execute([$id]);
             $linkedUserId = $uStmt->fetchColumn();
-            
+
             if ($linkedUserId) {
                 if ($status === 'accepted') {
                     $pdo->prepare("UPDATE users SET status = 'Active' WHERE id = ?")->execute([$linkedUserId]);
@@ -1127,7 +1131,8 @@ try {
                 if ($colCheck->fetchColumn() == 0) {
                     $pdo->exec("ALTER TABLE form_responses ADD COLUMN promoted_user_id INT(11) DEFAULT NULL");
                 }
-            } catch (PDOException $e) { /* column may already exist */ }
+            } catch (PDOException $e) { /* column may already exist */
+            }
 
             // Fetch response
             $stmt = $pdo->prepare("SELECT * FROM form_responses WHERE id = ?");
@@ -1205,7 +1210,7 @@ try {
             $username = $discordData['username'] ?? str_replace(' ', '', $displayName);
             $avatar = $discordData['avatar'] ?? '/assets/images/default_avatar.png';
             $discordId = $discordData['id'] ?? null;
-            
+
             $loginToken = null;
             $genPassword = null;
 
@@ -1245,7 +1250,8 @@ try {
                         if ($colCheck->fetchColumn() == 0) {
                             $pdo->exec("ALTER TABLE users ADD COLUMN discord_id VARCHAR(30) DEFAULT NULL");
                         }
-                    } catch (PDOException $e) {}
+                    } catch (PDOException $e) {
+                    }
 
                     $stmt = $pdo->prepare("INSERT INTO users (steamid, personaname, avatar, profileurl, username, password, generated_password, `rank`, status, `role`, discord_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                     $stmt->execute([
