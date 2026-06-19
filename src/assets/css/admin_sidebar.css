@@ -59,7 +59,7 @@
     z-index: 100;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     transition: width var(--sb-transition);
-    overflow: hidden;
+    overflow: visible;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
