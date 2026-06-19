@@ -75,7 +75,8 @@ if (!isset($GLOBALS['_page_tracked'])) {
 
     <link rel="stylesheet" href="<?php echo $assetsPath; ?>/css/admin_sidebar.css?v=<?php echo time(); ?>">
     <link rel="stylesheet" href="<?php echo $assetsPath; ?>/css/admin_topbar.css?v=<?php echo time(); ?>">
-
+    <script src="/assets/js/admin_sidebar.js" defer></script>
+    <script src="/assets/js/admin_topbar.js" defer></script>
     <div class="storm-admin-layout">
         <?php include __DIR__ . '/admin_sidebar_v3.php'; ?>
         

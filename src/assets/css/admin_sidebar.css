@@ -59,7 +59,7 @@
     z-index: 100;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     transition: width var(--sb-transition);
-    overflow: visible;
+    overflow: hidden;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
@@ -104,6 +104,7 @@
     border-bottom: 0.5px solid var(--sb-border);
     position: relative;
     flex-shrink: 0;
+    overflow: visible;
 }
 
 .storm-sidebar__logo {
@@ -189,12 +190,14 @@
 .storm-sidebar.collapsed .storm-sidebar__brand {
     justify-content: center;
     padding: 16px 0 12px;
+    overflow: visible;
 }
 
 .storm-sidebar.collapsed .storm-sidebar__logo {
     justify-content: center;
     gap: 0;
     flex: none;
+    width: 36px;
 }
 
 .storm-sidebar.collapsed .storm-sidebar__collapse-btn {
@@ -207,7 +210,7 @@
     border-radius: 50%;
     background: var(--sb-bg);
     border: 0.5px solid var(--sb-border);
-    z-index: 10;
+    z-index: 110;
     box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
 }
 
@@ -317,10 +320,7 @@
 }
 
 .storm-sidebar.collapsed .storm-sidebar__item-label {
-    opacity: 0;
-    width: 0;
-    overflow: hidden;
-    pointer-events: none;
+    display: none;
 }
 
 /* Item Arrow for expandable */
@@ -351,6 +351,10 @@
     margin: 1px auto;
     width: 44px;
     gap: 0;
+}
+
+.storm-sidebar.collapsed .storm-sidebar__badge {
+    display: none;
 }
 
 .storm-sidebar.collapsed .storm-sidebar__item-icon {
