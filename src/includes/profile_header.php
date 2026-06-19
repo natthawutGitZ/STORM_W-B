@@ -31,11 +31,28 @@
     </script>
 </head>
 
-<body class="bg-surface text-gray-200">
+<body>
     <link rel="stylesheet" href="/assets/css/admin_sidebar.css?v=<?php echo time(); ?>">
     <link rel="stylesheet" href="/assets/css/admin_topbar.css?v=<?php echo time(); ?>">
     <script src="/assets/js/admin_sidebar.js" defer></script>
     <script src="/assets/js/admin_topbar.js" defer></script>
+    
+    <!-- Override: restore original user page background -->
+    <style>
+        .storm-admin-layout {
+            background: var(--primary-color, #0a0a0a);
+        }
+        .storm-admin-page-body {
+            background: var(--primary-color, #0a0a0a);
+        }
+        /* Remove old navbar padding-top since sidebar layout handles it */
+        .storm-admin-page-body .dashboard-container.member-view {
+            padding-top: 10px !important;
+        }
+        .storm-admin-page-body .dashboard-container {
+            padding-top: 10px;
+        }
+    </style>
     
     <div class="storm-admin-layout">
         <?php include ROOT_PATH . '/includes/user_sidebar.php'; ?>
