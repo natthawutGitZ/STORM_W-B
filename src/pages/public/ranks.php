@@ -244,8 +244,8 @@ if (isAdmin()) {
 </style>
 
 <div class="dashboard-container <?php echo isAdmin() ? 'admin-view' : 'member-view'; ?>">
-    <?php if (!isAdmin())
-        include ROOT_PATH . '/includes/user_tabs.php'; ?>
+    <?php if (!isAdmin()): ?>
+    <?php endif; ?>
     <div class="ranks-container">
         <div class="ranks-header">
             <div class="ranks-header-icon">
@@ -342,4 +342,10 @@ if (isAdmin()) {
     }
 </script>
 
-<?php include ROOT_PATH . '/includes/footer.php'; ?>
+<?php
+if (isAdmin()) {
+    include 'admin/includes/admin_footer.php';
+} else {
+    include ROOT_PATH . '/includes/profile_footer.php';
+}
+?>

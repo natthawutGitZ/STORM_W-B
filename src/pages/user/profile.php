@@ -130,7 +130,7 @@ if (isAdmin()) {
 <div class="max-w-[1500px] mx-auto px-5 pb-10 mt-6">
 
     <?php if (!isAdmin()): ?>
-        <?php include ROOT_PATH . '/includes/user_tabs.php'; ?>
+
     <?php else: ?>
         <!-- Stats Row (Admin only - tabs handled elsewhere) -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
@@ -527,4 +527,4 @@ if (isAdmin()) {
 </script>
 
 <?php include ROOT_PATH . '/includes/resume_modal.php'; ?>
-<?php include ROOT_PATH . '/includes/footer.php'; ?>
+<?php include ROOT_PATH . '/includes/profile_footer.php'; ?>
