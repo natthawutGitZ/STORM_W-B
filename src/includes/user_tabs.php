@@ -31,7 +31,7 @@ $tab_map = [
 ];
 $active_tab = isset($tab_map[$current_page]) ? $tab_map[$current_page] : 'members';
 ?>
-<div class="dashboard-container max-w-[1500px] mx-auto pt-5 pb-0 px-5">
+<div class="dashboard-container max-w-[1500px] mx-auto pt-0 pb-0 px-5">
     <!-- Statistics Cards -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
         <!-- Total Members -->

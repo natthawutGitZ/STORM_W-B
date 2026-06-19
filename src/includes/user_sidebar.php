@@ -73,26 +73,11 @@ try {
         <div class="storm-sidebar__section">
             <div class="storm-sidebar__section-label">My Account</div>
 
-            <button data-submenu="submenu-profile" class="storm-sidebar__item <?php echo (isSidebarActive('profile', $active_path) || isSidebarActive('edit_profile', $active_path) || isSidebarActive('update_resume', $active_path) || isSidebarActive('upload_slip', $active_path)) ? 'active expanded' : ''; ?>">
+            <a href="/profile" class="storm-sidebar__item <?php echo (isSidebarActive('profile', $active_path)) ? 'active' : ''; ?>">
                 <span class="storm-sidebar__item-icon"><i class="fas fa-user-circle"></i></span>
-                <span class="storm-sidebar__item-label">Profile Settings</span>
-                <span class="storm-sidebar__item-arrow"><i class="fas fa-chevron-right"></i></span>
-                <span class="storm-sidebar__tooltip">Profile Settings</span>
-            </button>
-            <div id="submenu-profile" class="storm-sidebar__submenu <?php echo (isSidebarActive('profile', $active_path) || isSidebarActive('edit_profile', $active_path) || isSidebarActive('update_resume', $active_path) || isSidebarActive('upload_slip', $active_path)) ? 'open' : ''; ?>">
-                <a href="/profile" class="storm-sidebar__subitem <?php echo isSidebarActive('profile', $active_path) ? 'active' : ''; ?>">
-                    <span>My Profile</span>
-                </a>
-                <a href="/edit_profile" class="storm-sidebar__subitem <?php echo isSidebarActive('edit_profile', $active_path) ? 'active' : ''; ?>">
-                    <span>Edit Profile</span>
-                </a>
-                <a href="/update_resume" class="storm-sidebar__subitem <?php echo isSidebarActive('update_resume', $active_path) ? 'active' : ''; ?>">
-                    <span>Update Resume</span>
-                </a>
-                <a href="/upload_slip" class="storm-sidebar__subitem <?php echo isSidebarActive('upload_slip', $active_path) ? 'active' : ''; ?>">
-                    <span>Upload Slip</span>
-                </a>
-            </div>
+                <span class="storm-sidebar__item-label">Profile</span>
+                <span class="storm-sidebar__tooltip">Profile</span>
+            </a>
         </div>
 
         <!-- ===== EXPLORE ===== -->
