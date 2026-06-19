@@ -1,76 +1,9 @@
 <?php
-// Calculate statistics
-$stmt_all = $pdo->query("SELECT status FROM users");
-$all_users = $stmt_all->fetchAll();
-
-$member_stats = [
-    'total' => count($all_users),
-    'active' => 0,
-    'inactive' => 0,
-    'loa' => 0
-];
-
-foreach ($all_users as $user) {
-    if ($user['status'] === 'Active')
-        $member_stats['active']++;
-    elseif ($user['status'] === 'Inactive')
-        $member_stats['inactive']++;
-    elseif ($user['status'] === 'LOA')
-        $member_stats['loa']++;
-}
-
 // Use REQUEST_URI to detect current page since central router makes PHP_SELF always /index.php
 $request_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'members';
 ?>
-<div class="dashboard-container" style="padding-top: 20px; padding-bottom: 0;">
-    <!-- Statistics Cards -->
-    <div
-        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 25px;">
-        <!-- Total Members -->
-        <div class="stat-card-modern">
-            <div class="stat-content" style="flex: 1;">
-                <h3><?php echo $member_stats['total']; ?></h3>
-                <p>Total Members</p>
-            </div>
-            <div class="stat-icon-wrapper" style="background: rgba(33, 150, 243, 0.1); color: #2196f3;">
-                <i class="fas fa-users"></i>
-            </div>
-        </div>
-
-        <!-- Active -->
-        <div class="stat-card-modern">
-            <div class="stat-content" style="flex: 1;">
-                <h3><?php echo $member_stats['active']; ?></h3>
-                <p>Active Duty</p>
-            </div>
-            <div class="stat-icon-wrapper" style="background: rgba(76, 175, 80, 0.1); color: #4caf50;">
-                <i class="fas fa-check-circle"></i>
-            </div>
-        </div>
-
-        <!-- Inactive -->
-        <div class="stat-card-modern">
-            <div class="stat-content" style="flex: 1;">
-                <h3><?php echo $member_stats['inactive']; ?></h3>
-                <p>Inactive</p>
-            </div>
-            <div class="stat-icon-wrapper" style="background: rgba(244, 67, 54, 0.1); color: #f44336;">
-                <i class="fas fa-times-circle"></i>
-            </div>
-        </div>
-
-        <!-- LOA -->
-        <div class="stat-card-modern">
-            <div class="stat-content" style="flex: 1;">
-                <h3><?php echo $member_stats['loa']; ?></h3>
-                <p>Leave of Absence</p>
-            </div>
-            <div class="stat-icon-wrapper" style="background: rgba(255, 152, 0, 0.1); color: #ff9800;">
-                <i class="fas fa-pause-circle"></i>
-            </div>
-        </div>
-    </div>
+<div class="dashboard-container" style="padding-top: 10px; padding-bottom: 0;">
 
     <div style="margin: 0 0 20px 0; border-bottom: 1px solid #333; display: flex; gap: 10px; overflow-x: auto; white-space: nowrap; padding-bottom: 5px;"
         class="member-nav-tabs">
