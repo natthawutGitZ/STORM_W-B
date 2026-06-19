@@ -1,8 +1,8 @@
 <?php
 /**
- * STORM User Topbar
- * Top navigation bar for normal user panel
- * Features: Breadcrumbs, Search, Profile
+ * STORM Admin Topbar
+ * Top navigation bar for admin panel
+ * Features: Breadcrumbs, Search, Notifications, Profile
  * Design: Matches sidebar (#141414 bg, #12b886 teal accent)
  */
 
@@ -22,12 +22,24 @@ foreach ($breadcrumb_segments as $segment) {
 // Current page title
 $topbar_page_title = !empty($breadcrumb_items) ? end($breadcrumb_items)['label'] : 'Dashboard';
 
-// User info
+// User info (already loaded from admin_header.php)
 $topbar_user = function_exists('getUser') ? getUser() : null;
-$topbar_user_name = htmlspecialchars($topbar_user['personaname'] ?? 'User');
+$topbar_user_name = htmlspecialchars($topbar_user['personaname'] ?? 'Admin');
 $topbar_user_role = htmlspecialchars($topbar_user['role'] ?? 'User');
 $topbar_user_avatar = function_exists('get_avatar') ? get_avatar($topbar_user['avatar'] ?? null) : '/assets/images/default_avatar.png';
 
+// Notification count (placeholder — wire up to real data)
+$notification_count = 0;
+try {
+    if (isset($pdo)) {
+        $stmt_notif = $pdo->query("SELECT COUNT(*) FROM form_responses WHERE status = 'pending'");
+        if ($stmt_notif) {
+            $notification_count = (int) $stmt_notif->fetchColumn();
+        }
+    }
+} catch (Exception $e) {
+    // Silently fail
+}
 ?>
 
 <header id="adminTopbar" class="storm-topbar">
@@ -41,6 +53,7 @@ $topbar_user_avatar = function_exists('get_avatar') ? get_avatar($topbar_user['a
                     </a>
                 </li>
                 <?php foreach ($breadcrumb_items as $i => $crumb): ?>
+                    <?php if ($crumb['label'] === 'Admin') continue; ?>
                     <li>
                         <span class="storm-topbar__breadcrumb-sep">
                             <i class="fas fa-chevron-right"></i>
@@ -66,6 +79,44 @@ $topbar_user_avatar = function_exists('get_avatar') ? get_avatar($topbar_user['a
             <span class="storm-topbar__search-label">Search...</span>
             <kbd class="storm-topbar__kbd">⌘K</kbd>
         </button>
+
+        <!-- Notifications -->
+        <div class="storm-topbar__notif-wrapper">
+            <button id="topbarNotifBtn" class="storm-topbar__icon-btn" title="Notifications">
+                <i class="fas fa-bell"></i>
+                <?php if ($notification_count > 0): ?>
+                    <span class="storm-topbar__notif-badge"><?php echo $notification_count > 9 ? '9+' : $notification_count; ?></span>
+                <?php endif; ?>
+            </button>
+            <!-- Notification Dropdown -->
+            <div id="topbarNotifDropdown" class="storm-topbar__notif-dropdown">
+                <div class="storm-topbar__notif-header">
+                    <span>Notifications</span>
+                    <?php if ($notification_count > 0): ?>
+                        <span class="storm-topbar__notif-count"><?php echo $notification_count; ?> pending</span>
+                    <?php endif; ?>
+                </div>
+                <div class="storm-topbar__notif-body">
+                    <?php if ($notification_count > 0): ?>
+                        <a href="/applications" class="storm-topbar__notif-item">
+                            <div class="storm-topbar__notif-icon storm-topbar__notif-icon--pending">
+                                <i class="fas fa-file-signature"></i>
+                            </div>
+                            <div class="storm-topbar__notif-content">
+                                <strong><?php echo $notification_count; ?> pending application<?php echo $notification_count > 1 ? 's' : ''; ?></strong>
+                                <span>Review awaiting submissions</span>
+                            </div>
+                            <i class="fas fa-chevron-right storm-topbar__notif-arrow"></i>
+                        </a>
+                    <?php else: ?>
+                        <div class="storm-topbar__notif-empty">
+                            <i class="fas fa-check-circle"></i>
+                            <p>All caught up!</p>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
 
         <!-- Divider -->
         <div class="storm-topbar__divider"></div>
@@ -94,6 +145,10 @@ $topbar_user_avatar = function_exists('get_avatar') ? get_avatar($topbar_user['a
                         <i class="fas fa-user"></i>
                         <span>View Profile</span>
                     </a>
+                    <a href="/admin/bot_controls?tab=bot" class="storm-topbar__dropdown-item">
+                        <i class="fas fa-cog"></i>
+                        <span>Settings</span>
+                    </a>
                     <a href="/" class="storm-topbar__dropdown-item">
                         <i class="fas fa-external-link-alt"></i>
                         <span>Back to Site</span>
@@ -116,51 +171,61 @@ $topbar_user_avatar = function_exists('get_avatar') ? get_avatar($topbar_user['a
     <div class="storm-topbar__search-modal-content">
         <div class="storm-topbar__search-input-wrap">
             <i class="fas fa-search"></i>
-            <input type="text" id="topbarSearchInput" placeholder="Search pages..." autocomplete="off" autofocus>
+            <input type="text" id="topbarSearchInput" placeholder="Search pages, members, settings..." autocomplete="off" autofocus>
             <kbd>ESC</kbd>
         </div>
         <div id="topbarSearchResults" class="storm-topbar__search-results">
             <div class="storm-topbar__search-group">
                 <div class="storm-topbar__search-group-label">Quick Navigation</div>
-                <a href="/profile" class="storm-topbar__search-item" data-search="dashboard overview analytics profile">
-                    <i class="fas fa-th-large"></i>
-                    <span>Dashboard</span>
-                    <small>My Profile</small>
+                <a href="/profile" class="storm-topbar__search-item" data-search="dashboard overview profile account">
+                    <i class="fas fa-user-circle"></i>
+                    <span>Profile Dashboard</span>
+                    <small>Your account overview</small>
                 </a>
-                <a href="/ranks" class="storm-topbar__search-item" data-search="ranks promotions levels">
-                    <i class="fas fa-medal"></i>
-                    <span>Ranks</span>
-                    <small>View Ranks</small>
+                <a href="/edit_profile" class="storm-topbar__search-item" data-search="edit profile settings update">
+                    <i class="fas fa-user-edit"></i>
+                    <span>Edit Profile</span>
+                    <small>Update your info</small>
                 </a>
-                <a href="/awards" class="storm-topbar__search-item" data-search="awards medals achievements ribbons">
-                    <i class="fas fa-award"></i>
-                    <span>Awards</span>
-                    <small>View Awards</small>
+                <a href="/update_resume" class="storm-topbar__search-item" data-search="resume cv dossier record">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Update Resume</span>
+                    <small>Manage your record</small>
                 </a>
-                <a href="/positions" class="storm-topbar__search-item" data-search="positions roles jobs billets">
-                    <i class="fas fa-id-badge"></i>
-                    <span>Positions</span>
-                    <small>View Positions</small>
+                <a href="/upload_slip" class="storm-topbar__search-item" data-search="slip receipt payment donate">
+                    <i class="fas fa-receipt"></i>
+                    <span>Upload Slip</span>
+                    <small>Submit payment slip</small>
                 </a>
-                <a href="/qualifications" class="storm-topbar__search-item" data-search="qualifications certifications training">
-                    <i class="fas fa-certificate"></i>
-                    <span>Qualifications</span>
-                    <small>View Qualifications</small>
-                </a>
-                <a href="/admin/manage_operations" class="storm-topbar__search-item" data-search="operations events calendar schedule">
-                    <i class="fas fa-calendar-check"></i>
-                    <span>Operations</span>
-                    <small>Active events</small>
-                </a>
-                <a href="/campaigns" class="storm-topbar__search-item" data-search="campaigns world missions">
-                    <i class="fas fa-globe-americas"></i>
-                    <span>Campaigns</span>
-                    <small>Active campaigns</small>
+                <a href="/applications" class="storm-topbar__search-item" data-search="applications forms apply join">
+                    <i class="fas fa-file-signature"></i>
+                    <span>Apply Now</span>
+                    <small>Submit an application</small>
                 </a>
                 <a href="/media" class="storm-topbar__search-item" data-search="media gallery images photos">
                     <i class="fas fa-photo-video"></i>
-                    <span>Media Gallery</span>
-                    <small>View images</small>
+                    <span>Media</span>
+                    <small>View gallery</small>
+                </a>
+                <a href="/donate" class="storm-topbar__search-item" data-search="donate support premium">
+                    <i class="fas fa-donate"></i>
+                    <span>Donate</span>
+                    <small>Support the community</small>
+                </a>
+                <a href="/campaigns" class="storm-topbar__search-item" data-search="campaigns missions world">
+                    <i class="fas fa-globe-americas"></i>
+                    <span>Campaigns</span>
+                    <small>View active campaigns</small>
+                </a>
+                <a href="/intelligence" class="storm-topbar__search-item" data-search="intelligence intel map">
+                    <i class="fas fa-satellite-dish"></i>
+                    <span>Intelligence</span>
+                    <small>Intel dashboard</small>
+                </a>
+                <a href="/chain" class="storm-topbar__search-item" data-search="chain of command hierarchy structure">
+                    <i class="fas fa-sitemap"></i>
+                    <span>Chain of Command</span>
+                    <small>Unit hierarchy</small>
                 </a>
             </div>
         </div>
