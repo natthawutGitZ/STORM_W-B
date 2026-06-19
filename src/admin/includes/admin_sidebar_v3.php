@@ -53,27 +53,17 @@ try {
 <!-- Sidebar -->
 <aside id="stormSidebar" class="storm-sidebar">
 
-    <!-- Profile Header -->
-    <div class="storm-sidebar__profile">
-        <a href="/profile" class="storm-sidebar__avatar" title="View Profile">
-            <img src="<?php echo $user_avatar; ?>" alt="<?php echo $user_name; ?>">
+    <!-- Brand Header -->
+    <div class="storm-sidebar__brand">
+        <a href="/admin/dashboard" class="storm-sidebar__logo">
+            <div class="storm-sidebar__logo-icon">
+                <i class="fas fa-bolt"></i>
+            </div>
+            <span class="storm-sidebar__logo-text">S.T.O.R.M</span>
         </a>
-        <div class="storm-sidebar__user-info">
-            <div class="storm-sidebar__user-name"><?php echo $user_name; ?></div>
-            <div class="storm-sidebar__user-role"><?php echo strtoupper($user_role); ?></div>
-        </div>
         <button id="sidebarCollapseBtn" class="storm-sidebar__collapse-btn" title="Collapse Sidebar">
             <i class="fas fa-chevron-left"></i>
         </button>
-    </div>
-
-    <!-- Workspace Switcher -->
-    <div class="storm-sidebar__workspace">
-        <div class="storm-sidebar__workspace-icon">
-            <i class="fas fa-bolt"></i>
-        </div>
-        <span class="storm-sidebar__workspace-label">S.T.O.R.M</span>
-        <span class="storm-sidebar__workspace-badge"><i class="fas fa-chevron-down" style="font-size:9px;opacity:0.4;"></i></span>
     </div>
 
     <!-- Scrollable Nav -->
