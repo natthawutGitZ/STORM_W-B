@@ -79,8 +79,8 @@ $is_admin = function_exists('isAdmin') ? isAdmin() : false;
         border-color: rgba(197, 160, 89, 0.5);
     }
     @media (max-width: 767px) {
-        .pill-navbar-container { border-radius: 1rem; }
-        .pill-navbar-container.menu-open { border-radius: 1rem; }
+        .pill-navbar-container { border-radius: 0; }
+        .pill-navbar-container.menu-open { border-radius: 0; }
     }
     
     /* Mobile menu transition */
@@ -96,8 +96,8 @@ $is_admin = function_exists('isAdmin') ? isAdmin() : false;
     }
 </style>
 
-<nav class="fixed top-6 left-1/2 -translate-x-1/2 w-[98%] md:w-[95%] max-w-[1400px] z-50 m-0 p-0 text-left" style="font-family: 'Inter', sans-serif;">
-    <div class="pill-navbar-container pill-glass-panel rounded-full px-3 py-2 flex flex-wrap items-center justify-between relative">
+<nav class="fixed top-0 left-0 w-full z-50 m-0 p-0 text-left" style="font-family: 'Inter', sans-serif;">
+    <div class="pill-navbar-container pill-glass-panel px-4 py-2 md:px-8 flex flex-wrap items-center justify-between relative border-x-0 border-t-0" style="border-radius: 0;">
         
         <!-- Logo -->
         <a href="/" class="flex items-center gap-3 cursor-pointer group px-3 no-underline" style="text-decoration: none;">
