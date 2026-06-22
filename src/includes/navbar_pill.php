@@ -55,12 +55,12 @@ $is_admin = function_exists('isAdmin') ? isAdmin() : false;
 
     .pill-nav-item {
         font-family: 'Inter', sans-serif;
-        font-size: 11px !important;
+        font-size: 12px !important;
         font-weight: 700 !important;
         text-transform: uppercase;
-        letter-spacing: 0.18em !important;
+        letter-spacing: 0.22em !important;
         color: rgba(203, 213, 225, 0.85) !important;
-        padding: 8px 16px !important;
+        padding: 10px 20px !important;
         border: 1px solid transparent;
         border-radius: 0px !important;
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -116,8 +116,12 @@ $is_admin = function_exists('isAdmin') ? isAdmin() : false;
 </style>
 
 <nav class="fixed top-0 left-0 w-full z-50 m-0 p-0 text-left flex flex-col" style="font-family: 'Inter', sans-serif;">
+    <!-- Status Info Bar -->
+    <div class="w-full bg-[#050505] border-b border-neutral-900/60 py-1 px-4 hidden xl:flex justify-center items-center gap-4 text-[9px] tracking-[0.32em] uppercase text-[#7a8267]/75 font-mono">
+        // UNCLASSIFIED // PUBLIC RELEASE // S.T.O.R.M. // OPS NET //
+    </div>
     <!-- Clock Bar -->
-    <div class="w-full bg-[#050505]/90 backdrop-blur-md border-b border-gold/20 py-1.5 px-4 hidden xl:flex justify-center items-center gap-4 text-[10px] tracking-widest uppercase text-gold/60 font-mono">
+    <div class="w-full bg-[#080808]/90 backdrop-blur-md border-b border-gold/25 py-1.5 px-4 hidden xl:flex justify-center items-center gap-6 text-[10px] tracking-widest uppercase text-gold/60 font-mono">
         <div class="flex items-center gap-1.5"><span>LOCAL</span> <span id="clock-local" class="text-slate-200 font-bold">00:00:00</span></div>
         <div class="flex items-center gap-1.5"><span>ZULU</span> <span id="clock-zulu" class="text-slate-200 font-bold">00:00:00Z</span></div>
         <div class="flex items-center gap-1.5"><span>EST</span> <span id="clock-est" class="text-slate-200 font-bold">00:00:00</span></div>
@@ -159,16 +163,16 @@ $is_admin = function_exists('isAdmin') ? isAdmin() : false;
         if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', updateClocks); } else { updateClocks(); }
     </script>
 
-    <div class="pill-navbar-container pill-glass-panel px-4 py-2 md:px-8 flex flex-wrap items-center justify-between relative border-x-0 border-t-0" style="border-radius: 0;">
+    <div class="pill-navbar-container pill-glass-panel px-4 py-4 md:py-5 md:px-8 flex flex-wrap items-center justify-between relative border-x-0 border-t-0" style="border-radius: 0;">
         
         <!-- Logo -->
-        <a href="/" class="flex items-center gap-3.5 cursor-pointer group px-3 no-underline" style="text-decoration: none;">
-            <div class="w-9 h-9 rounded-full bg-[#0d0d0c] border border-gold/40 flex items-center justify-center text-gold font-bold shadow-lg shadow-gold/10 group-hover:border-gold/80 group-hover:shadow-[0_0_15px_rgba(197,160,89,0.3)] transition-all duration-300">
-                <i class="fas fa-bolt text-[15px]"></i>
+        <a href="/" class="flex items-center gap-4 cursor-pointer group px-3 no-underline" style="text-decoration: none;">
+            <div class="w-12 h-12 rounded-full bg-[#0d0d0c] border border-gold/45 flex items-center justify-center text-gold font-bold shadow-lg shadow-gold/15 group-hover:border-gold group-hover:shadow-[0_0_18px_rgba(197,160,89,0.35)] transition-all duration-300">
+                <i class="fas fa-bolt text-[20px]"></i>
             </div>
             <div class="flex flex-col text-left justify-center">
-                <span class="text-white font-bold text-[14px] md:text-[15px] tracking-[0.25em] group-hover:text-gold transition-colors leading-none uppercase font-mono">S.T.O.R.M.</span>
-                <span class="text-[8px] tracking-[0.05em] text-gold/50 group-hover:text-gold/70 transition-colors uppercase mt-1 leading-none font-sans font-semibold">STRATEGIC TACTICAL OPERATIONS / EST. 2024</span>
+                <span class="text-white font-bold text-[17px] md:text-[19px] tracking-[0.28em] group-hover:text-gold transition-colors leading-none uppercase font-mono">S.T.O.R.M.</span>
+                <span class="text-[9px] md:text-[10px] tracking-[0.08em] text-[#7a826c]/80 group-hover:text-[#949c83] transition-colors uppercase mt-2 leading-none font-sans font-semibold">STRATEGIC TACTICAL OPERATIONS / EST. 2024</span>
             </div>
         </a>
 
@@ -500,27 +504,27 @@ $is_admin = function_exists('isAdmin') ? isAdmin() : false;
             <?php if ($is_logged_in && $user): ?>
                 <div class="hidden sm:flex items-center gap-3 border-r border-gold/20 pr-4 mr-1">
                     <div class="text-right">
-                        <div class="text-[11px] font-bold text-white tracking-widest uppercase font-mono leading-none mb-1"><?php echo htmlspecialchars($user['personaname']); ?></div>
-                        <div class="text-[8.5px] text-gold uppercase tracking-[0.2em] font-mono leading-none opacity-85"><?php echo htmlspecialchars($user['role'] ?? 'User'); ?></div>
+                        <div class="text-[12px] font-bold text-white tracking-widest uppercase font-mono leading-none mb-1"><?php echo htmlspecialchars($user['personaname']); ?></div>
+                        <div class="text-[9px] text-gold uppercase tracking-[0.22em] font-mono leading-none opacity-85"><?php echo htmlspecialchars($user['role'] ?? 'User'); ?></div>
                     </div>
-                    <a href="/profile" class="w-8 h-8 rounded-none border border-gold/45 overflow-hidden cursor-pointer hover:border-gold hover:shadow-[0_0_12px_rgba(197,160,89,0.3)] transition-all duration-300 inline-block shrink-0">
+                    <a href="/profile" class="w-10 h-10 rounded-none border border-gold/45 overflow-hidden cursor-pointer hover:border-gold hover:shadow-[0_0_12px_rgba(197,160,89,0.3)] transition-all duration-300 inline-block shrink-0">
                         <img src="<?php echo get_avatar($user['avatar'] ?? null); ?>" alt="User Avatar" class="w-full h-full object-cover m-0 p-0 block" />
                     </a>
                 </div>
                 
-                <a href="/logout" class="group border border-gold/45 hover:border-gold text-white font-mono text-[10px] tracking-[0.2em] font-bold px-4 py-2 hover:bg-gold/5 transition-all flex items-center gap-2 cursor-pointer uppercase no-underline rounded-none" style="text-decoration: none;">
+                <a href="/logout" class="group border border-gold/45 hover:border-gold text-white font-mono text-[11px] tracking-[0.2em] font-bold px-6 py-2.5 hover:bg-gold/5 transition-all flex items-center gap-2.5 cursor-pointer uppercase no-underline rounded-none" style="text-decoration: none;">
                     <span class="w-1.5 h-1.5 rounded-full bg-[#b93a3a] shrink-0"></span>
                     LOGOUT
                 </a>
             <?php else: ?>
                 <!-- Outlined SIGN IN button with red dot -->
-                <button onclick="openLoginModal(); return false;" class="group border border-gold/45 hover:border-gold text-white font-mono text-[10px] tracking-[0.2em] font-bold px-4 py-2 hover:bg-gold/5 transition-all flex items-center gap-2 cursor-pointer uppercase rounded-none bg-transparent">
+                <button onclick="openLoginModal(); return false;" class="group border border-gold/45 hover:border-gold text-white font-mono text-[11px] tracking-[0.2em] font-bold px-6 py-2.5 hover:bg-gold/5 transition-all flex items-center gap-2.5 cursor-pointer uppercase rounded-none bg-transparent">
                     <span class="w-1.5 h-1.5 rounded-full bg-[#b93a3a] shrink-0"></span>
                     SIGN IN
                 </button>
                 
                 <!-- Solid ENLIST NOW button with dark dot -->
-                <a href="/register" class="group bg-gold border border-gold hover:bg-[#d4b77c] hover:border-[#d4b77c] text-neutral-950 font-mono text-[10px] tracking-[0.2em] font-bold px-4 py-2 transition-all flex items-center gap-2 cursor-pointer uppercase no-underline rounded-none" style="text-decoration: none;">
+                <a href="/register" class="group bg-gold border border-gold hover:bg-[#d4b77c] hover:border-[#d4b77c] text-neutral-950 font-mono text-[11px] tracking-[0.2em] font-bold px-6 py-2.5 transition-all flex items-center gap-2.5 cursor-pointer uppercase no-underline rounded-none" style="text-decoration: none;">
                     <span class="w-1.5 h-1.5 rounded-full bg-neutral-950 shrink-0"></span>
                     ENLIST NOW
                 </a>
