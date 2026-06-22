@@ -96,7 +96,50 @@ $is_admin = function_exists('isAdmin') ? isAdmin() : false;
     }
 </style>
 
-<nav class="fixed top-0 left-0 w-full z-50 m-0 p-0 text-left" style="font-family: 'Inter', sans-serif;">
+<nav class="fixed top-0 left-0 w-full z-50 m-0 p-0 text-left flex flex-col" style="font-family: 'Inter', sans-serif;">
+    <!-- Clock Bar -->
+    <div class="w-full bg-[#050505]/90 backdrop-blur-md border-b border-gold/20 py-1.5 px-4 hidden xl:flex justify-center items-center gap-4 text-[10px] tracking-widest uppercase text-gold/60 font-mono">
+        <div class="flex items-center gap-1.5"><span>LOCAL</span> <span id="clock-local" class="text-slate-200 font-bold">00:00:00</span></div>
+        <div class="flex items-center gap-1.5"><span>ZULU</span> <span id="clock-zulu" class="text-slate-200 font-bold">00:00:00Z</span></div>
+        <div class="flex items-center gap-1.5"><span>EST</span> <span id="clock-est" class="text-slate-200 font-bold">00:00:00</span></div>
+        <div class="flex items-center gap-1.5"><span>CET</span> <span id="clock-cet" class="text-slate-200 font-bold">00:00:00</span></div>
+        <div class="flex items-center gap-1.5"><span>AU</span> <span id="clock-au" class="text-slate-200 font-bold">00:00:00</span></div>
+        <div class="flex items-center gap-1.5"><span>MST</span> <span id="clock-mst" class="text-slate-200 font-bold">00:00:00</span></div>
+        <div class="flex items-center gap-1.5"><span>CST</span> <span id="clock-cst" class="text-slate-200 font-bold">00:00:00</span></div>
+        <div class="flex items-center gap-1.5"><span>GMT</span> <span id="clock-gmt" class="text-slate-200 font-bold">00:00:00</span></div>
+    </div>
+    
+    <script>
+        function updateClocks() {
+            const now = new Date();
+            const formatTime = (date, timeZone) => {
+                try {
+                    return new Intl.DateTimeFormat('en-GB', {
+                        hour: '2-digit', minute: '2-digit', second: '2-digit',
+                        timeZone: timeZone, hour12: false
+                    }).format(date);
+                } catch (e) { return "00:00:00"; }
+            };
+            const formatLocal = (date) => {
+                return date.getHours().toString().padStart(2, '0') + ':' + 
+                       date.getMinutes().toString().padStart(2, '0') + ':' + 
+                       date.getSeconds().toString().padStart(2, '0');
+            };
+            if(document.getElementById('clock-local')) {
+                document.getElementById('clock-local').textContent = formatLocal(now);
+                document.getElementById('clock-zulu').textContent = formatTime(now, 'UTC') + 'Z';
+                document.getElementById('clock-est').textContent = formatTime(now, 'America/New_York');
+                document.getElementById('clock-cet').textContent = formatTime(now, 'Europe/Paris');
+                document.getElementById('clock-au').textContent = formatTime(now, 'Australia/Sydney');
+                document.getElementById('clock-mst').textContent = formatTime(now, 'America/Denver');
+                document.getElementById('clock-cst').textContent = formatTime(now, 'America/Chicago');
+                document.getElementById('clock-gmt').textContent = formatTime(now, 'Europe/London');
+            }
+        }
+        setInterval(updateClocks, 1000);
+        if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', updateClocks); } else { updateClocks(); }
+    </script>
+
     <div class="pill-navbar-container pill-glass-panel px-4 py-2 md:px-8 flex flex-wrap items-center justify-between relative border-x-0 border-t-0" style="border-radius: 0;">
         
         <!-- Logo -->
