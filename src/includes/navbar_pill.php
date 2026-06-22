@@ -79,12 +79,47 @@ $is_admin = function_exists('isAdmin') ? isAdmin() : false;
     }
     
     .pill-navbar-container {
-        transition: box-shadow 0.4s ease, border-color 0.4s ease;
+        transition: padding 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s ease, border-color 0.4s ease, background-color 0.4s ease;
         font-family: 'Inter', sans-serif;
+    }
+    .nav-scrolled .pill-navbar-container {
+        padding-top: 10px !important;
+        padding-bottom: 10px !important;
+        background-color: rgba(10, 10, 10, 0.92) !important;
+        border-bottom-color: rgba(197, 160, 89, 0.3) !important;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8) !important;
     }
     @media (max-width: 767px) {
         .pill-navbar-container { border-radius: 0; }
         .pill-navbar-container.menu-open { border-radius: 0; }
+    }
+    
+    /* Scroll Collapse Container */
+    .scroll-collapse-container {
+        max-height: 100px;
+        opacity: 1;
+        transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+                    opacity 0.3s ease, 
+                    transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        transform-origin: top;
+        overflow: hidden;
+    }
+    .nav-scrolled .scroll-collapse-container {
+        max-height: 0 !important;
+        opacity: 0 !important;
+        transform: translateY(-100%);
+        pointer-events: none;
+    }
+
+    /* Color Tones and Dividers */
+    .status-info-bar {
+        background-color: #13160e !important;
+        border-bottom: 1px solid rgba(197, 160, 89, 0.12) !important;
+        color: #8c9675 !important;
+    }
+    .clock-bar {
+        background-color: #090b07 !important;
+        border-bottom: 1px solid rgba(197, 160, 89, 0.18) !important;
     }
     
     /* Mobile menu transition and styles */
@@ -115,21 +150,24 @@ $is_admin = function_exists('isAdmin') ? isAdmin() : false;
     }
 </style>
 
-<nav class="fixed top-0 left-0 w-full z-50 m-0 p-0 text-left flex flex-col" style="font-family: 'Inter', sans-serif;">
-    <!-- Status Info Bar -->
-    <div class="w-full bg-[#050505] border-b border-neutral-900/60 py-1 px-4 hidden xl:flex justify-center items-center gap-4 text-[9px] tracking-[0.32em] uppercase text-[#7a8267]/75 font-mono">
-        // UNCLASSIFIED // PUBLIC RELEASE // S.T.O.R.M. // OPS NET //
-    </div>
-    <!-- Clock Bar -->
-    <div class="w-full bg-[#080808]/90 backdrop-blur-md border-b border-gold/25 py-1.5 px-4 hidden xl:flex justify-center items-center gap-6 text-[10px] tracking-widest uppercase text-gold/60 font-mono">
-        <div class="flex items-center gap-1.5"><span>LOCAL</span> <span id="clock-local" class="text-slate-200 font-bold">00:00:00</span></div>
-        <div class="flex items-center gap-1.5"><span>ZULU</span> <span id="clock-zulu" class="text-slate-200 font-bold">00:00:00Z</span></div>
-        <div class="flex items-center gap-1.5"><span>EST</span> <span id="clock-est" class="text-slate-200 font-bold">00:00:00</span></div>
-        <div class="flex items-center gap-1.5"><span>CET</span> <span id="clock-cet" class="text-slate-200 font-bold">00:00:00</span></div>
-        <div class="flex items-center gap-1.5"><span>AU</span> <span id="clock-au" class="text-slate-200 font-bold">00:00:00</span></div>
-        <div class="flex items-center gap-1.5"><span>MST</span> <span id="clock-mst" class="text-slate-200 font-bold">00:00:00</span></div>
-        <div class="flex items-center gap-1.5"><span>CST</span> <span id="clock-cst" class="text-slate-200 font-bold">00:00:00</span></div>
-        <div class="flex items-center gap-1.5"><span>GMT</span> <span id="clock-gmt" class="text-slate-200 font-bold">00:00:00</span></div>
+<nav id="main-navigation" class="fixed top-0 left-0 w-full z-50 m-0 p-0 text-left flex flex-col" style="font-family: 'Inter', sans-serif;">
+    <!-- Scrollable Top Header Wrapper -->
+    <div class="scroll-collapse-container hidden xl:block">
+        <!-- Status Info Bar -->
+        <div class="status-info-bar w-full py-1.5 px-4 flex justify-center items-center gap-4 text-[9px] tracking-[0.32em] uppercase font-mono">
+            // UNCLASSIFIED // PUBLIC RELEASE // S.T.O.R.M. // OPS NET //
+        </div>
+        <!-- Clock Bar -->
+        <div class="clock-bar w-full py-2 px-4 flex justify-center items-center gap-6 text-[10px] tracking-widest uppercase text-gold/60 font-mono">
+            <div class="flex items-center gap-1.5"><span class="text-[#7a8267]">LOCAL</span> <span id="clock-local" class="text-slate-200 font-bold">00:00:00</span></div>
+            <div class="flex items-center gap-1.5"><span class="text-[#7a8267]">ZULU</span> <span id="clock-zulu" class="text-slate-200 font-bold">00:00:00Z</span></div>
+            <div class="flex items-center gap-1.5"><span class="text-[#7a8267]">EST</span> <span id="clock-est" class="text-slate-200 font-bold">00:00:00</span></div>
+            <div class="flex items-center gap-1.5"><span class="text-[#7a8267]">CET</span> <span id="clock-cet" class="text-slate-200 font-bold">00:00:00</span></div>
+            <div class="flex items-center gap-1.5"><span class="text-[#7a8267]">AU</span> <span id="clock-au" class="text-slate-200 font-bold">00:00:00</span></div>
+            <div class="flex items-center gap-1.5"><span class="text-[#7a8267]">MST</span> <span id="clock-mst" class="text-slate-200 font-bold">00:00:00</span></div>
+            <div class="flex items-center gap-1.5"><span class="text-[#7a8267]">CST</span> <span id="clock-cst" class="text-slate-200 font-bold">00:00:00</span></div>
+            <div class="flex items-center gap-1.5"><span class="text-[#7a8267]">GMT</span> <span id="clock-gmt" class="text-slate-200 font-bold">00:00:00</span></div>
+        </div>
     </div>
     
     <script>
@@ -604,6 +642,20 @@ $is_admin = function_exists('isAdmin') ? isAdmin() : false;
                 menu.classList.toggle('open');
                 if (container) container.classList.toggle('menu-open');
             });
+        }
+
+        // Scroll collapse behavior
+        const nav = document.getElementById('main-navigation');
+        if (nav) {
+            const handleScroll = () => {
+                if (window.scrollY > 30) {
+                    nav.classList.add('nav-scrolled');
+                } else {
+                    nav.classList.remove('nav-scrolled');
+                }
+            };
+            window.addEventListener('scroll', handleScroll);
+            handleScroll(); // Initial check
         }
     });
 </script>
