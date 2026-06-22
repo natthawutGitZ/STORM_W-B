@@ -217,6 +217,7 @@ header nav a:hover::after {
     opacity: 0;
     transform: translateY(40px);
     animation: fadeInUp 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards 0.3s;
+    margin-top: 80px;
 }
 
 .hero h1 {

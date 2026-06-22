@@ -37,7 +37,7 @@ $is_admin = function_exists('isAdmin') ? isAdmin() : false;
 <style>
     /* Scoped custom styles for the pill navbar to avoid conflicts */
     .pill-glass-panel { 
-        background: rgba(10, 10, 10, 0.85); 
+        background: rgba(10, 10, 10, 0.55); 
         backdrop-filter: blur(16px); 
         -webkit-backdrop-filter: blur(16px); 
         border-bottom: 1px solid rgba(197, 160, 89, 0.2); 
@@ -85,7 +85,7 @@ $is_admin = function_exists('isAdmin') ? isAdmin() : false;
     .nav-scrolled .pill-navbar-container {
         padding-top: 10px !important;
         padding-bottom: 10px !important;
-        background-color: rgba(10, 10, 10, 0.92) !important;
+        background-color: rgba(10, 10, 10, 0.65) !important;
         border-bottom-color: rgba(197, 160, 89, 0.3) !important;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8) !important;
     }
