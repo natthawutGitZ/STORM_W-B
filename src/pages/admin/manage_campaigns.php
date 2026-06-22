@@ -491,6 +491,4 @@ include ROOT_PATH . '/admin/includes/admin_header.php';
     }
 </script>
 
-</body>
-
-</html>
+<?php include ROOT_PATH . '/admin/includes/admin_footer.php'; ?>
