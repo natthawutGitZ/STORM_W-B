@@ -23,7 +23,7 @@ foreach ($all_users as $user) {
 $request_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'members';
 ?>
-<div class="dashboard-container" style="padding-top: 0; padding-bottom: 0;">
+<div class="dashboard-container" style="padding-top: 20px; padding-bottom: 0;">
     <!-- Statistics Cards -->
     <div
         style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 25px;">

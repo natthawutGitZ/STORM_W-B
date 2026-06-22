@@ -127,140 +127,168 @@ if (isAdmin()) {
 }
 ?>
 
-<div class="max-w-[1500px] mx-auto px-5 pb-10 mt-6">
+<div class="dashboard-container <?php echo isAdmin() ? 'admin-view' : 'member-view'; ?>" style="padding: 20px;">
 
     <?php if (!isAdmin()): ?>
-
+        <?php include ROOT_PATH . '/includes/user_tabs.php'; ?>
     <?php else: ?>
         <!-- Stats Row (Admin only - tabs handled elsewhere) -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-            <!-- Total Members -->
-            <div class="bg-surface-card border border-zinc-850 rounded-xl p-5 flex items-center justify-between hover:border-zinc-750 transition-colors group">
-                <div>
-                    <h3 class="text-3xl font-bold text-white"><?php echo $total_members; ?></h3>
-                    <p class="text-sm font-medium text-gray-400 mt-1 uppercase tracking-wider">Total Members</p>
+        <div
+            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 30px;">
+            <div class="stat-card-modern">
+                <div class="stat-content" style="flex: 1;">
+                    <h3><?php echo $total_members; ?></h3>
+                    <p>Total Members</p>
                 </div>
-                <div class="w-12 h-12 rounded-lg flex items-center justify-center bg-blue-500/10 text-blue-400 group-hover:scale-110 transition-transform">
-                    <i class="fas fa-users text-xl"></i>
-                </div>
-            </div>
-            <!-- Active Duty -->
-            <div class="bg-surface-card border border-zinc-850 rounded-xl p-5 flex items-center justify-between hover:border-zinc-750 transition-colors group">
-                <div>
-                    <h3 class="text-3xl font-bold text-white"><?php echo $active_members; ?></h3>
-                    <p class="text-sm font-medium text-gray-400 mt-1 uppercase tracking-wider">Active Duty</p>
-                </div>
-                <div class="w-12 h-12 rounded-lg flex items-center justify-center bg-green-500/10 text-green-400 group-hover:scale-110 transition-transform">
-                    <i class="fas fa-user-check text-xl"></i>
+                <div class="stat-icon-wrapper" style="background: rgba(76, 175, 80, 0.1); color: #4caf50;">
+                    <i class="fas fa-users"></i>
                 </div>
             </div>
-            <!-- Inactive -->
-            <div class="bg-surface-card border border-zinc-850 rounded-xl p-5 flex items-center justify-between hover:border-zinc-750 transition-colors group">
-                <div>
-                    <h3 class="text-3xl font-bold text-white"><?php echo $inactive_members; ?></h3>
-                    <p class="text-sm font-medium text-gray-400 mt-1 uppercase tracking-wider">Discharged/Inactive</p>
+            <div class="stat-card-modern">
+                <div class="stat-content" style="flex: 1;">
+                    <h3><?php echo $active_members; ?></h3>
+                    <p>Active Duty</p>
                 </div>
-                <div class="w-12 h-12 rounded-lg flex items-center justify-center bg-red-500/10 text-red-400 group-hover:scale-110 transition-transform">
-                    <i class="fas fa-user-slash text-xl"></i>
+                <div class="stat-icon-wrapper" style="background: rgba(33, 150, 243, 0.1); color: #2196f3;">
+                    <i class="fas fa-user-check"></i>
+                </div>
+            </div>
+            <div class="stat-card-modern">
+                <div class="stat-content" style="flex: 1;">
+                    <h3><?php echo $inactive_members; ?></h3>
+                    <p>Discharged/Inactive</p>
+                </div>
+                <div class="stat-icon-wrapper" style="background: rgba(244, 67, 54, 0.1); color: #f44336;">
+                    <i class="fas fa-user-slash"></i>
                 </div>
             </div>
         </div>
     <?php endif; ?>
 
-    <div class="grid grid-cols-1 lg:grid-cols-[350px_1fr] gap-8">
+    <div class="admin-grid">
 
         <!-- Left Column: Profile Edit -->
-        <div>
-            <div class="bg-surface-card border border-zinc-850 rounded-2xl p-7 shadow-xl">
-                <h3 class="border-b border-zinc-800 pb-4 mb-6 text-gold font-bold text-lg flex items-center gap-2">
-                    <i class="fas fa-user-edit"></i> Edit Profile
+        <div class="profile-section">
+            <div class="glass-panel modern-form" style="padding: 28px;">
+                <h3
+                    style="border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 15px; margin-bottom: 24px; color: var(--accent-color); font-size: 1.05rem; font-weight: 600; letter-spacing: 0.3px;">
+                    <i class="fas fa-user-edit" style="margin-right: 8px;"></i>Edit Profile
                 </h3>
 
                 <?php if ($message): ?>
-                    <div class="bg-green-500/10 border border-green-500/20 text-green-400 px-4 py-3 rounded-lg mb-6 flex items-center gap-2 text-sm">
-                        <i class="fas fa-check-circle"></i> <?php echo $message; ?>
+                    <div
+                        style="background: rgba(76, 175, 80, 0.1); color: #69f0ae; padding: 12px 16px; border-radius: 10px; margin-bottom: 18px; border: 1px solid rgba(76, 175, 80, 0.2); font-size: 0.85rem;">
+                        <i class="fas fa-check-circle" style="margin-right: 6px;"></i><?php echo $message; ?>
                     </div>
                 <?php endif; ?>
 
                 <?php if ($error): ?>
-                    <div class="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-lg mb-6 flex items-center gap-2 text-sm">
-                        <i class="fas fa-exclamation-circle"></i> <?php echo $error; ?>
+                    <div
+                        style="background: rgba(244, 67, 54, 0.1); color: #ff5252; padding: 12px 16px; border-radius: 10px; margin-bottom: 18px; border: 1px solid rgba(244, 67, 54, 0.2); font-size: 0.85rem;">
+                        <i class="fas fa-exclamation-circle" style="margin-right: 6px;"></i><?php echo $error; ?>
                     </div>
                 <?php endif; ?>
 
                 <form action="" method="POST" enctype="multipart/form-data">
                     <!-- Avatar Section -->
-                    <div class="text-center mb-8">
-                        <div class="w-28 h-28 mx-auto rounded-full border-4 border-zinc-800 p-1 mb-4 shadow-[0_0_25px_rgba(197,160,89,0.15)] relative">
-                            <img src="<?php echo get_avatar($_SESSION['user']['avatar']); ?>" alt="Profile Avatar" class="w-full h-full rounded-full object-cover">
+                    <div style="text-align: center; margin-bottom: 28px;">
+                        <div
+                            style="width: 100px; height: 100px; border-radius: 50%; border: 3px solid var(--accent-color); padding: 3px; margin: 0 auto; background: linear-gradient(135deg, rgba(197,160,89,0.3), rgba(197,160,89,0.1)); box-shadow: 0 0 25px rgba(197,160,89,0.15);">
+                            <img src="<?php echo get_avatar($_SESSION['user']['avatar']); ?>" alt="Profile Avatar"
+                                style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
                         </div>
-                        <div class="text-lg font-bold text-white tracking-wide">
+                        <div
+                            style="margin-top: 12px; font-size: 0.95rem; font-weight: 600; color: #fff; letter-spacing: 0.3px;">
                             <?php echo htmlspecialchars($_SESSION['user']['personaname']); ?>
                         </div>
-                        <div class="mt-1">
-                            <span class="inline-block bg-gold/10 text-gold px-4 py-1 rounded-full text-xs font-bold tracking-widest border border-gold/20">
+                        <div style="margin-top: 4px;">
+                            <span
+                                style="display: inline-block; background: linear-gradient(135deg, rgba(197,160,89,0.2), rgba(197,160,89,0.1)); color: var(--accent-color); padding: 4px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.5px; border: 1px solid rgba(197,160,89,0.25);">
                                 <?php echo htmlspecialchars($_SESSION['user']['rank'] ?? 'Recruit'); ?>
                             </span>
                         </div>
                         <?php if (!empty($_SESSION['user']['position'])): ?>
-                            <div class="mt-2 text-gray-400 text-sm">
+                            <div style="margin-top: 6px; color: rgba(255,255,255,0.4); font-size: 0.8rem;">
                                 <?php echo htmlspecialchars($_SESSION['user']['position']); ?>
                             </div>
                         <?php endif; ?>
                     </div>
 
                     <!-- Info Cards -->
-                    <div class="grid grid-cols-2 gap-4 mb-6">
-                        <div class="bg-black/20 border border-zinc-800 rounded-xl p-3 text-center">
-                            <div class="text-[0.65rem] text-gray-500 uppercase tracking-widest mb-1">Status</div>
-                            <div class="text-sm font-bold <?php echo ($_SESSION['user']['status'] ?? 'Active') === 'Active' ? 'text-green-400' : (($_SESSION['user']['status'] ?? '') === 'LOA' ? 'text-orange-400' : 'text-red-400'); ?>">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 22px;">
+                        <div
+                            style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 12px; text-align: center;">
+                            <div
+                                style="font-size: 0.65rem; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">
+                                Status</div>
+                            <div
+                                style="font-size: 0.85rem; font-weight: 600; color: <?php echo ($_SESSION['user']['status'] ?? 'Active') === 'Active' ? '#69f0ae' : (($_SESSION['user']['status'] ?? '') === 'LOA' ? '#ffab40' : '#ff5252'); ?>;">
                                 <?php echo htmlspecialchars($_SESSION['user']['status'] ?? 'Active'); ?>
                             </div>
                         </div>
-                        <div class="bg-black/20 border border-zinc-800 rounded-xl p-3 text-center">
-                            <div class="text-[0.65rem] text-gray-500 uppercase tracking-widest mb-1">Role</div>
-                            <div class="text-sm font-bold text-gray-300">
+                        <div
+                            style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 12px; text-align: center;">
+                            <div
+                                style="font-size: 0.65rem; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">
+                                Role</div>
+                            <div style="font-size: 0.85rem; font-weight: 600; color: rgba(255,255,255,0.8);">
                                 <?php echo ucfirst($_SESSION['user']['role'] ?? 'User'); ?>
                             </div>
                         </div>
                     </div>
 
                     <!-- Form Fields -->
-                    <div class="mb-5">
-                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
-                            <i class="fas fa-id-badge text-gold"></i> Display Name
+                    <div style="margin-bottom: 16px;">
+                        <label
+                            style="display: block; font-size: 0.72rem; font-weight: 600; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px;">
+                            <i class="fas fa-id-badge"
+                                style="margin-right: 5px; color: var(--accent-color); font-size: 0.75rem;"></i>Display
+                            Name
                         </label>
                         <input type="text" id="personaname" name="personaname"
                             value="<?php echo htmlspecialchars($_SESSION['user']['personaname']); ?>"
-                            class="w-full bg-black/40 border border-zinc-800 rounded-lg px-4 py-3 text-gray-200 text-sm focus:border-gold/50 focus:ring-2 focus:ring-gold/10 outline-none transition-all">
+                            style="width: 100%; padding: 11px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #f0f0f0; font-family: 'Inter', sans-serif; font-size: 0.88rem; transition: all 0.25s ease; box-sizing: border-box;"
+                            onfocus="this.style.borderColor='rgba(197,160,89,0.5)';this.style.boxShadow='0 0 0 3px rgba(197,160,89,0.1)'"
+                            onblur="this.style.borderColor='rgba(255,255,255,0.1)';this.style.boxShadow='none'">
                     </div>
 
-                    <div class="mb-8">
-                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
-                            <i class="fas fa-camera text-gold"></i> Change Avatar
+                    <div style="margin-bottom: 22px;">
+                        <label
+                            style="display: block; font-size: 0.72rem; font-weight: 600; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px;">
+                            <i class="fas fa-camera"
+                                style="margin-right: 5px; color: var(--accent-color); font-size: 0.75rem;"></i>Change
+                            Avatar
                         </label>
-                        <input type="file" id="avatar_file" name="avatar_file" accept="image/*"
-                            class="w-full bg-black/40 border border-zinc-800 rounded-lg px-4 py-2 text-gray-400 text-sm cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-gold/10 file:text-gold hover:file:bg-gold/20 file:transition-colors">
+                        <div style="position: relative;">
+                            <input type="file" id="avatar_file" name="avatar_file" accept="image/*"
+                                style="width: 100%; padding: 10px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: rgba(255,255,255,0.6); font-size: 0.82rem; box-sizing: border-box; cursor: pointer;">
+                        </div>
                     </div>
 
                     <button type="submit" name="update_profile"
-                        class="w-full bg-gradient-to-r from-[#c5a059] to-[#b8944d] text-[#0a0a0c] font-bold py-3 px-4 rounded-xl shadow-[0_4px_20px_rgba(197,160,89,0.2)] hover:shadow-[0_4px_25px_rgba(197,160,89,0.4)] hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 text-sm tracking-wide uppercase">
-                        <i class="fas fa-save"></i> Save Changes
+                        style="width: 100%; background: linear-gradient(135deg, var(--accent-color), #b8944d); color: #0a0a0c; padding: 12px 20px; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: 0.9rem; transition: all 0.3s ease; text-transform: uppercase; letter-spacing: 0.5px;"
+                        onmouseover="this.style.boxShadow='0 4px 20px rgba(197,160,89,0.3)';this.style.transform='translateY(-1px)'"
+                        onmouseout="this.style.boxShadow='none';this.style.transform='none'">
+                        <i class="fas fa-save" style="margin-right: 6px;"></i>Save Changes
                     </button>
                 </form>
 
                 <!-- Action Buttons -->
-                <div class="mt-6 pt-6 border-t border-zinc-800">
-                    <div class="flex gap-3">
+                <div style="margin-top: 20px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,0.06);">
+                    <div style="display: flex; gap: 10px;">
                         <?php if (!empty($_SESSION['user']['generated_password'])): ?>
                             <button onclick="showCredentials()"
-                                class="flex-1 bg-transparent border border-gold/30 text-gold py-2.5 px-4 rounded-lg text-sm font-bold hover:bg-gold/10 hover:border-gold/50 transition-all flex items-center justify-center gap-2">
-                                <i class="fas fa-key"></i> Credentials
+                                style="flex: 1; background: transparent; color: var(--accent-color); padding: 10px 16px; border: 1px solid rgba(197,160,89,0.3); border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 0.82rem; transition: all 0.3s ease; letter-spacing: 0.3px;"
+                                onmouseover="this.style.background='rgba(197,160,89,0.1)';this.style.borderColor='rgba(197,160,89,0.5)'"
+                                onmouseout="this.style.background='transparent';this.style.borderColor='rgba(197,160,89,0.3)'">
+                                <i class="fas fa-key" style="margin-right: 5px;"></i>Credentials
                             </button>
                         <?php endif; ?>
                         <button onclick="openResume()"
-                            class="flex-1 bg-transparent border border-blue-500/30 text-blue-400 py-2.5 px-4 rounded-lg text-sm font-bold hover:bg-blue-500/10 hover:border-blue-500/50 transition-all flex items-center justify-center gap-2">
-                            <i class="fas fa-file-alt"></i> Resume
+                            style="flex: 1; background: transparent; color: #42a5f5; padding: 10px 16px; border: 1px solid rgba(66,165,245,0.3); border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 0.82rem; transition: all 0.3s ease; letter-spacing: 0.3px;"
+                            onmouseover="this.style.background='rgba(66,165,245,0.1)';this.style.borderColor='rgba(66,165,245,0.5)'"
+                            onmouseout="this.style.background='transparent';this.style.borderColor='rgba(66,165,245,0.3)'">
+                            <i class="fas fa-file-alt" style="margin-right: 5px;"></i>Resume
                         </button>
                     </div>
                 </div>
@@ -270,56 +298,156 @@ if (isAdmin()) {
         <!-- Right Column: Unit Roster (or Admin Table) -->
         <?php if (isAdmin()): ?>
             <!-- Admin Member Management Table -->
-            <div>
+            <div class="members-section">
                 <?php include 'admin/includes/member_table.php'; ?>
             </div>
         <?php else: ?>
-            <div>
-                <div class="bg-surface-card border border-zinc-850 rounded-2xl p-7 shadow-xl h-full flex flex-col">
-                    <div class="flex justify-between items-center border-b border-zinc-800 pb-4 mb-6">
-                        <h3 class="text-gold font-bold text-lg m-0 flex items-center gap-2">
-                            <i class="fas fa-users"></i> Unit Roster
-                        </h3>
-                        <span class="bg-black/40 border border-zinc-800 px-3 py-1 rounded-full text-xs font-semibold text-gray-300">
+            <div class="members-section">
+                <div class="glass-panel" style="height: 100%; padding: 20px;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px;">
+                        <h3 style="margin: 0; color: var(--accent-color); font-size: 1rem; font-weight: 600;"><i
+                                class="fas fa-users" style="margin-right: 8px;"></i>Unit Roster</h3>
+                        <span
+                            style="background: rgba(255,255,255,0.08); padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; color: rgba(255,255,255,0.7); font-weight: 500;">
                             <?php echo count($members); ?> Personnel
                         </span>
                     </div>
 
                     <!-- Search Bar -->
-                    <div class="bg-black/40 border border-zinc-800 rounded-lg px-4 py-3 mb-6 flex items-center">
-                        <i class="fas fa-search text-gray-500"></i>
+                    <div
+                        style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 10px 16px; margin-bottom: 15px; display: flex; align-items: center;">
+                        <i class="fas fa-search" style="color: #777;"></i>
                         <input type="text" id="rosterSearchInput" placeholder="Search by name or username..."
-                            class="bg-transparent border-none text-white w-full text-sm ml-3 outline-none placeholder-gray-600"
+                            style="background: transparent; border: none; color: #fff; width: 100%; font-size: 0.88rem; margin-left: 10px; outline: none;"
                             oninput="filterRoster()">
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 flex-1 content-start" id="rosterGrid">
+                    <style>
+                        .roster-grid-compact {
+                            display: grid;
+                            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                            gap: 10px;
+                        }
+
+                        .roster-card-compact {
+                            background: rgba(255, 255, 255, 0.03);
+                            border-radius: 10px;
+                            padding: 12px 14px;
+                            border: 1px solid rgba(255, 255, 255, 0.06);
+                            transition: all 0.2s ease;
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                        }
+
+                        .roster-card-compact:hover {
+                            background: rgba(255, 255, 255, 0.06);
+                            border-color: rgba(197, 160, 89, 0.2);
+                        }
+
+                        .rcc-avatar {
+                            position: relative;
+                            flex-shrink: 0;
+                        }
+
+                        .rcc-avatar img {
+                            width: 44px;
+                            height: 44px;
+                            border-radius: 50%;
+                            object-fit: cover;
+                            border: 2px solid rgba(197, 160, 89, 0.4);
+                        }
+
+                        .rcc-status-dot {
+                            position: absolute;
+                            bottom: 1px;
+                            right: 1px;
+                            width: 10px;
+                            height: 10px;
+                            border-radius: 50%;
+                            border: 2px solid #1a1a1a;
+                            background: #f44336;
+                        }
+
+                        .rcc-status-dot.active {
+                            background: #4caf50;
+                        }
+
+                        .rcc-status-dot.loa {
+                            background: #ff9800;
+                        }
+
+                        .rcc-info {
+                            flex: 1;
+                            min-width: 0;
+                        }
+
+                        .rcc-name {
+                            font-size: 0.88rem;
+                            font-weight: 600;
+                            color: #fff;
+                            margin: 0 0 2px 0;
+                            white-space: nowrap;
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                        }
+
+                        .rcc-rank {
+                            font-size: 0.72rem;
+                            color: var(--accent-color);
+                            opacity: 0.85;
+                        }
+
+                        .rcc-position {
+                            font-size: 0.7rem;
+                            color: #777;
+                            white-space: nowrap;
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                        }
+
+                        .rcc-action {
+                            flex-shrink: 0;
+                        }
+
+                        .rcc-btn {
+                            background: rgba(255, 255, 255, 0.06);
+                            border: 1px solid rgba(255, 255, 255, 0.1);
+                            color: #aaa;
+                            padding: 5px 10px;
+                            border-radius: 6px;
+                            font-size: 0.7rem;
+                            cursor: pointer;
+                            transition: all 0.2s;
+                            white-space: nowrap;
+                        }
+
+                        .rcc-btn:hover {
+                            background: rgba(197, 160, 89, 0.15);
+                            border-color: rgba(197, 160, 89, 0.3);
+                            color: var(--accent-color);
+                        }
+                    </style>
+
+                    <div class="roster-grid-compact" id="rosterGrid">
                         <?php foreach ($members as $idx => $member): ?>
-                            <div class="roster-card-compact bg-black/20 border border-zinc-800 hover:bg-zinc-850 hover:border-zinc-700 transition-colors rounded-xl p-3 flex items-center gap-3 cursor-pointer" data-roster-idx="<?php echo $idx; ?>"
-                                data-name="<?php echo htmlspecialchars(strtolower($member['personaname'])); ?>"
-                                onclick="loadResumeData(<?php echo $member['id']; ?>)">
-                                
-                                <div class="relative shrink-0">
+                            <div class="roster-card-compact" data-roster-idx="<?php echo $idx; ?>"
+                                data-name="<?php echo htmlspecialchars(strtolower($member['personaname'])); ?>">
+                                <div class="rcc-avatar">
                                     <img src="<?php echo get_avatar($member['avatar']); ?>" alt="Avatar"
-                                        class="w-11 h-11 rounded-full object-cover border-2 border-zinc-700"
                                         onerror="this.src='assets/images/default_avatar.png'">
-                                    <?php 
-                                        $statusColor = 'bg-red-500';
-                                        if($member['status'] === 'Active') $statusColor = 'bg-green-500';
-                                        if($member['status'] === 'LOA') $statusColor = 'bg-orange-500';
-                                    ?>
-                                    <div class="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#111114] <?php echo $statusColor; ?>"></div>
+                                    <div class="rcc-status-dot <?php echo strtolower($member['status']); ?>"></div>
                                 </div>
-                                
-                                <div class="flex-1 min-w-0">
-                                    <div class="text-sm font-bold text-gray-100 truncate"><?php echo htmlspecialchars($member['personaname']); ?></div>
-                                    <div class="text-[0.65rem] text-gold uppercase tracking-wider truncate"><?php echo htmlspecialchars($member['rank'] ?? 'Recruit'); ?></div>
-                                    <div class="text-[0.7rem] text-gray-500 truncate"><?php echo htmlspecialchars($member['position'] ?? 'Operator'); ?></div>
+                                <div class="rcc-info">
+                                    <div class="rcc-name"><?php echo htmlspecialchars($member['personaname']); ?></div>
+                                    <div class="rcc-rank"><?php echo htmlspecialchars($member['rank'] ?? 'Recruit'); ?></div>
+                                    <div class="rcc-position"><?php echo htmlspecialchars($member['position'] ?? 'Operator'); ?>
+                                    </div>
                                 </div>
-                                
-                                <div class="shrink-0">
-                                    <button class="bg-black/30 text-gray-400 hover:text-gold w-8 h-8 rounded-lg flex items-center justify-center transition-colors">
-                                        <i class="fas fa-file-alt"></i>
+                                <div class="rcc-action">
+                                    <button onclick="loadResumeData(<?php echo $member['id']; ?>)" class="rcc-btn">
+                                        <i class="fas fa-file-alt"></i> Dossier
                                     </button>
                                 </div>
                             </div>
@@ -328,7 +456,8 @@ if (isAdmin()) {
 
                     <!-- Roster Pagination -->
                     <?php if (count($members) > 18): ?>
-                        <div id="rosterPagination" class="flex justify-center items-center gap-2 mt-6 pt-4 border-t border-zinc-800">
+                        <div id="rosterPagination"
+                            style="display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 15px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.06);">
                         </div>
                     <?php endif; ?>
                 </div>
@@ -338,32 +467,33 @@ if (isAdmin()) {
 </div>
 
 <!-- Credentials Modal -->
-<div id="credentialsModal" class="modal-overlay z-[9999] fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="bg-surface-card border border-zinc-800 rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
-        <button type="button" class="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors" onclick="closeCredentials()">
-            <i class="fas fa-times text-xl"></i>
-        </button>
+<div id="credentialsModal" class="modal-overlay">
+    <div class="glass-panel modal-content" style="max-width: 400px; text-align: center;">
+        <div class="modal-header"
+            style="justify-content: flex-end; border: none; padding-bottom: 0; margin-bottom: 10px;">
+            <button type="button" class="modal-close" onclick="closeCredentials()">&times;</button>
+        </div>
 
-        <h3 class="text-gold font-bold text-xl mb-2">Login Credentials</h3>
-        <p class="text-gray-400 text-sm mb-6">Use these details to login without Steam.</p>
+        <h3 style="color: var(--accent-color); margin-bottom: 20px;">Login Credentials</h3>
+        <p style="color: #ccc; margin-bottom: 20px; font-size: 0.9rem;">Use these details to login without Steam.</p>
 
-        <div class="bg-black/40 border border-zinc-800 p-4 rounded-xl mb-4">
-            <label class="text-xs font-bold text-gray-500 tracking-wider mb-1 block">USERNAME</label>
-            <div class="text-white font-mono text-lg tracking-wide">
+        <div
+            style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: left; border: 1px solid rgba(255,255,255,0.05);">
+            <label style="color: #666; font-size: 0.8rem; display: block; margin-bottom: 5px;">USERNAME</label>
+            <div style="color: #fff; font-family: monospace; font-size: 1.2rem; letter-spacing: 1px;">
                 <?php echo htmlspecialchars($_SESSION['user']['username'] ?? 'N/A'); ?>
             </div>
         </div>
 
-        <div class="bg-black/40 border border-zinc-800 p-4 rounded-xl mb-8">
-            <label class="text-xs font-bold text-gray-500 tracking-wider mb-1 block">PASSWORD</label>
-            <div class="text-white font-mono text-lg tracking-wide">
+        <div
+            style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin-bottom: 25px; text-align: left; border: 1px solid rgba(255,255,255,0.05);">
+            <label style="color: #666; font-size: 0.8rem; display: block; margin-bottom: 5px;">PASSWORD</label>
+            <div style="color: #fff; font-family: monospace; font-size: 1.2rem; letter-spacing: 1px;">
                 <?php echo htmlspecialchars($_SESSION['user']['generated_password'] ?? 'N/A'); ?>
             </div>
         </div>
 
-        <button onclick="closeCredentials()" class="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-bold py-3 px-4 rounded-xl transition-colors">
-            Close
-        </button>
+        <button onclick="closeCredentials()" class="btn" style="width: 100%;">Close</button>
     </div>
 </div>
 
@@ -527,4 +657,4 @@ if (isAdmin()) {
 </script>
 
 <?php include ROOT_PATH . '/includes/resume_modal.php'; ?>
-<?php include ROOT_PATH . '/includes/profile_footer.php'; ?>
+<?php include ROOT_PATH . '/includes/footer.php'; ?>

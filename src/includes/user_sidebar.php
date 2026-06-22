@@ -17,11 +17,13 @@ $user_role = htmlspecialchars($user['role'] ?? 'User');
 $user_avatar = function_exists('get_avatar') ? get_avatar($user['avatar'] ?? null) : '/assets/images/default_avatar.png';
 
 // Helper: check if a nav path is active
-function isSidebarActive($check, $active_path, $tab = '', $current_tab = '') {
+function isSidebarActive($check, $active_path, $tab = '', $current_tab = '')
+{
     if ($tab !== '' && $current_tab !== '') {
         return strpos($active_path, $check) !== false && $current_tab === $tab;
     }
-    if ($check === 'profile' && $active_path === 'profile') return true;
+    if ($check === 'profile' && $active_path === 'profile')
+        return true;
     return $check !== '' && strpos($active_path, $check) !== false;
 }
 
@@ -69,49 +71,57 @@ try {
     <!-- Scrollable Nav -->
     <div class="storm-sidebar__nav-scroll">
 
-        <!-- ===== MY ACCOUNT ===== -->
+        <!-- ===== MY ACCOUNT =====
         <div class="storm-sidebar__section">
             <div class="storm-sidebar__section-label">My Account</div>
 
-            <a href="/profile" class="storm-sidebar__item <?php echo (isSidebarActive('profile', $active_path)) ? 'active' : ''; ?>">
+            <a href="/profile"
+                class="storm-sidebar__item <?php echo (isSidebarActive('profile', $active_path)) ? 'active' : ''; ?>">
                 <span class="storm-sidebar__item-icon"><i class="fas fa-user-circle"></i></span>
                 <span class="storm-sidebar__item-label">Profile</span>
                 <span class="storm-sidebar__tooltip">Profile</span>
             </a>
-        </div>
+        </div> -->
 
         <!-- ===== EXPLORE ===== -->
         <div class="storm-sidebar__section">
             <div class="storm-sidebar__section-label">Explore</div>
 
-            <a href="/" class="storm-sidebar__item <?php echo ($active_path === '' || $active_path === 'index') ? 'active' : ''; ?>">
+            <a href="/"
+                class="storm-sidebar__item <?php echo ($active_path === '' || $active_path === 'index') ? 'active' : ''; ?>">
                 <span class="storm-sidebar__item-icon"><i class="fas fa-home"></i></span>
                 <span class="storm-sidebar__item-label">Home</span>
                 <span class="storm-sidebar__tooltip">Home</span>
             </a>
 
-            <button data-submenu="submenu-events" class="storm-sidebar__item <?php echo (isSidebarActive('admin/manage_operations', $active_path) || isSidebarActive('campaigns', $active_path)) ? 'active expanded' : ''; ?>">
+            <button data-submenu="submenu-events"
+                class="storm-sidebar__item <?php echo (isSidebarActive('admin/manage_operations', $active_path) || isSidebarActive('campaigns', $active_path)) ? 'active expanded' : ''; ?>">
                 <span class="storm-sidebar__item-icon"><i class="fas fa-calendar-alt"></i></span>
                 <span class="storm-sidebar__item-label">Events</span>
                 <span class="storm-sidebar__item-arrow"><i class="fas fa-chevron-right"></i></span>
                 <span class="storm-sidebar__tooltip">Events</span>
             </button>
-            <div id="submenu-events" class="storm-sidebar__submenu <?php echo (isSidebarActive('admin/manage_operations', $active_path) || isSidebarActive('campaigns', $active_path)) ? 'open' : ''; ?>">
-                <a href="/admin/manage_operations" class="storm-sidebar__subitem <?php echo isSidebarActive('admin/manage_operations', $active_path) ? 'active' : ''; ?>">
+            <div id="submenu-events"
+                class="storm-sidebar__submenu <?php echo (isSidebarActive('admin/manage_operations', $active_path) || isSidebarActive('campaigns', $active_path)) ? 'open' : ''; ?>">
+                <a href="/admin/manage_operations"
+                    class="storm-sidebar__subitem <?php echo isSidebarActive('admin/manage_operations', $active_path) ? 'active' : ''; ?>">
                     <span>Operations</span>
                 </a>
-                <a href="/campaigns" class="storm-sidebar__subitem <?php echo isSidebarActive('campaigns', $active_path) ? 'active' : ''; ?>">
+                <a href="/campaigns"
+                    class="storm-sidebar__subitem <?php echo isSidebarActive('campaigns', $active_path) ? 'active' : ''; ?>">
                     <span>Campaigns</span>
                 </a>
             </div>
 
-            <a href="/media" class="storm-sidebar__item <?php echo isSidebarActive('media', $active_path) ? 'active' : ''; ?>">
+            <a href="/media"
+                class="storm-sidebar__item <?php echo isSidebarActive('media', $active_path) ? 'active' : ''; ?>">
                 <span class="storm-sidebar__item-icon"><i class="fas fa-photo-video"></i></span>
                 <span class="storm-sidebar__item-label">Media</span>
                 <span class="storm-sidebar__tooltip">Media</span>
             </a>
-            
-            <a href="/donate" class="storm-sidebar__item <?php echo isSidebarActive('donate', $active_path) ? 'active' : ''; ?>">
+
+            <a href="/donate"
+                class="storm-sidebar__item <?php echo isSidebarActive('donate', $active_path) ? 'active' : ''; ?>">
                 <span class="storm-sidebar__item-icon"><i class="fas fa-donate"></i></span>
                 <span class="storm-sidebar__item-label">Donate</span>
                 <span class="storm-sidebar__tooltip">Donate</span>
@@ -122,19 +132,22 @@ try {
         <div class="storm-sidebar__section">
             <div class="storm-sidebar__section-label">Resources</div>
 
-            <a href="/intelligence" class="storm-sidebar__item <?php echo isSidebarActive('intelligence', $active_path) ? 'active' : ''; ?>">
+            <a href="/intelligence"
+                class="storm-sidebar__item <?php echo isSidebarActive('intelligence', $active_path) ? 'active' : ''; ?>">
                 <span class="storm-sidebar__item-icon"><i class="fas fa-satellite-dish"></i></span>
                 <span class="storm-sidebar__item-label">Intelligence</span>
                 <span class="storm-sidebar__tooltip">Intelligence</span>
             </a>
 
-            <a href="/chain" class="storm-sidebar__item <?php echo isSidebarActive('chain', $active_path) ? 'active' : ''; ?>">
+            <a href="/chain"
+                class="storm-sidebar__item <?php echo isSidebarActive('chain', $active_path) ? 'active' : ''; ?>">
                 <span class="storm-sidebar__item-icon"><i class="fas fa-sitemap"></i></span>
                 <span class="storm-sidebar__item-label">Chain of Command</span>
                 <span class="storm-sidebar__tooltip">Chain of Command</span>
             </a>
-            
-            <a href="/applications" class="storm-sidebar__item <?php echo isSidebarActive('applications', $active_path) ? 'active' : ''; ?>">
+
+            <a href="/applications"
+                class="storm-sidebar__item <?php echo isSidebarActive('applications', $active_path) ? 'active' : ''; ?>">
                 <span class="storm-sidebar__item-icon"><i class="fas fa-file-signature"></i></span>
                 <span class="storm-sidebar__item-label">Apply Now</span>
                 <span class="storm-sidebar__tooltip">Apply Now</span>

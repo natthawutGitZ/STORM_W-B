@@ -31,66 +31,76 @@ $tab_map = [
 ];
 $active_tab = isset($tab_map[$current_page]) ? $tab_map[$current_page] : 'members';
 ?>
-<div class="dashboard-container max-w-[1500px] mx-auto pt-0 pb-0 px-5">
+<div class="dashboard-container" style="padding-top: 20px; padding-bottom: 0;">
     <!-- Statistics Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-        <!-- Total Members -->
-        <div class="bg-surface-card border border-zinc-850 rounded-xl p-5 flex items-center justify-between hover:border-zinc-750 transition-colors group">
-            <div>
-                <h3 class="text-3xl font-bold text-white"><?php echo $member_stats['total']; ?></h3>
-                <p class="text-sm font-medium text-gray-400 mt-1 uppercase tracking-wider">Total Members</p>
+    <div
+        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 25px;">
+        <div class="stat-card-modern">
+            <div class="stat-content" style="flex: 1;">
+                <h3>
+                    <?php echo $member_stats['total']; ?>
+                </h3>
+                <p>Total Members</p>
             </div>
-            <div class="w-12 h-12 rounded-lg flex items-center justify-center bg-blue-500/10 text-blue-400 group-hover:scale-110 transition-transform">
-                <i class="fas fa-users text-xl"></i>
-            </div>
-        </div>
-        <!-- Active Duty -->
-        <div class="bg-surface-card border border-zinc-850 rounded-xl p-5 flex items-center justify-between hover:border-zinc-750 transition-colors group">
-            <div>
-                <h3 class="text-3xl font-bold text-white"><?php echo $member_stats['active']; ?></h3>
-                <p class="text-sm font-medium text-gray-400 mt-1 uppercase tracking-wider">Active Duty</p>
-            </div>
-            <div class="w-12 h-12 rounded-lg flex items-center justify-center bg-green-500/10 text-green-400 group-hover:scale-110 transition-transform">
-                <i class="fas fa-check-circle text-xl"></i>
+            <div class="stat-icon-wrapper" style="background: rgba(33, 150, 243, 0.1); color: #2196f3;">
+                <i class="fas fa-users"></i>
             </div>
         </div>
-        <!-- Inactive -->
-        <div class="bg-surface-card border border-zinc-850 rounded-xl p-5 flex items-center justify-between hover:border-zinc-750 transition-colors group">
-            <div>
-                <h3 class="text-3xl font-bold text-white"><?php echo $member_stats['inactive']; ?></h3>
-                <p class="text-sm font-medium text-gray-400 mt-1 uppercase tracking-wider">Inactive</p>
+        <div class="stat-card-modern">
+            <div class="stat-content" style="flex: 1;">
+                <h3>
+                    <?php echo $member_stats['active']; ?>
+                </h3>
+                <p>Active Duty</p>
             </div>
-            <div class="w-12 h-12 rounded-lg flex items-center justify-center bg-red-500/10 text-red-400 group-hover:scale-110 transition-transform">
-                <i class="fas fa-times-circle text-xl"></i>
+            <div class="stat-icon-wrapper" style="background: rgba(76, 175, 80, 0.1); color: #4caf50;">
+                <i class="fas fa-check-circle"></i>
             </div>
         </div>
-        <!-- Leave of Absence -->
-        <div class="bg-surface-card border border-zinc-850 rounded-xl p-5 flex items-center justify-between hover:border-zinc-750 transition-colors group">
-            <div>
-                <h3 class="text-3xl font-bold text-white"><?php echo $member_stats['loa']; ?></h3>
-                <p class="text-sm font-medium text-gray-400 mt-1 uppercase tracking-wider">Leave of Absence</p>
+        <div class="stat-card-modern">
+            <div class="stat-content" style="flex: 1;">
+                <h3>
+                    <?php echo $member_stats['inactive']; ?>
+                </h3>
+                <p>Inactive</p>
             </div>
-            <div class="w-12 h-12 rounded-lg flex items-center justify-center bg-orange-500/10 text-orange-400 group-hover:scale-110 transition-transform">
-                <i class="fas fa-pause-circle text-xl"></i>
+            <div class="stat-icon-wrapper" style="background: rgba(244, 67, 54, 0.1); color: #f44336;">
+                <i class="fas fa-times-circle"></i>
+            </div>
+        </div>
+        <div class="stat-card-modern">
+            <div class="stat-content" style="flex: 1;">
+                <h3>
+                    <?php echo $member_stats['loa']; ?>
+                </h3>
+                <p>Leave of Absence</p>
+            </div>
+            <div class="stat-icon-wrapper" style="background: rgba(255, 152, 0, 0.1); color: #ff9800;">
+                <i class="fas fa-pause-circle"></i>
             </div>
         </div>
     </div>
 
-    <!-- Navigation Tabs -->
-    <div class="flex gap-2 overflow-x-auto whitespace-nowrap border-b border-zinc-800 pb-2 mb-6 member-nav-tabs">
-        <a href="profile" class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all <?php echo $active_tab === 'members' ? 'bg-gold/10 text-gold border border-gold/20' : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'; ?>">
+    <div style="margin: 0 0 20px 0; border-bottom: 1px solid #333; display: flex; gap: 10px; overflow-x: auto; white-space: nowrap; padding-bottom: 5px;"
+        class="member-nav-tabs">
+        <a href="profile" class="tab-link <?php echo $active_tab === 'members' ? 'active' : ''; ?>"
+            style="padding: 10px 15px; color: #aaa; text-decoration: none; border-bottom: 2px solid transparent; transition: all 0.3s; flex-shrink: 0; <?php echo $active_tab === 'members' ? 'color: var(--accent-color); border-bottom-color: var(--accent-color);' : ''; ?>">
             <i class="fas fa-users"></i> Members
         </a>
-        <a href="ranks" class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all <?php echo $active_tab === 'ranks' ? 'bg-gold/10 text-gold border border-gold/20' : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'; ?>">
+        <a href="ranks" class="tab-link <?php echo $active_tab === 'ranks' ? 'active' : ''; ?>"
+            style="padding: 10px 15px; color: #aaa; text-decoration: none; border-bottom: 2px solid transparent; transition: all 0.3s; flex-shrink: 0; <?php echo $active_tab === 'ranks' ? 'color: var(--accent-color); border-bottom-color: var(--accent-color);' : ''; ?>">
             <i class="fas fa-layer-group"></i> Ranks
         </a>
-        <a href="awards" class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all <?php echo $active_tab === 'awards' ? 'bg-gold/10 text-gold border border-gold/20' : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'; ?>">
+        <a href="awards" class="tab-link <?php echo $active_tab === 'awards' ? 'active' : ''; ?>"
+            style="padding: 10px 15px; color: #aaa; text-decoration: none; border-bottom: 2px solid transparent; transition: all 0.3s; flex-shrink: 0; <?php echo $active_tab === 'awards' ? 'color: var(--accent-color); border-bottom-color: var(--accent-color);' : ''; ?>">
             <i class="fas fa-trophy"></i> Awards
         </a>
-        <a href="qualifications" class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all <?php echo $active_tab === 'qualifications' ? 'bg-gold/10 text-gold border border-gold/20' : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'; ?>">
+        <a href="qualifications" class="tab-link <?php echo $active_tab === 'qualifications' ? 'active' : ''; ?>"
+            style="padding: 10px 15px; color: #aaa; text-decoration: none; border-bottom: 2px solid transparent; transition: all 0.3s; flex-shrink: 0; <?php echo $active_tab === 'qualifications' ? 'color: var(--accent-color); border-bottom-color: var(--accent-color);' : ''; ?>">
             <i class="fas fa-graduation-cap"></i> Qualifications
         </a>
-        <a href="positions" class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all <?php echo $active_tab === 'positions' ? 'bg-gold/10 text-gold border border-gold/20' : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'; ?>">
+        <a href="positions" class="tab-link <?php echo $active_tab === 'positions' ? 'active' : ''; ?>"
+            style="padding: 10px 15px; color: #aaa; text-decoration: none; border-bottom: 2px solid transparent; transition: all 0.3s; flex-shrink: 0; <?php echo $active_tab === 'positions' ? 'color: var(--accent-color); border-bottom-color: var(--accent-color);' : ''; ?>">
             <i class="fas fa-user-tag"></i> Positions
         </a>
     </div>
