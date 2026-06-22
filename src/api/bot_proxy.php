@@ -333,7 +333,23 @@ switch ($action) {
         break;
 
     default:
-        echo json_encode(['error' => 'Unknown action']);
+        // Generic endpoint proxy: ?endpoint=/role-panels&method=GET
+        $endpoint = $_GET['endpoint'] ?? '';
+        $method = strtoupper($_GET['method'] ?? 'POST');
+        if ($endpoint) {
+            $data = [];
+            if ($method !== 'GET') {
+                $data = json_decode(file_get_contents('php://input'), true) ?: [];
+            }
+            $result = $api->request($endpoint, $data, $method);
+            // Unwrap nested data for direct API responses
+            if (!empty($result['success']) && isset($result['data'])) {
+                echo json_encode($result['data']);
+            } else {
+                echo json_encode($result);
+            }
+        } else {
+            echo json_encode(['error' => 'Unknown action']);
+        }
         break;
 }
-

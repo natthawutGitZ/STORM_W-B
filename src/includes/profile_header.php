@@ -13,5 +13,16 @@
 </head>
 
 <body>
-    <?php include ROOT_PATH . '/includes/navbar_pill.php'; ?>
-    <div style="height: 100px;"></div>
+    <link rel="stylesheet" href="<?php echo $rootPath ?? '/'; ?>assets/css/admin_sidebar.css?v=<?php echo time(); ?>">
+    <link rel="stylesheet" href="<?php echo $rootPath ?? '/'; ?>assets/css/admin_topbar.css?v=<?php echo time(); ?>">
+    <script src="<?php echo $rootPath ?? '/'; ?>assets/js/admin_sidebar.js" defer></script>
+    <script src="<?php echo $rootPath ?? '/'; ?>assets/js/admin_topbar.js" defer></script>
+
+    <?php $useAdminLayout = true; ?>
+    <div class="storm-admin-layout">
+        <?php include ROOT_PATH . '/includes/user_sidebar.php'; ?>
+        
+        <main class="storm-admin-content">
+            <?php include ROOT_PATH . '/includes/user_topbar.php'; ?>
+            <div class="storm-admin-page-body">
+                <!-- Main content continues here -->

@@ -15,9 +15,9 @@ class BotAPI
 
     /**
      * Send a request to the bot
-     * @param int $timeout Connection timeout in seconds. Default 3s for fast UI.
+     * @param int $timeout Connection timeout in seconds. Default 15s for stability.
      */
-    public function request($endpoint, $data = [], $method = 'POST', $timeout = 3)
+    public function request($endpoint, $data = [], $method = 'POST', $timeout = 15)
     {
         $url = $this->baseUrl . $endpoint;
         $ch = curl_init($url);
@@ -279,6 +279,60 @@ class BotAPI
             return $response['data'];
         }
         return ['success' => false, 'users' => []];
+    }
+    // ========== ROLE PANELS ==========
+
+    /**
+     * Get all role panels
+     */
+    public function getRolePanels()
+    {
+        $response = $this->request('/role-panels', [], 'GET');
+        if ($response['success'] && isset($response['data']['panels'])) {
+            return $response['data']['panels'];
+        }
+        return [];
+    }
+
+    /**
+     * Save (create/update) a role panel
+     */
+    public function saveRolePanel($data)
+    {
+        return $this->request('/role-panels', $data);
+    }
+
+    /**
+     * Delete a role panel
+     */
+    public function deleteRolePanel($panelId)
+    {
+        return $this->request('/role-panels', ['panel_id' => $panelId], 'DELETE');
+    }
+
+    /**
+     * Send a role panel to a Discord channel
+     */
+    public function sendRolePanel($panelId, $channelId)
+    {
+        return $this->request('/role-panels/send', [
+            'panel_id' => $panelId,
+            'channel_id' => $channelId
+        ]);
+    }
+
+    /**
+     * Initiate a Discord DM verification request
+     */
+    public function sendDMVerify($userId, $verifyId, $formTitle, $targetNumber, $buttons)
+    {
+        return $this->request('/dm/verify', [
+            'user_id' => $userId,
+            'verify_id' => $verifyId,
+            'form_title' => $formTitle,
+            'target_number' => $targetNumber,
+            'buttons' => $buttons
+        ]);
     }
 }
 ?>

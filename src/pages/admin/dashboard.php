@@ -164,7 +164,6 @@ try {
             WHERE viewed_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
             GROUP BY page_url, page_title
             ORDER BY views DESC
-            LIMIT 6
         ")->fetchAll();
 
         // Get daily breakdown for each top page (30 days)
@@ -407,6 +406,7 @@ include ROOT_PATH . '/admin/includes/admin_header.php';
         border: 1px solid rgba(255, 255, 255, 0.05);
         border-radius: 14px;
         padding: 18px;
+        min-width: 0; /* Prevent grid column blowout */
     }
 
     .chart-card-header {
@@ -471,6 +471,7 @@ include ROOT_PATH . '/admin/includes/admin_header.php';
     .chart-container {
         position: relative;
         height: 200px;
+        width: 100%;
     }
 
     /* ========== ACTIVITY LIST ========== */
@@ -929,7 +930,7 @@ include ROOT_PATH . '/admin/includes/admin_header.php';
                     <h4 style="margin: 0 0 12px 0; font-size: 0.8rem; color: rgba(255,255,255,0.5); font-weight: 600;">
                         <i class="fas fa-fire" style="color: #c5a059; margin-right: 6px;"></i>Top Pages Trends
                     </h4>
-                    <div style="position: relative; height: 220px;">
+                    <div style="position: relative; height: 220px; width: 100%;">
                         <canvas id="topPagesChart"></canvas>
                     </div>
                 </div>
@@ -1248,6 +1249,21 @@ include ROOT_PATH . '/admin/includes/admin_header.php';
 </script>
 
 <script>
+    // Fix Chart.js tooltip coordinates when body has CSS zoom
+    (function() {
+        const zoomFixPlugin = {
+            id: 'cssZoomFix',
+            beforeEvent(chart, args) {
+                const zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
+                if (zoom !== 1 && args.event) {
+                    args.event.x = args.event.x / zoom;
+                    args.event.y = args.event.y / zoom;
+                }
+            }
+        };
+        Chart.register(zoomFixPlugin);
+    })();
+
     document.addEventListener('DOMContentLoaded', function () {
         Chart.defaults.font.family = "'Inter', sans-serif";
 
@@ -1255,10 +1271,31 @@ include ROOT_PATH . '/admin/includes/admin_header.php';
         let pageViewsChart = null;
         let topPagesSpline = null;
 
+        function toLocalISODate(d) {
+            const z = n => ('0' + n).slice(-2);
+            return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate());
+        }
+
         function filterDataByDays(days) {
+            const arr = [];
             const now = new Date();
-            const cutoff = new Date(now.getTime() - (days * 86400000));
-            return allPageViewsData.filter(item => new Date(item.date) >= cutoff);
+            const dateMap = {};
+            
+            // Map existing data by date string (YYYY-MM-DD)
+            allPageViewsData.forEach(item => {
+                dateMap[item.date] = parseInt(item.views);
+            });
+
+            // Generate exactly 'days' number of days ending today
+            for (let i = days - 1; i >= 0; i--) {
+                const d = new Date(now.getTime() - i * 86400000);
+                const dateString = toLocalISODate(d);
+                arr.push({
+                    date: dateString,
+                    views: dateMap[dateString] || 0
+                });
+            }
+            return arr;
         }
 
         function updateChart(days) {
@@ -1342,7 +1379,7 @@ include ROOT_PATH . '/admin/includes/admin_header.php';
                         const arr = [], now = new Date();
                         for (let i = days - 1; i >= 0; i--) {
                             const d = new Date(now.getTime() - i * 86400000);
-                            arr.push(d.toISOString().split('T')[0]);
+                            arr.push(toLocalISODate(d));
                         }
                         return arr;
                     }
@@ -1440,7 +1477,4 @@ include ROOT_PATH . '/admin/includes/admin_header.php';
         });
     });
 </script>
-
-</body>
-
-</html>
+<?php include ROOT_PATH . '/admin/includes/admin_footer.php'; ?>

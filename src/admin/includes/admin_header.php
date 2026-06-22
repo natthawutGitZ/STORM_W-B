@@ -54,7 +54,7 @@ if (!isset($GLOBALS['_page_tracked'])) {
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Admin Panel | S.T.O.R.M.âš¡</title>
+    <title>Admin Panel | S.T.O.R.M.⚡</title>
 
     <link rel="icon" href="<?php echo $assetsPath; ?>/images/logo.png">
 
@@ -66,11 +66,6 @@ if (!isset($GLOBALS['_page_tracked'])) {
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 
-    <style>
-        body {
-            zoom: 0.8;
-        }
-    </style>
 
 </head>
 
@@ -78,16 +73,15 @@ if (!isset($GLOBALS['_page_tracked'])) {
 
 <body>
 
-    <?php include __DIR__ . '/../../includes/navbar_pill.php'; ?>
-    <!-- Spacer -->
-    <div style="height: 100px;"></div>
-
-
-
-    
-
-
-
-    <div style="padding-top: 30px;">
-
-        <?php include __DIR__ . '/modals.php'; ?>
+    <link rel="stylesheet" href="<?php echo $assetsPath; ?>/css/admin_sidebar.css?v=<?php echo time(); ?>">
+    <link rel="stylesheet" href="<?php echo $assetsPath; ?>/css/admin_topbar.css?v=<?php echo time(); ?>">
+    <script src="/assets/js/admin_sidebar.js" defer></script>
+    <script src="/assets/js/admin_topbar.js" defer></script>
+    <div class="storm-admin-layout">
+        <?php include __DIR__ . '/admin_sidebar_v3.php'; ?>
+        
+        <main class="storm-admin-content">
+            <?php include __DIR__ . '/admin_topbar.php'; ?>
+            <div class="storm-admin-page-body">
+                <?php include __DIR__ . '/modals.php'; ?>
+                <!-- Main page content continues below, footer must close </main></div> -->

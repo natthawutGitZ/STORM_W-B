@@ -1398,418 +1398,6 @@ async def handle_set_welcome_sound(request):
         print(f"Error setting welcome sound: {e}")
         return web.json_response({'error': str(e)}, status=500)
 
-async def play_welcome_sound_in_channel(self, voice_client):
-    """Play welcome sound in the current voice channel (bot must already be connected)"""
-    try:
-        sound_path = '/app/sounds/welcome.mp3'
-        
-        if not os.path.exists(sound_path):
-            print("⚠️ Welcome sound file not found")
-            return
-        
-        # Check if already playing
-        if voice_client.is_playing():
-            print("⚠️ Already playing audio, skipping")
-            return
-        
-        # Create FFmpeg audio source from local file
-        source = discord.FFmpegPCMAudio(sound_path)
-        
-        # Play the audio
-        voice_client.play(source, after=lambda e: print(f'Player error: {e}') if e else None)
-        print("🔊 Playing welcome sound...")
-        
-        # Wait for audio to finish (non-blocking)
-        while voice_client.is_playing():
-            await asyncio.sleep(0.5)
-        
-        print("✅ Welcome sound finished")
-        # Note: We do NOT disconnect after playing - bot stays in channel
-        
-    except Exception as e:
-        print(f"Error playing welcome sound: {e}")
-
-async def on_voice_state_update(self, member, before, after):
-    """Called when a member changes voice state (join/leave/mute/etc.)"""
-    # Ignore bot's own changes
-    if member.bot:
-        return
-        
-    # --- Voice Logs System ---
-    try:
-        logs_enabled = r.get('voice_logs_enabled') == 'true'
-        log_channel_id = r.get('voice_logs_channel_id')
-        
-        if logs_enabled and log_channel_id:
-            log_channel = self.get_channel(int(log_channel_id))
-            if log_channel:
-                # Joined a channel
-                if before.channel is None and after.channel is not None:
-                    embed = discord.Embed(
-                        description=f"⬇️ {member.mention} joined voice channel 🔊 | **{after.channel.name}**",
-                        color=discord.Color.from_str('#43b581') # Green
-                    )
-                    embed.set_author(name=member.name, icon_url=member.display_avatar.url if member.display_avatar else None)
-                    embed.add_field(name="IDs", value=f"```ini\nUser = {member.id}\nVoice Channel = {after.channel.id}\n```", inline=False)
-                    embed.set_footer(text=f"{self.user.name} • Today at {datetime.now(BANGKOK_TZ).strftime('%H:%M')}", icon_url=self.user.display_avatar.url if self.user.display_avatar else None)
-                    await log_channel.send(embed=embed)
-                    
-                # Left a channel
-                elif before.channel is not None and after.channel is None:
-                    embed = discord.Embed(
-                        description=f"⬆️ {member.mention} left voice channel 🔊 | **{before.channel.name}**",
-                        color=discord.Color.from_str('#f04747') # Red
-                    )
-                    embed.set_author(name=member.name, icon_url=member.display_avatar.url if member.display_avatar else None)
-                    embed.add_field(name="IDs", value=f"```ini\nUser = {member.id}\nVoice Channel = {before.channel.id}\n```", inline=False)
-                    embed.set_footer(text=f"{self.user.name} • Today at {datetime.now(BANGKOK_TZ).strftime('%H:%M')}", icon_url=self.user.display_avatar.url if self.user.display_avatar else None)
-                    await log_channel.send(embed=embed)
-                    
-                # Switched channels
-                elif before.channel is not None and after.channel is not None and before.channel.id != after.channel.id:
-                    embed = discord.Embed(
-                        description=f"➡️ {member.mention} switched voice channels\nFrom 🔊 | **{before.channel.name}** to 🔊 | **{after.channel.name}**",
-                        color=discord.Color.from_str('#faa61a') # Yellow/Orange
-                    )
-                    embed.set_author(name=member.name, icon_url=member.display_avatar.url if member.display_avatar else None)
-                    embed.add_field(name="IDs", value=f"```ini\nUser = {member.id}\nOld = {before.channel.id}\nNew = {after.channel.id}\n```", inline=False)
-                    embed.set_footer(text=f"{self.user.name} • Today at {datetime.now(BANGKOK_TZ).strftime('%H:%M')}", icon_url=self.user.display_avatar.url if self.user.display_avatar else None)
-                    await log_channel.send(embed=embed)
-    except Exception as e:
-        print(f"❌ Error sending voice log: {e}")
-        
-    # Check if user joined a voice channel (was not in one before, now is)
-    if before.channel is None and after.channel is not None:
-        try:
-            # Check if welcome system is enabled
-            enabled = r.get('welcome_sound_enabled') == 'true'
-            if not enabled:
-                return
-            
-            # Check target channel filter
-            target_channel_id = r.get('welcome_sound_channel')
-            if target_channel_id and str(after.channel.id) != target_channel_id:
-                return
-            
-            print(f"🔊 Welcome triggered for {member.display_name} joining {after.channel.name}")
-            
-            # Check if sound file exists
-            sound_path = '/app/sounds/welcome.mp3'
-            has_sound = os.path.exists(sound_path)
-            
-            # --- Play Welcome Sound ---
-            if has_sound:
-                voice_client = None
-                was_already_connected = False
-                
-                try:
-                    # Check if bot is already in a voice channel in this guild
-                    existing_vc = after.channel.guild.voice_client
-                    if existing_vc and existing_vc.is_connected():
-                        was_already_connected = True
-                        if existing_vc.channel.id != after.channel.id:
-                            await existing_vc.move_to(after.channel)
-                        voice_client = existing_vc
-                    else:
-                        # Auto-join the channel
-                        voice_client = await after.channel.connect()
-                    
-                    # Wait before playing (configurable delay)
-                    delay = int(r.get('welcome_sound_delay') or 2)
-                    if delay > 0:
-                        await asyncio.sleep(delay)
-                    
-                    # Play the welcome sound
-                    await self.play_welcome_sound_in_channel(voice_client)
-                    
-                except Exception as e:
-                    print(f"❌ Error playing welcome sound: {e}")
-                finally:
-                    # Disconnect after playing (only if we auto-joined)
-                    if not was_already_connected and voice_client and voice_client.is_connected():
-                        try:
-                            await voice_client.disconnect()
-                            print(f"📴 Disconnected from {after.channel.name} after welcome sound")
-                        except Exception as e:
-                            print(f"⚠️ Error disconnecting: {e}")
-            
-            # --- Send Welcome DM ---
-            message_text = r.get('welcome_message_text')
-            dropdown_json = r.get('welcome_dropdown_options')
-            
-            if message_text or dropdown_json:
-                try:
-                    options_data = json.loads(dropdown_json) if dropdown_json else []
-                except:
-                    options_data = []
-
-                try:
-                    link_buttons = json.loads(r.get('welcome_link_buttons') or '[]')
-                except:
-                    link_buttons = []
-                    
-                view = WelcomeView(options_data, link_buttons) if (options_data or link_buttons) else None
-                final_text = message_text.replace('{user}', member.mention) if message_text else f"Welcome {member.mention}!"
-                
-                try:
-                    await member.send(content=final_text, view=view)
-                    print(f"📨 Sent welcome DM to {member.name}")
-                except discord.Forbidden:
-                    print(f"❌ Failed to DM {member.name}: DMs disabled")
-                except Exception as e:
-                    print(f"❌ Error sending welcome DM: {e}")
-            
-        except Exception as e:
-            print(f"Welcome sound error: {e}")
-
-async def on_member_remove(self, member):
-    """Called when a member leaves the server"""
-    try:
-        # Check if server leave is enabled
-        enabled = r.get('server_leave_enabled') == 'true'
-        if not enabled:
-            return
-            
-        channel_id = r.get('server_leave_channel_id')
-        if not channel_id:
-            return
-            
-        channel = self.get_channel(int(channel_id))
-        if not channel:
-            return
-            
-        # Process message content
-        message_content = r.get('server_leave_message') or ''
-        message_content = message_content.replace('{user}', member.name)
-        message_content = message_content.replace('{server}', member.guild.name)
-        message_content = message_content.replace('{count}', str(member.guild.member_count))
-        
-        use_embed = r.get('server_leave_use_embed') == 'true'
-        
-        if use_embed:
-            title = (r.get('server_leave_embed_title') or 'User Left').replace('{user}', member.name)
-            description = (r.get('server_leave_embed_description') or '').replace('{user}', member.name)
-            color_hex = r.get('server_leave_embed_color') or '#f04747'
-            
-            try:
-                color = discord.Color.from_str(color_hex)
-            except:
-                color = discord.Color.red()
-                
-            embed = discord.Embed(
-                title=title,
-                description=description,
-                color=color
-            )
-            
-            embed.set_author(name=f"{member.name} left", icon_url=member.display_avatar.url if member.display_avatar else None)
-            embed.timestamp = datetime.now()
-            
-            if message_content:
-                await channel.send(content=message_content, embed=embed)
-            else:
-                await channel.send(embed=embed)
-        else:
-            if message_content:
-                await channel.send(content=message_content)
-                
-        print(f"✅ Sent server leave to {channel.name} for {member.name}")
-        
-    except Exception as e:
-        print(f"❌ Error sending server leave message: {e}")
-
-async def on_member_join(self, member):
-    """Called when a new member joins the server"""
-    print(f"👋 Member Joined: {member.name} (ID: {member.id})")
-    
-    try:
-        # Check if enabled
-        enabled = r.get('server_welcome_enabled') == 'true'
-        if not enabled:
-            return
-
-        channel_id = r.get('server_welcome_channel_id')
-        if not channel_id:
-            return
-
-        channel = self.get_channel(int(channel_id))
-        if not channel:
-            print(f"⚠️ Welcome Channel ID {channel_id} not found")
-            return
-
-        message_content = r.get('server_welcome_message') or ''
-        # Simple placeholder replacement
-        message_content = message_content.replace('{user}', member.mention)
-        message_content = message_content.replace('{server}', member.guild.name)
-        message_content = message_content.replace('{count}', str(member.guild.member_count))
-
-        # Download banner image as file attachment
-        external_image = r.get('server_welcome_external_image')
-        file_attachment = None
-        
-        if external_image:
-            try:
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(external_image) as resp:
-                        if resp.status == 200:
-                            image_data = await resp.read()
-                            # Get filename from URL or use default
-                            filename = external_image.split('/')[-1].split('?')[0]
-                            if not filename or '.' not in filename:
-                                filename = 'banner.png'
-                            file_attachment = discord.File(io.BytesIO(image_data), filename=filename)
-                            print(f"✅ Downloaded banner image: {filename}")
-            except Exception as img_err:
-                print(f"Failed to download banner image: {img_err}")
-                # Fallback: add URL to message if download fails
-                if message_content:
-                    message_content += f"\n{external_image}"
-                else:
-                    message_content = external_image
-        
-        use_embed = r.get('server_welcome_use_embed') == 'true'
-
-        if use_embed:
-            title = (r.get('server_welcome_embed_title') or 'Welcome!').replace('{user}', member.name)
-            description = (r.get('server_welcome_embed_description') or '').replace('{user}', member.mention)
-            color_hex = r.get('server_welcome_embed_color') or '#5865f2'
-            image_url = r.get('server_welcome_image_url')
-
-            try:
-                color = discord.Color.from_str(color_hex)
-            except:
-                color = discord.Color.blue()
-
-            embed = discord.Embed(
-                title=title,
-                description=description,
-                color=color
-            )
-            
-            if image_url:
-                embed.set_image(url=image_url)
-            
-            embed.set_thumbnail(url=member.display_avatar.url)
-            embed.set_footer(text=f"User ID: {member.id}")
-            embed.timestamp = datetime.now()
-
-            # Send: file first (banner), then message content after
-            if file_attachment:
-                await channel.send(file=file_attachment)
-                if message_content:
-                    await channel.send(content=message_content, embed=embed)
-                else:
-                    await channel.send(embed=embed)
-            else:
-                await channel.send(content=message_content, embed=embed)
-            print(f"✅ Sent server welcome to {channel.name} for {member.name}")
-        else:
-            # Non-embed mode: send banner first, then message
-            if file_attachment:
-                await channel.send(file=file_attachment)
-                if message_content:
-                    await channel.send(content=message_content)
-            elif message_content:
-                await channel.send(content=message_content)
-            print(f"✅ Sent server welcome (text) to {channel.name} for {member.name}")
-
-    except Exception as e:
-        print(f"❌ Error sending server welcome message: {e}")
-
-
-async def on_message(self, message):
-    """Discord Feed System: Capture messages from monitored channels"""
-    # Skip bot messages
-    if message.author.bot:
-        return
-    
-    # Skip DMs
-    if not message.guild:
-        return
-    
-    try:
-        # Get monitored channels from Redis
-        monitored_channels = self.get_feed_monitored_channels()
-        channel_id = str(message.channel.id)
-        
-        if channel_id not in monitored_channels:
-            return
-        
-        # Store message to database
-        await self.store_feed_message(message)
-        print(f"📥 Feed: Stored message from #{message.channel.name} by {message.author.name}")
-        
-    except Exception as e:
-        print(f"❌ Feed on_message error: {e}")
-
-def get_feed_monitored_channels(self):
-    """Get list of channel IDs being monitored for feed"""
-    try:
-        # Try to get from Redis cache first
-        cached = r.get('feed_monitored_channels')
-        if cached:
-            return json.loads(cached)
-        
-        # Fallback: return empty (settings not configured yet)
-        return []
-    except:
-        return []
-
-async def store_feed_message(self, message: discord.Message):
-    """Store a Discord message to the feed database"""
-    # Extract attachments
-    attachments = []
-    for att in message.attachments:
-        attachments.append({
-            'url': att.url,
-            'filename': att.filename,
-            'content_type': att.content_type,
-            'size': att.size
-        })
-    
-    # Determine message type
-    has_images = any(att.get('content_type', '').startswith('image/') for att in attachments)
-    has_files = len(attachments) > 0 and not has_images
-    
-    if has_images and message.content:
-        msg_type = 'mixed'
-    elif has_images:
-        msg_type = 'image'
-    elif has_files:
-        msg_type = 'file'
-    else:
-        msg_type = 'text'
-    
-    # Extract embeds (for link previews)
-    embeds_data = []
-    for embed in message.embeds:
-        if embed.type == 'rich' or embed.type == 'link':
-            embeds_data.append({
-                'title': embed.title,
-                'description': embed.description,
-                'url': embed.url,
-                'thumbnail': str(embed.thumbnail.url) if embed.thumbnail else None,
-                'image': str(embed.image.url) if embed.image else None
-            })
-    
-    # Prepare data for API
-    data = {
-        'channel_id': str(message.channel.id),
-        'message_id': str(message.id),
-        'author_id': str(message.author.id),
-        'author_name': message.author.display_name,
-        'author_avatar': str(message.author.display_avatar.url),
-        'content': message.content,
-        'attachments': attachments,
-        'embeds': embeds_data,
-        'message_type': msg_type,
-        'discord_created_at': message.created_at.isoformat()
-    }
-    
-    # Store via internal API (will be handled by PHP side)
-    # For now, store directly to Redis for the PHP API to pick up
-    r.lpush('feed_messages_queue', json.dumps(data))
-    r.ltrim('feed_messages_queue', 0, 999)  # Keep last 1000 messages in queue
 
 # --- FEED API HANDLERS ---
 
@@ -2147,6 +1735,38 @@ async def handle_set_voice_logs(request):
         print(f"Set voice logs error: {e}")
         return web.json_response({'error': str(e)}, status=500)
 
+async def _download_banner_image(image_url: str):
+    """Download banner image from URL with internal Docker fallback.
+    Returns discord.File or None if download fails.
+    """
+    urls_to_try = [image_url]
+    
+    # If URL is external, add internal Docker fallback (http://web/assets/uploads/...)
+    if '/assets/uploads/' in image_url:
+        path = '/assets/uploads/' + image_url.split('/assets/uploads/')[-1]
+        internal_url = f'http://web{path}'
+        if internal_url != image_url:
+            urls_to_try.append(internal_url)
+    
+    for url in urls_to_try:
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as resp:
+                    if resp.status == 200:
+                        image_data = await resp.read()
+                        filename = image_url.split('/')[-1].split('?')[0]
+                        if not filename or '.' not in filename:
+                            filename = 'banner.png'
+                        print(f"✅ Downloaded banner image: {filename} ({len(image_data)} bytes) from {url}", flush=True)
+                        return discord.File(io.BytesIO(image_data), filename=filename)
+                    else:
+                        print(f"⚠️ Banner download got status {resp.status} from {url}", flush=True)
+        except Exception as e:
+            print(f"⚠️ Banner download failed from {url}: {e}", flush=True)
+    
+    print(f"❌ All banner download attempts failed for: {image_url}", flush=True)
+    return None
+
 async def handle_test_server_welcome(request):
     self = request.app['bot']
     """Send a test server welcome message"""
@@ -2169,21 +1789,13 @@ async def handle_test_server_welcome(request):
         
         # Download banner image as file attachment
         banner_image = data.get('banner_image', '')
+        print(f"DEBUG: banner_image in payload is '{banner_image}'", flush=True)
         file_attachment = None
         
         if banner_image:
-            try:
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(banner_image) as resp:
-                        if resp.status == 200:
-                            image_data = await resp.read()
-                            # Get filename from URL or use default
-                            filename = banner_image.split('/')[-1].split('?')[0]
-                            if not filename or '.' not in filename:
-                                filename = 'banner.png'
-                            file_attachment = discord.File(io.BytesIO(image_data), filename=filename)
-            except Exception as img_err:
-                print(f"Failed to download banner image: {img_err}")
+            print(f"DEBUG: Calling _download_banner_image({banner_image})", flush=True)
+            file_attachment = await _download_banner_image(banner_image)
+            if not file_attachment:
                 # Fallback: add URL to message
                 if message_content:
                     message_content += f"\n{banner_image}"
@@ -2216,8 +1828,12 @@ async def handle_test_server_welcome(request):
             embed.set_footer(text="🔔 This is a TEST welcome message")
             embed.timestamp = datetime.now()
             
-            await channel.send(file=file_attachment)
-            await channel.send(content=message_content or None, embed=embed)
+            if file_attachment:
+                await channel.send(file=file_attachment)
+            if message_content:
+                await channel.send(content=message_content, embed=embed)
+            else:
+                await channel.send(embed=embed)
         else:
             final_content = message_content if message_content else ""
             final_content += "\n\n*🔔 This is a TEST welcome message*"
@@ -2235,6 +1851,253 @@ async def handle_test_server_welcome(request):
         return web.json_response({'success': True})
     except Exception as e:
         print(f"Test server welcome error: {e}")
+        return web.json_response({'error': str(e)}, status=500)
+
+# ========== ROLE PANELS (Button Role Assignment) ==========
+
+async def handle_get_role_panels(request):
+    """Get all role panels"""
+    try:
+        panels = DatabaseService.get_role_panels()
+        # Convert datetime objects to strings for JSON serialization
+        for p in panels:
+            for k, v in p.items():
+                if hasattr(v, 'isoformat'):
+                    p[k] = v.isoformat()
+        return web.json_response({'success': True, 'panels': panels})
+    except Exception as e:
+        print(f"[ERROR] handle_get_role_panels: {e}", flush=True)
+        return web.json_response({'error': str(e)}, status=500)
+
+async def handle_save_role_panel(request):
+    """Create or update a role panel config"""
+    try:
+        data = await request.json()
+        panel_id = data.get('panel_id')
+        if not panel_id:
+            panel_id = f"rp_{int(time.time())}"
+            data['panel_id'] = panel_id
+
+        success = DatabaseService.save_role_panel(data)
+        if success:
+            return web.json_response({'success': True, 'panel_id': panel_id})
+        else:
+            return web.json_response({'error': 'Failed to save panel'}, status=500)
+    except Exception as e:
+        print(f"[ERROR] handle_save_role_panel: {e}", flush=True)
+        return web.json_response({'error': str(e)}, status=500)
+
+async def handle_delete_role_panel(request):
+    """Delete a role panel"""
+    try:
+        data = await request.json()
+        panel_id = data.get('panel_id')
+        if not panel_id:
+            return web.json_response({'error': 'Missing panel_id'}, status=400)
+
+        # Try to delete the Discord message too
+        panel = DatabaseService.get_role_panel(panel_id)
+        if panel and panel.get('channel_id') and panel.get('message_id'):
+            self = request.app['bot']
+            try:
+                ch = self.get_channel(int(panel['channel_id']))
+                if ch:
+                    msg = await ch.fetch_message(int(panel['message_id']))
+                    await msg.delete()
+            except Exception:
+                pass
+
+        deleted = DatabaseService.delete_role_panel(panel_id)
+        return web.json_response({'success': deleted})
+    except Exception as e:
+        print(f"[ERROR] handle_delete_role_panel: {e}", flush=True)
+        return web.json_response({'error': str(e)}, status=500)
+
+async def handle_send_role_panel(request):
+    """Send (or re-send) a role panel embed with buttons to a Discord channel"""
+    self = request.app['bot']
+    try:
+        data = await request.json()
+        panel_id = data.get('panel_id')
+        channel_id = data.get('channel_id')
+
+        if not panel_id or not channel_id:
+            return web.json_response({'error': 'Missing panel_id or channel_id'}, status=400)
+
+        panel = DatabaseService.get_role_panel(panel_id)
+        if not panel:
+            return web.json_response({'error': 'Panel not found'}, status=404)
+
+        channel = self.get_channel(int(channel_id))
+        if not channel:
+            return web.json_response({'error': 'Channel not found'}, status=404)
+
+        # Build embed
+        title = panel.get('title', 'Role Selection')
+        description = panel.get('description', 'Click a button below to get/remove a role.')
+        color_hex = panel.get('embed_color', '#5865F2')
+        try:
+            color_int = int(color_hex.replace('#', ''), 16)
+        except:
+            color_int = 0x5865F2
+
+        embed = discord.Embed(
+            title=title,
+            description=description,
+            color=color_int,
+            timestamp=datetime.now()
+        )
+        mode_label = 'Toggle' if panel.get('mode', 'toggle') == 'toggle' else 'Give Only'
+        embed.set_footer(text=f'Role Panel • {mode_label}')
+
+        # Build buttons
+        buttons_data = panel.get('buttons', [])
+        if isinstance(buttons_data, str):
+            buttons_data = json.loads(buttons_data)
+
+        view = discord.ui.View(timeout=None)
+        color_map = {
+            'blue': discord.ButtonStyle.blurple,
+            'blurple': discord.ButtonStyle.blurple,
+            'green': discord.ButtonStyle.green,
+            'red': discord.ButtonStyle.red,
+            'grey': discord.ButtonStyle.grey,
+            'gray': discord.ButtonStyle.grey,
+        }
+
+        for i, btn in enumerate(buttons_data):
+            role_id = btn.get('role_id', '')
+            label = btn.get('label', f'Role {i+1}')
+            emoji = btn.get('emoji') or None
+            btn_color = btn.get('color', 'blurple')
+            style = color_map.get(btn_color, discord.ButtonStyle.blurple)
+
+            button = discord.ui.Button(
+                label=label,
+                style=style,
+                emoji=emoji,
+                custom_id=f'role_assign:{panel_id}:{role_id}'
+            )
+            view.add_item(button)
+
+        # Delete old message if exists
+        old_msg_id = panel.get('message_id')
+        if old_msg_id:
+            try:
+                old_ch_id = panel.get('channel_id')
+                if old_ch_id:
+                    old_ch = self.get_channel(int(old_ch_id))
+                    if old_ch:
+                        old_msg = await old_ch.fetch_message(int(old_msg_id))
+                        await old_msg.delete()
+            except Exception:
+                pass
+
+        msg = await channel.send(embed=embed, view=view)
+
+        # Save message reference
+        DatabaseService.update_role_panel_message(panel_id, channel.id, msg.id)
+        # Also update channel_id + guild_id in the panel
+        DatabaseService.save_role_panel({
+            **{k: v for k, v in panel.items() if not hasattr(v, 'isoformat')},
+            'channel_id': str(channel.id),
+            'message_id': str(msg.id),
+            'guild_id': str(channel.guild.id) if channel.guild else None,
+            'buttons': buttons_data
+        })
+
+        return web.json_response({'success': True, 'message_id': str(msg.id)})
+
+    except Exception as e:
+        print(f"[ERROR] handle_send_role_panel: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        return web.json_response({'error': str(e)}, status=500)
+
+async def handle_steam_proxy(request):
+    """Proxy for Steam API requests to bypass local network blocking."""
+    try:
+        url = request.query.get('url')
+        if not url:
+            return web.json_response({'error': 'Missing url parameter'}, status=400)
+            
+        async with aiohttp.ClientSession() as session:
+            if request.method == 'POST':
+                # Forward POST data
+                post_data = await request.read()
+                headers = {'Content-Type': request.headers.get('Content-Type', 'application/x-www-form-urlencoded')}
+                async with session.post(url, data=post_data, headers=headers) as response:
+                    text = await response.text()
+                    return web.Response(text=text, headers={'Content-Type': response.headers.get('Content-Type', 'text/plain')})
+            else:
+                # GET request
+                async with session.get(url) as response:
+                    if response.status == 200:
+                        try:
+                            data = await response.json()
+                            return web.json_response(data)
+                        except:
+                            text = await response.text()
+                            return web.Response(text=text, headers={'Content-Type': response.headers.get('Content-Type', 'application/json')})
+                    else:
+                        return web.json_response({'error': f'Steam API returned {response.status}'}, status=response.status)
+    except Exception as e:
+        print(f"Steam Proxy error: {e}", flush=True)
+        return web.json_response({'error': str(e)}, status=500)
+
+async def handle_dm_verify(request):
+    """Handle request to send DM verification button to a user."""
+    try:
+        data = await request.json()
+        bot = request.app['bot']
+        
+        user_id = data.get('user_id')
+        verify_id = data.get('verify_id')
+        form_title = data.get('form_title')
+        target_number = data.get('target_number')
+        buttons = data.get('buttons', [])
+        
+        if not user_id or not verify_id or not buttons:
+            return web.json_response({'error': 'Missing required fields'}, status=400)
+            
+        user = bot.get_user(int(user_id))
+        if not user:
+            try:
+                user = await bot.fetch_user(int(user_id))
+            except discord.NotFound:
+                return web.json_response({'error': 'User not found'}, status=404)
+            except discord.HTTPException as e:
+                return web.json_response({'error': f'Failed to fetch user: {e}'}, status=500)
+                
+        # Create embed
+        embed = discord.Embed(
+            title="🔐 ยืนยันตัวตน (Verification)",
+            description=f"คุณกำลังส่งแบบฟอร์ม: **{form_title}**\n\nโปรดกดปุ่มหมายเลข **ที่แสดงบนหน้าเว็บไซต์** ด้านล่างเพื่อให้การส่งแบบฟอร์มเสร็จสมบูรณ์\n\n*(หมายเหตุ: การกดปุ่มผิดอาจทำให้การส่งถูกปฏิเสธ)*",
+            color=0xc5a059
+        )
+        embed.set_footer(text="S.T.O.R.M System • กรุณายืนยันภายใน 5 นาที")
+        
+        # Create view with buttons
+        view = discord.ui.View(timeout=300) # 5 mins timeout
+        
+        for num in buttons:
+            # We encode verify_id and the number in the custom_id
+            custom_id = f"form_verify:{verify_id}:{num}"
+            button = discord.ui.Button(
+                label=str(num),
+                style=discord.ButtonStyle.primary,
+                custom_id=custom_id
+            )
+            view.add_item(button)
+            
+        try:
+            await user.send(embed=embed, view=view)
+            return web.json_response({'success': True})
+        except discord.Forbidden:
+            return web.json_response({'error': 'User has DMs disabled or blocked the bot'}, status=403)
+            
+    except Exception as e:
+        print(f"Error in handle_dm_verify: {e}", flush=True)
         return web.json_response({'error': str(e)}, status=500)
 
 async def start_server(bot):
@@ -2292,6 +2155,9 @@ async def start_server(bot):
         app.router.add_post('/feed/settings', handle_save_feed_settings)
         app.router.add_get('/feed/messages', handle_get_feed_messages)
         
+        # DM Routes
+        app.router.add_post('/dm/verify', handle_dm_verify)
+        
         # Role Assignment Route
         app.router.add_post('/roles/assign', handle_assign_role)
         
@@ -2304,6 +2170,16 @@ async def start_server(bot):
         # User Lookup Routes
         app.router.add_get('/users/lookup', handle_lookup_user)
         app.router.add_get('/users/filtered', handle_get_filtered_users)
+        
+        # Role Panel Routes (Button Role Assignment)
+        app.router.add_get('/role-panels', handle_get_role_panels)
+        app.router.add_post('/role-panels', handle_save_role_panel)
+        app.router.add_delete('/role-panels', handle_delete_role_panel)
+        app.router.add_post('/role-panels/send', handle_send_role_panel)
+        
+        # Steam Proxy
+        app.router.add_get('/proxy/steam', handle_steam_proxy)
+        app.router.add_post('/proxy/steam', handle_steam_proxy)
         
         runner = web.AppRunner(app)
         await runner.setup()

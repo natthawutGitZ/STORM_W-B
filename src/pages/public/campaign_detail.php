@@ -1,6 +1,7 @@
 <?php
 require_once ROOT_PATH . '/includes/db.php';
 require_once ROOT_PATH . '/includes/functions.php';
+require_once ROOT_PATH . '/includes/track_pageview.php';
 
 $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if (!$id) {
@@ -16,6 +17,8 @@ try {
     if (!$campaign) {
         redirect('campaigns.php');
     }
+
+    trackPageView($pdo, 'Campaign: ' . $campaign['title']);
 
     // Chapters
     $stmt = $pdo->prepare("SELECT * FROM campaign_chapters WHERE campaign_id = ? ORDER BY sort_order ASC, event_date ASC");

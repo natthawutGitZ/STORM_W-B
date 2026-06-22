@@ -580,6 +580,25 @@ function convertLinksToButtons($text) {
             display: none;
         }
 
+        /* SweetAlert Custom Theme */
+        .storm-swal-popup {
+            background: rgba(20, 20, 24, 0.95) !important;
+            backdrop-filter: blur(20px) !important;
+            -webkit-backdrop-filter: blur(20px) !important;
+            border: 1px solid rgba(197, 160, 89, 0.2) !important;
+            border-radius: 16px !important;
+            color: #fff !important;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5) !important;
+        }
+
+        .storm-swal-popup .swal2-title {
+            color: #c5a059 !important;
+        }
+
+        .storm-swal-popup .swal2-html-container {
+            color: #ccc !important;
+        }
+
         /* Discord User Picker Styles */
         .discord-user-picker {
             margin-top: 10px;
@@ -1363,6 +1382,41 @@ function convertLinksToButtons($text) {
 
         document.getElementById('publicForm').addEventListener('submit', async function (e) {
             e.preventDefault();
+            
+            // Check if discord picker is used to get discord ID
+            let discordUserId = '';
+            let discordVerified = false;
+            const discordInputs = document.querySelectorAll('input[id^="discord-user-"]');
+            for (let input of discordInputs) {
+                try {
+                    const data = JSON.parse(input.value);
+                    if (data && data.id) {
+                        discordUserId = data.id;
+                        if (data.verified) {
+                            discordVerified = true;
+                        }
+                        break;
+                    }
+                } catch (e) {
+                    // Not a JSON input
+                }
+            }
+
+            // If a discord user is selected but not verified, prevent submission
+            if (discordUserId && !discordVerified) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'ยังไม่ได้ยืนยันตัวตน',
+                    text: 'กรุณาเลือก Discord Account และยืนยันตัวตนให้สำเร็จก่อนส่งฟอร์ม',
+                    customClass: { popup: 'storm-swal-popup' }
+                });
+                return;
+            }
+
+            submitActualForm(this);
+        });
+        
+        async function submitActualForm(formElement) {
             const btn = document.getElementById('submitBtn');
             const loadingOverlay = document.getElementById('loadingOverlay');
             
@@ -1370,7 +1424,7 @@ function convertLinksToButtons($text) {
             loadingOverlay.classList.add('active');
             btn.disabled = true;
 
-            const formData = new FormData(this);
+            const formData = new FormData(formElement);
 
             try {
                 const res = await fetch('admin/form_actions.php', {
@@ -1381,6 +1435,13 @@ function convertLinksToButtons($text) {
 
                 if (data.success) {
                     localStorage.removeItem(storageKey); // Clear saved data on success
+                    
+                    // If login info returned, handle it
+                    if (data.login_token) {
+                        // We could potentially set a session here via fetch, but the backend handles session creation
+                        // So we just show success and redirect
+                    }
+                    
                     // Hide loading, show success
                     loadingOverlay.classList.remove('active');
                     document.getElementById('successOverlay').style.display = 'flex';
@@ -1395,7 +1456,7 @@ function convertLinksToButtons($text) {
                 alert('An error occurred.');
                 btn.disabled = false;
             }
-        });
+        }
 
         // ===== DISCORD USER PICKER =====
         let discordUsersCache = null;
@@ -1528,33 +1589,171 @@ function convertLinksToButtons($text) {
             renderDiscordUsers(questionId, filtered);
         }
 
-        function selectDiscordUser(questionId, userId, displayName, avatar, username) {
-            // Set hidden input value (store as JSON with all info)
-            const hiddenInput = document.getElementById(`discord-user-${questionId}`);
-            if (hiddenInput) {
-                hiddenInput.value = JSON.stringify({
-                    id: userId,
-                    display_name: displayName,
-                    username: username,
-                    avatar: avatar
-                });
-            }
-            
-            // Update selected display
-            const selectedContent = document.querySelector(`#discord-picker-${questionId} .discord-selected-content`);
-            if (selectedContent) {
-                selectedContent.innerHTML = `
-                    <img src="${avatar || 'assets/images/default_avatar.png'}" class="discord-selected-avatar" onerror="this.src='assets/images/default_avatar.png'">
-                    <span class="discord-selected-text" style="color: #fff;">${displayName} <span style="color: var(--text-muted);">@${username}</span></span>
-                `;
-            }
-            
+        async function selectDiscordUser(questionId, userId, displayName, avatar, username) {
             // Close dropdown and remove z-index from parent
             const container = document.querySelector(`#discord-picker-${questionId} .discord-dropdown-container`);
             if (container) {
                 container.classList.remove('open');
                 const parentCard = container.closest('.question-card');
                 if (parentCard) parentCard.classList.remove('has-dropdown-open');
+            }
+
+            // Trigger Verification Flow
+            Swal.fire({
+                title: 'กำลังเชื่อมต่อ...',
+                text: 'กำลังส่งคำขอยืนยันตัวตนไปยัง Discord',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                },
+                customClass: { popup: 'storm-swal-popup' }
+            });
+
+            try {
+                // 1. Request verification
+                const verifyForm = new FormData();
+                verifyForm.append('discord_user_id', userId);
+                verifyForm.append('form_id', formId);
+                verifyForm.append('form_title', "<?php echo addslashes($form['title']); ?>");
+
+                const reqRes = await fetch('api/discord_verify_request.php', {
+                    method: 'POST',
+                    body: verifyForm
+                });
+                const reqData = await reqRes.json();
+
+                if (!reqData.success) {
+                    let errorText = reqData.error || 'Failed to initiate verification';
+                    if (reqData.detail) {
+                        errorText += '\n\nDetail: ' + reqData.detail;
+                    }
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: errorText,
+                        customClass: { popup: 'storm-swal-popup' }
+                    });
+                    return;
+                }
+
+                const verifyId = reqData.verify_id;
+                const targetNumber = reqData.target_number;
+
+                // 2. Show polling alert to user
+                Swal.fire({
+                    title: '🔐 ยืนยันตัวตนใน Discord',
+                    html: `
+                        <div style="margin: 20px 0;">
+                            <p>บอทได้ส่งข้อความ DM ไปหาคุณแล้ว</p>
+                            <p style="font-size: 1.1rem; margin-top: 15px;">กรุณากดปุ่มหมายเลข:</p>
+                            <div style="font-size: 3.5rem; font-weight: bold; color: #c5a059; letter-spacing: 5px; text-shadow: 0 0 20px rgba(197,160,89,0.5); margin: 10px 0;">
+                                ${targetNumber}
+                            </div>
+                            <p style="color: #f04747; font-size: 0.9rem; margin-top: 15px;">
+                                <i class="fas fa-exclamation-triangle"></i> หากกดผิด คุณจะต้องเลือก User ใหม่อีกครั้ง
+                            </p>
+                            <p id="verify-countdown" style="color: #94a3b8; font-size: 0.95rem; margin-top: 15px; font-weight: 600;">
+                                เหลือเวลา 02:00
+                            </p>
+                        </div>
+                    `,
+                    showConfirmButton: false,
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                        
+                        let timeLeft = 120;
+                        const countdownEl = document.getElementById('verify-countdown');
+                        const timerInterval = setInterval(() => {
+                            timeLeft--;
+                            if (timeLeft <= 0) {
+                                clearInterval(timerInterval);
+                                if (countdownEl) countdownEl.innerHTML = '<span style="color: #f04747;">หมดเวลา</span>';
+                            } else {
+                                const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+                                const s = (timeLeft % 60).toString().padStart(2, '0');
+                                if (countdownEl) countdownEl.innerHTML = `เหลือเวลา ${m}:${s}`;
+                            }
+                        }, 1000);
+                        
+                        // 3. Start Polling
+                        const pollInterval = setInterval(async () => {
+                            try {
+                                const pollRes = await fetch(`api/discord_verify_status.php?verify_id=${verifyId}`);
+                                const pollData = await pollRes.json();
+                                
+                                if (pollData.success) {
+                                    if (pollData.status === 'success') {
+                                        clearInterval(pollInterval);
+                                        clearInterval(timerInterval);
+                                        
+                                        Swal.fire({
+                                            icon: 'success',
+                                            title: '✅ ยืนยันสำเร็จ',
+                                            text: 'ยืนยันตัวตน Discord เรียบร้อยแล้ว',
+                                            timer: 2000,
+                                            showConfirmButton: false,
+                                            customClass: { popup: 'storm-swal-popup' }
+                                        });
+
+                                        // Set hidden input value (store as JSON with all info)
+                                        const hiddenInput = document.getElementById(`discord-user-${questionId}`);
+                                        if (hiddenInput) {
+                                            hiddenInput.value = JSON.stringify({
+                                                id: userId,
+                                                display_name: displayName,
+                                                username: username,
+                                                avatar: avatar,
+                                                verified: true
+                                            });
+                                        }
+                                        
+                                        // Update selected display
+                                        const selectedContent = document.querySelector(`#discord-picker-${questionId} .discord-selected-content`);
+                                        if (selectedContent) {
+                                            selectedContent.innerHTML = `
+                                                <img src="${avatar || 'assets/images/default_avatar.png'}" class="discord-selected-avatar" onerror="this.src='assets/images/default_avatar.png'">
+                                                <span class="discord-selected-text" style="color: #fff;">${displayName} <span style="color: var(--text-muted);">@${username}</span></span>
+                                                <i class="fas fa-check-circle" style="color: #22c55e; margin-left: 10px;" title="Verified"></i>
+                                            `;
+                                        }
+                                        
+                                    } else if (pollData.status === 'failed') {
+                                        clearInterval(pollInterval);
+                                        clearInterval(timerInterval);
+                                        Swal.fire({
+                                            icon: 'error',
+                                            title: '❌ ยืนยันไม่สำเร็จ',
+                                            text: 'คุณกดหมายเลขไม่ถูกต้อง กรุณาเลือก User ใหม่อีกครั้ง',
+                                            customClass: { popup: 'storm-swal-popup' }
+                                        });
+                                    } else if (pollData.status === 'expired') {
+                                        clearInterval(pollInterval);
+                                        clearInterval(timerInterval);
+                                        Swal.fire({
+                                            icon: 'warning',
+                                            title: '⏱️ หมดเวลา',
+                                            text: 'หมดเวลายืนยันตัวตน กรุณาเลือก User ใหม่อีกครั้ง',
+                                            customClass: { popup: 'storm-swal-popup' }
+                                        });
+                                    }
+                                }
+                            } catch (e) {
+                                console.error('Polling error:', e);
+                            }
+                        }, 2000); // Poll every 2 seconds
+                    },
+                    customClass: { popup: 'storm-swal-popup' }
+                });
+            } catch (e) {
+                console.error('Verification flow error:', e);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Connection Error',
+                    text: 'ไม่สามารถติดต่อเซิร์ฟเวอร์ได้',
+                    customClass: { popup: 'storm-swal-popup' }
+                });
             }
         }
 

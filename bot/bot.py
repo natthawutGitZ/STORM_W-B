@@ -56,6 +56,7 @@ class CoreBot(commands.Bot):
             print("Checking Database Schema...")
             DatabaseService.ensure_schema()
             DatabaseService.ensure_reminder_schema()
+            DatabaseService.ensure_role_panels_schema()
         except Exception as e:
             print(f"Schema Check Failed: {e}")
 

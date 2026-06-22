@@ -1,0 +1,3072 @@
+const API='api/intelligence.php';
+let editState={};
+
+// ---- PLANOPS IMAGE PROXY (CORS fix) ----
+function planopsProxy(url) {
+    if (!url) return url;
+    if (url.indexOf('atlas.plan-ops.fr') !== -1) {
+        return 'api/planops_proxy.php?url=' + encodeURIComponent(url);
+    }
+    return url;
+}
+
+// ---- S2 AUTHORIZATION GATE ----
+let _authPass = sessionStorage.getItem('s2_auth') || '';
+let _authCallback = null;
+
+function getAuthPass() { return _authPass; }
+function isAuthed() { return !!_authPass; }
+
+function requireAuth(callback) {
+    if (isAuthed()) { callback(); return; }
+    _authCallback = callback;
+    document.getElementById('authPassInput').value = '';
+    document.getElementById('authError').style.display = 'none';
+    document.getElementById('authModal').classList.add('show');
+    setTimeout(() => document.getElementById('authPassInput').focus(), 200);
+}
+
+function submitAuth() {
+    const pass = document.getElementById('authPassInput').value;
+    if (!pass) return;
+    // Validate by making a test request to the API
+    fetch(API + '?action=create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pass, type: 'operations', fields: {} })
+    }).then(r => {
+        if (r.status === 403) {
+            document.getElementById('authError').style.display = 'block';
+            document.getElementById('authPassInput').value = '';
+            document.getElementById('authPassInput').style.borderColor = '#ff4c66';
+            setTimeout(() => { document.getElementById('authPassInput').style.borderColor = '#333'; }, 1500);
+            return;
+        }
+        // Auth success — store password
+        _authPass = pass;
+        sessionStorage.setItem('s2_auth', pass);
+        closeModal('authModal');
+        if (_authCallback) { _authCallback(); _authCallback = null; }
+    }).catch(() => {
+        document.getElementById('authError').style.display = 'block';
+    });
+}
+
+// Helper: get PLANOPS marker image tag by symbol name
+function _getMarkerImgTag(symbolName, size) {
+    if (window.PLANOPS_DATA && window.PLANOPS_DATA.markers) {
+        var m = window.PLANOPS_DATA.markers.find(function(mk) { return mk.name === symbolName; });
+        if (m) {
+            var imgUrl = planopsProxy(m.imageWebp || m.imagePng);
+            if (m.isColorCompatible) {
+                // Color-compatible markers are white/light — use CSS mask with dark color so they show on white bg
+                return '<span style="display:inline-block;width:' + size + 'px;height:' + size + 'px;background:#333;' +
+                       '-webkit-mask-image:url(' + imgUrl + ');mask-image:url(' + imgUrl + ');' +
+                       '-webkit-mask-size:contain;mask-size:contain;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;' +
+                       '-webkit-mask-position:center;mask-position:center;vertical-align:middle;"></span>';
+            }
+            return '<img src="' + imgUrl + '" width="' + size + '" height="' + size + '" style="object-fit:contain;vertical-align:middle;" />';
+        }
+    }
+    return '<span style="display:inline-block;width:' + size + 'px;height:' + size + 'px;background:#555;border-radius:50%;"></span>';
+}
+
+// Enter key support for auth modal
+document.addEventListener('DOMContentLoaded', function() {
+    var inp = document.getElementById('authPassInput');
+    if (inp) inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') submitAuth(); });
+
+    // Auto-collapse sidebar on mobile
+    if (window.innerWidth <= 768) {
+        document.body.classList.add('sidebar-collapsed');
+    }
+
+    // Close sidebar when nav-item is clicked on mobile
+    document.querySelectorAll('.nav-item').forEach(function(item) {
+        item.addEventListener('click', function() {
+            if (window.innerWidth <= 768) {
+                document.body.classList.add('sidebar-collapsed');
+            }
+        });
+    });
+
+    // Initialize Choices.js for basic symbol dropdown with PLANOPS icon images
+    if (typeof Choices !== 'undefined' && document.getElementById('basicShape')) {
+        window.basicShapeChoices = new Choices('#basicShape', {
+            searchEnabled: true,
+            itemSelectText: '',
+            shouldSort: false,
+            callbackOnCreateTemplates: function(template) {
+                var self = this;
+                return {
+                    item: function(classNames, data) {
+                        var imgHtml = _getMarkerImgTag(data.value, 20);
+                        var el = document.createElement('div');
+                        el.className = classNames.item + ' ' + (data.highlighted ? classNames.highlightedState : classNames.itemSelectable);
+                        el.dataset.item = '';
+                        el.dataset.id = data.id;
+                        el.dataset.value = data.value;
+                        el.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px;">' + imgHtml + ' ' + data.label + '</span>';
+                        return el;
+                    },
+                    choice: function(classNames, data) {
+                        var imgHtml = _getMarkerImgTag(data.value, 22);
+                        var el = document.createElement('div');
+                        el.className = classNames.item + ' ' + classNames.itemChoice + ' ' + (data.disabled ? classNames.itemDisabled : classNames.itemSelectable);
+                        el.dataset.selectText = self.config.itemSelectText;
+                        el.dataset.choice = '';
+                        el.dataset.id = data.id;
+                        el.dataset.value = data.value;
+                        el.setAttribute('role', data.groupId > 0 ? 'treeitem' : 'option');
+                        el.innerHTML = '<span style="display:inline-flex;align-items:center;gap:8px;">' + imgHtml + ' ' + data.label + '</span>';
+                        return el;
+                    }
+                };
+            }
+        });
+    }
+});
+
+// Clock
+function updateClock(){
+  const d=new Date(),z=n=>String(n).padStart(2,'0');
+  const el=document.getElementById('clock');
+  if(el)el.innerHTML=z(d.getHours())+':'+z(d.getMinutes())+':'+z(d.getSeconds())+' ICT';
+}
+setInterval(updateClock,1000);updateClock();
+
+// UI Sound Effects (Web Audio API)
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+function playClick(){
+  if(!audioCtx) audioCtx = new AudioCtx();
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.connect(g);g.connect(audioCtx.destination);
+  o.type='sine';o.frequency.setValueAtTime(1200,audioCtx.currentTime);
+  g.gain.setValueAtTime(0.08,audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.08);
+  o.start();o.stop(audioCtx.currentTime+0.08);
+}
+function playHover(){
+  if(!audioCtx) audioCtx = new AudioCtx();
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.connect(g);g.connect(audioCtx.destination);
+  o.type='sine';o.frequency.setValueAtTime(800,audioCtx.currentTime);
+  g.gain.setValueAtTime(0.03,audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.04);
+  o.start();o.stop(audioCtx.currentTime+0.04);
+}
+document.querySelectorAll('.tab-btn,.nav-item,.map-tool-btn,.btn-s2,.layers-action-btn').forEach(el=>{
+  el.addEventListener('click',playClick);
+  el.addEventListener('mouseenter',playHover);
+});
+
+// Tabs (with persistence)
+function switchTab(tab){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.toggle('active',c.id==='tab-'+tab));
+  localStorage.setItem('intel_active_tab',tab);
+}
+document.querySelectorAll('.tab-btn,.nav-item').forEach(btn=>{
+  btn.addEventListener('click',()=>switchTab(btn.dataset.tab));
+});
+// Restore tab on page load — URL param takes priority
+(function(){
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlTab = urlParams.get('tab');
+  if (urlTab) { switchTab(urlTab); return; }
+  const saved=localStorage.getItem('intel_active_tab');
+  if(saved) switchTab(saved);
+})();
+
+// PDF Viewer Logic (PDF.js)
+let pdfDoc = null,
+    pageNum = 1,
+    pageRendering = false,
+    pageNumPending = null,
+    pdfCanvas = null,
+    pdfCtx = null,
+    currentRenderTask = null;
+
+// The workerSrc property shall be specified.
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+function renderPage(num, direction) {
+    // Cancel any in-progress render to avoid "Cannot use the same canvas" error
+    if (currentRenderTask) {
+        currentRenderTask.cancel();
+        currentRenderTask = null;
+    }
+    pageRendering = true;
+    
+    // Setup animation
+    if (pdfCanvas && direction) {
+        pdfCanvas.classList.remove('pdf-anim-next', 'pdf-anim-prev');
+        void pdfCanvas.offsetWidth; // Trigger reflow
+        pdfCanvas.classList.add(direction === 'next' ? 'pdf-anim-next' : 'pdf-anim-prev');
+    }
+
+    // Fetch page
+    pdfDoc.getPage(num).then(function(page) {
+        const container = document.getElementById('pdfCanvasWrap');
+        if (!container) return;
+
+        const containerW = container.clientWidth - 20;  // slight padding
+        const containerH = container.clientHeight - 20;
+
+        // Calculate scale to fit BOTH width and height (no scrollbar)
+        const unscaledViewport = page.getViewport({ scale: 1 });
+        const scaleW = containerW / unscaledViewport.width;
+        const scaleH = containerH / unscaledViewport.height;
+        const fitScale = Math.min(scaleW, scaleH);
+
+        const viewport = page.getViewport({ scale: fitScale });
+
+        pdfCanvas.width = viewport.width;
+        pdfCanvas.height = viewport.height;
+
+        const renderContext = {
+            canvasContext: pdfCtx,
+            viewport: viewport
+        };
+        currentRenderTask = page.render(renderContext);
+
+        currentRenderTask.promise.then(function() {
+            currentRenderTask = null;
+            pageRendering = false;
+            if (pageNumPending !== null) {
+                const pendingDir = pageNumPending > num ? 'next' : 'prev';
+                const pending = pageNumPending;
+                pageNumPending = null;
+                renderPage(pending, pendingDir);
+            }
+        }).catch(function(err) {
+            currentRenderTask = null;
+            pageRendering = false;
+            if (err.name !== 'RenderingCancelled') {
+                console.error('PDF render error:', err);
+            }
+        });
+    });
+
+    // Update page counters
+    document.getElementById('pdfPageNum').textContent = num;
+    document.getElementById('pdfPrev').disabled = num <= 1;
+    document.getElementById('pdfNext').disabled = num >= pdfDoc.numPages;
+}
+
+function queueRenderPage(num, direction) {
+    if (pageRendering) {
+        pageNumPending = num;
+    } else {
+        renderPage(num, direction);
+    }
+}
+
+function prevPage() {
+    if (!pdfDoc || pageNum <= 1) return;
+    pageNum--;
+    queueRenderPage(pageNum, 'prev');
+}
+
+function nextPage() {
+    if (!pdfDoc || pageNum >= pdfDoc.numPages) return;
+    pageNum++;
+    queueRenderPage(pageNum, 'next');
+}
+
+// Load the PDF once DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    pdfCanvas = document.getElementById('pdfRenderCanvas');
+    if (pdfCanvas) {
+        pdfCtx = pdfCanvas.getContext('2d');
+        const url = 'assets/Role/Joint OPS plan [ Edit-t ].pdf';
+        
+        pdfjsLib.getDocument(url).promise.then(function(pdfDoc_) {
+            pdfDoc = pdfDoc_;
+            document.getElementById('pdfPageCount').textContent = pdfDoc.numPages;
+            renderPage(pageNum, null);
+        }).catch(function(err) {
+            console.error('Error loading PDF:', err);
+        });
+    }
+
+    // Re-render on window resize so it always fits
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            if (pdfDoc) queueRenderPage(pageNum, null);
+        }, 200);
+    });
+
+    // Arrow key navigation (Left/Right)
+    document.addEventListener('keydown', (e) => {
+        // Only when DOCUMENT tab is active
+        const docTab = document.getElementById('tab-document');
+        if (!docTab || !docTab.classList.contains('active')) return;
+        // Don't capture if user is typing in an input
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+        
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            nextPage();
+        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            prevPage();
+        }
+    });
+
+    // Mouse scroll navigation (scroll up = prev, scroll down = next)
+    const canvasWrap = document.getElementById('pdfCanvasWrap');
+    if (canvasWrap) {
+        let scrollCooldown = false;
+        canvasWrap.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            if (scrollCooldown) return;
+            scrollCooldown = true;
+            
+            if (e.deltaY > 0) {
+                nextPage();
+            } else if (e.deltaY < 0) {
+                prevPage();
+            }
+            
+            // Cooldown to prevent rapid-fire page changes
+            setTimeout(() => { scrollCooldown = false; }, 350);
+        }, { passive: false });
+
+        // Touch swipe support for mobile (swipe left = next, swipe right = prev)
+        let touchStartX = 0;
+        let touchStartY = 0;
+        canvasWrap.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, { passive: true });
+
+        canvasWrap.addEventListener('touchend', (e) => {
+            const deltaX = e.changedTouches[0].screenX - touchStartX;
+            const deltaY = e.changedTouches[0].screenY - touchStartY;
+            // Only trigger if horizontal swipe is dominant and > 50px
+            if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+                if (deltaX < 0) {
+                    nextPage(); // swipe left = next
+                } else {
+                    prevPage(); // swipe right = prev
+                }
+            }
+        }, { passive: true });
+    }
+});
+
+function togglePdfFullscreen() {
+    const container = document.getElementById('pdfViewerContainer');
+    if (!document.fullscreenElement) {
+        if (container.requestFullscreen) {
+            container.requestFullscreen();
+        } else if (container.webkitRequestFullscreen) { /* Safari */
+            container.webkitRequestFullscreen();
+        } else if (container.msRequestFullscreen) { /* IE11 */
+            container.msRequestFullscreen();
+        }
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) { /* Safari */
+            document.webkitExitFullscreen();
+        } else if (document.msExitFullscreen) { /* IE11 */
+            document.msExitFullscreen();
+        }
+    }
+}
+
+let pdfLangEn = true;
+function togglePdfLanguage() {
+    pdfLangEn = !pdfLangEn;
+    document.getElementById('btnPdfLang').innerHTML = pdfLangEn ? '<i class="fas fa-language"></i> EN' : '<i class="fas fa-language"></i> TH';
+    // If you had a Thai PDF, you could load it here:
+    // const newUrl = pdfLangEn ? 'assets/Role/Joint OPS plan [ Edit-t ].pdf' : 'assets/Role/Joint OPS plan TH.pdf';
+    // pdfjsLib.getDocument(newUrl).promise.then(pdf => { pdfDoc = pdf; renderPage(1); });
+}
+
+function closeModal(id){document.getElementById(id).classList.remove('show');}
+
+// Data loading
+async function loadAll(){await Promise.all([loadOps(),loadIntel(),loadBrief()]);}
+
+async function loadOps(){
+  const r=await fetch(API+'?action=list&type=operations'),d=await r.json();
+  if(!d.success)return;
+  document.getElementById('opCount').textContent=d.data.length;
+  const sortiesList=document.getElementById('briefSortiesList');
+  if(!d.data.length){
+    sortiesList.innerHTML='<div style="color:#666;font-family:var(--mono);font-size:.75rem;padding:12px;">NO ACTIVE SORTIES</div>';
+    return;
+  }
+  sortiesList.innerHTML=d.data.map(o=>`
+    <div class="brief-sortie-row" ondblclick="openEditModal('operations',${o.id})">
+      <div class="brief-sortie-name"><i class="fas fa-chevron-right"></i> ${esc(o.codename)}</div>
+      <div class="brief-sortie-right">
+        <span class="brief-sortie-status">${esc(o.status)}</span>
+        <button class="brief-sortie-btn" onclick="event.stopPropagation();openEditModal('operations',${o.id})">OPEN SORTIE <i class="fas fa-arrow-right"></i></button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function loadIntel(){
+  const r=await fetch(API+'?action=list&type=reports'),d=await r.json();
+  if(!d.success)return;
+  document.getElementById('intelCount').textContent=d.data.length;
+  const el2=document.getElementById('intelCount2');if(el2)el2.textContent=d.data.length;
+  // Intel cards for brief
+  const cardsEl=document.getElementById('briefIntelCards');
+  if(cardsEl){
+    cardsEl.innerHTML=d.data.length?d.data.slice(0,6).map(o=>`
+      <div class="brief-intel-card" ondblclick="openEditModal('reports',${o.id})">
+        <div class="brief-intel-card-id">ID: ${String(o.id).padStart(7,'0')}</div>
+        <div class="brief-intel-card-title">${esc(o.title)}</div>
+        <div class="brief-intel-card-desc">${esc(o.content||'')}</div>
+        <div class="brief-intel-card-class">${esc(o.classification)}</div>
+      </div>
+    `).join(''):'<div style="color:#666;font-family:var(--mono);font-size:.75rem;">NO INTELLIGENCE REPORTS</div>';
+  }
+  // Full intel list for INTEL tab
+  const html=d.data.length?d.data.map(o=>renderItem('reports',o,`
+    <div class="item-row"><span class="item-name">${esc(o.title)}</span><span class="tag tag-${o.classification.replace(/\s/g,'').toLowerCase()}">${o.classification}</span></div>
+    <div class="item-desc">${esc(o.content||'')}</div>
+    <div class="item-meta"><span><i class="fas fa-satellite-dish"></i>${esc(o.source)}</span><span><i class="fas fa-clock"></i>${timeAgo(o.created_at)}</span></div>
+  `)).join(''):'<div class="empty">NO INTELLIGENCE REPORTS</div>';
+  const f=document.getElementById('intelListFull');if(f)f.innerHTML=html;
+}
+
+function renderItem(type,o,inner){
+  const actions=`<div class="item-actions"><button class="btn-icon" onclick="event.stopPropagation();openEditModal('${type}',${o.id})"><i class="fas fa-pen"></i></button><button class="btn-icon del" onclick="event.stopPropagation();deleteItem('${type}',${o.id})"><i class="fas fa-trash"></i></button></div>`;
+  return `<div class="item" ondblclick="openEditModal('${type}',${o.id})">${inner}${actions}</div>`;
+}
+
+// ---- OPERATION BRIEF (OPORD) ----
+async function loadBrief(){
+  try{
+    const r=await fetch(API+'?action=get_brief');
+    const d=await r.json();
+    if(d.success && d.data){
+      if(d.data.op_name) document.getElementById('briefOpName').textContent=d.data.op_name;
+      if(d.data.classification) document.getElementById('briefClassTag').textContent=d.data.classification;
+      if(d.data.status) document.getElementById('briefStatus').textContent=d.data.status;
+      if(d.data.ao_location) document.getElementById('briefAO').textContent=d.data.ao_location;
+      if(d.data.team) document.getElementById('briefTeam').textContent=d.data.team;
+      if(d.data.start_date) document.getElementById('briefStartDate').textContent=d.data.start_date;
+      if(d.data.opord) document.getElementById('briefOpordContent').innerHTML='<p>'+d.data.opord.replace(/\n/g,'</p><p>')+'</p>';
+      if(d.data.doc_title) document.getElementById('briefDocTitle').textContent=d.data.doc_title;
+    }
+  }catch(e){}
+}
+
+function toggleBriefEdit(){
+  requireAuth(function() {
+    const editor=document.getElementById('briefOpordEditor');
+    const content=document.getElementById('briefOpordContent');
+    if(editor.style.display==='none'){
+      editor.style.display='block';
+      content.style.display='none';
+      document.getElementById('briefOpordText').value=content.innerText.trim()==='No operation order loaded. Click EDIT OPORD to add briefing content.'?'':content.innerText;
+    }else{
+      cancelBriefEdit();
+    }
+  });
+}
+
+function cancelBriefEdit(){
+  document.getElementById('briefOpordEditor').style.display='none';
+  document.getElementById('briefOpordContent').style.display='block';
+}
+
+async function saveBrief(){
+  const opord=document.getElementById('briefOpordText').value;
+  try{
+    await fetch(API+'?action=save_brief',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({opord,password:getAuthPass()})});
+    document.getElementById('briefOpordContent').innerHTML=opord?'<p>'+esc(opord).replace(/\n/g,'</p><p>')+'</p>':'<p class="brief-placeholder">No operation order loaded.</p>';
+    cancelBriefEdit();
+  }catch(e){stormAlert('Failed to save', 'error');}
+}
+
+function exportBrief(){
+  const data={
+    doc_title:document.getElementById('briefDocTitle').textContent,
+    op_name:document.getElementById('briefOpName').textContent,
+    classification:document.getElementById('briefClassTag').textContent,
+    status:document.getElementById('briefStatus').textContent,
+    ao_location:document.getElementById('briefAO').textContent,
+    team:document.getElementById('briefTeam').textContent,
+    start_date:document.getElementById('briefStartDate').textContent,
+    opord:document.getElementById('briefOpordContent').innerText
+  };
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='opord_'+Date.now()+'.json';a.click();
+}
+
+// CRUD forms
+const FORMS={
+  operations:[{k:'codename',l:'Codename',t:'text'},{k:'status',l:'Status',t:'select',opts:['ACTIVE','COMPLETED','FAILED','PENDING']},{k:'priority',l:'Priority',t:'select',opts:['CRITICAL','HIGH','MEDIUM','LOW']},{k:'brief',l:'Brief',t:'textarea'},{k:'commander',l:'Commander',t:'text'}],
+  reports:[{k:'title',l:'Title',t:'text'},{k:'classification',l:'Classification',t:'select',opts:['TOP SECRET','SECRET','CONFIDENTIAL','UNCLASSIFIED']},{k:'content',l:'Content',t:'textarea'},{k:'source',l:'Source',t:'select',opts:['HUMINT','SIGINT','CYBER','OSINT','GEOINT']}]
+};
+
+function buildForm(type,data){
+  return FORMS[type].map(f=>{
+    const v=data?esc(String(data[f.k]||'')):'';
+    if(f.t==='select')return `<div class="field"><label>${f.l}</label><select id="f_${f.k}">${f.opts.map(o=>`<option value="${o}"${v===o?' selected':''}>${o}</option>`).join('')}</select></div>`;
+    if(f.t==='textarea')return `<div class="field"><label>${f.l}</label><textarea id="f_${f.k}">${v}</textarea></div>`;
+    return `<div class="field"><label>${f.l}</label><input type="${f.t}" id="f_${f.k}" value="${v}"></div>`;
+  }).join('');
+}
+
+function openCreateModal(type){
+  requireAuth(function() {
+    editState={type,id:null};
+    document.getElementById('editTitle').textContent='CREATE — '+type.toUpperCase();
+    document.getElementById('editBody').innerHTML=buildForm(type,null);
+    document.getElementById('editSave').onclick=()=>saveItem();
+    document.getElementById('editModal').classList.add('show');
+  });
+}
+
+async function openEditModal(type,id){
+  requireAuth(async function() {
+    const r=await fetch(API+'?action=list&type='+type),d=await r.json();
+    const item=d.data.find(x=>x.id==id);if(!item)return;
+    editState={type,id};
+    document.getElementById('editTitle').textContent='EDIT — '+type.toUpperCase();
+    document.getElementById('editBody').innerHTML=buildForm(type,item);
+    document.getElementById('editSave').onclick=()=>saveItem();
+    document.getElementById('editModal').classList.add('show');
+  });
+}
+
+async function saveItem(){
+  const fields={};FORMS[editState.type].forEach(f=>{fields[f.k]=document.getElementById('f_'+f.k).value;});
+  const body={password:getAuthPass(),type:editState.type,fields};
+  const action=editState.id?'update':'create';
+  if(editState.id)body.id=editState.id;
+  const r=await fetch(API+'?action='+action,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const d=await r.json();
+  if(d.success){closeModal('editModal');loadAll();}else{ if(d.error&&d.error.includes('ACCESS DENIED')){_authPass='';sessionStorage.removeItem('s2_auth');stormAlert('Session expired. Please re-authenticate.', 'error');}else stormAlert(d.error, 'error');}
+}
+
+async function deleteItem(type,id){
+  requireAuth(async function() {
+    if(!await stormConfirm('CONFIRM DELETE — This action cannot be undone'))return;
+    const r=await fetch(API+'?action=delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:getAuthPass(),type,id})});
+    const d=await r.json();if(d.success)loadAll();else{ if(d.error&&d.error.includes('ACCESS DENIED')){_authPass='';sessionStorage.removeItem('s2_auth');stormAlert('Session expired.', 'error');}else stormAlert(d.error, 'error');}
+  });
+}
+
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+function timeAgo(dt){
+  const diff=Math.floor((Date.now()-new Date(dt).getTime())/1000);
+  if(diff<60)return diff+'s ago';if(diff<3600)return Math.floor(diff/60)+'m ago';
+  if(diff<86400)return Math.floor(diff/3600)+'h ago';return Math.floor(diff/86400)+'d ago';
+}
+
+loadAll();
+
+// ==========================================
+// INTELLIGENCE MAP & MISSION PLANNING (ARMA3TACMAP PORT)
+// ==========================================
+let mapInst = null;
+let drawLayer = null;
+let currentMap = 'colombia';
+let gridLayer = null;
+let drawPollTimer = null;
+let currentArea = null;
+
+// ---- REAL-TIME MULTIPLAYER ----
+const RT_COLORS = ['#00ff41','#00e5ff','#ff4c66','#ffaa00','#aa00ff','#ffff00','#ff6600','#00cc44','#ff00aa','#66ccff'];
+let rtUserId = localStorage.getItem('map_user_id');
+let rtDisplayName = localStorage.getItem('map_display_name') || '';
+let rtUserColor = localStorage.getItem('map_user_color') || '';
+let rtCursorPos = null;
+let rtPresenceTimer = null;
+let rtCursorLayer = null;
+let rtCursorMarkers = {};
+let rtHeartbeatTimer = null;
+
+if (!rtUserId) {
+    rtUserId = 'user_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+    localStorage.setItem('map_user_id', rtUserId);
+}
+if (!rtDisplayName) {
+    rtDisplayName = 'Operator-' + rtUserId.substr(-4).toUpperCase();
+    localStorage.setItem('map_display_name', rtDisplayName);
+}
+if (!rtUserColor) {
+    rtUserColor = RT_COLORS[Math.floor(Math.random() * RT_COLORS.length)];
+    localStorage.setItem('map_user_color', rtUserColor);
+}
+
+// ---- PLANOPS MAP CONFIG ----
+// Uses MGRS_CRS from mapUtils.js (loaded from PLANOPS CDN)
+const MAP_CONFIG = {
+    tileUrl: 'api/planops_proxy.php?tile=1/maps/118/118/{z}/{x}/{y}.webp',
+    tileSize: 323, maxZoom: 6, minZoom: 0, defaultZoom: 2,
+    factorX: 0.01575, factorY: 0.01575, worldSize: 20480, center: [10250, 10250]
+};
+
+const ArmaCRS = MGRS_CRS(MAP_CONFIG.factorX, MAP_CONFIG.factorY, MAP_CONFIG.tileSize);
+
+function armaToLatLng(x, y) { return [y, x]; }
+function latLngToArma(latlng) { return { x: Math.round(latlng.lng), y: Math.round(latlng.lat) }; }
+
+// ---- CUSTOM UI STATE ----
+let currentDrawAction = null;
+let clickPosition = null;
+
+function setTool(toolName, btnEl) {
+    currentDrawAction = toolName;
+    document.querySelectorAll('.map-tool-btn').forEach(b => b.classList.remove('active'));
+    if (btnEl) btnEl.classList.add('active');
+    
+    // Clear pending drawings
+    clearVertexEditing();
+    if (currentLine) { currentLine.remove(); currentLine = null; }
+    if (currentMeasure) { currentMeasure.remove(); currentMeasure = null; }
+    if (currentMission) { currentMission.remove(); currentMission = null; }
+    if (currentArea) { currentArea.remove(); currentArea = null; }
+    if (freehandLine) { freehandLine.remove(); freehandLine = null; }
+    if (shapePreview) { shapePreview.remove(); shapePreview = null; }
+    freehandDrawing = false; freehandPoints = []; shapeDragging = false;
+    missionSelection = null;
+    
+    if (toolName === 'select' || toolName === 'freehand' || toolName === 'shapeDraw') { mapInst.dragging.disable(); } 
+    else { mapInst.dragging.enable(); }
+    
+    document.getElementById('intelMap').style.cursor = 
+        (toolName === 'pan') ? '' : 'crosshair';
+    
+    if (toolName === 'freehand') {
+        openMapModal('modalFreehandDraw');
+    }
+    if (toolName === 'mission') {
+        missionSelection = null;
+        openMapModal('modalMissionSelector');
+    }
+    if (toolName === 'shape') {
+        openMapModal('modalShapeTool');
+    }
+}
+
+// ---- ARMA3TACMAP PORTED LOGIC ----
+let allMarkers = {};
+let currentLine = null;
+let currentMeasure = null;
+let currentMission = null;
+let missionSelection = null;
+let modalMarkerId = null;
+let modalMarkerData = null;
+
+// ---- FREEHAND DRAW STATE ----
+let freehandDrawing = false;
+let freehandPoints = [];
+let freehandLine = null;
+let freehandStraight = false;
+let freehandStartPoint = null;
+
+// ---- SHAPE DRAW STATE ----
+let shapeConfig = { sides: 4, strokeColor: '#000000', fillColor: '#0066ff', fillOpacity: 0.2, weight: 3 };
+let shapeDragging = false;
+let shapeCenter = null;
+let shapePreview = null;
+
+// ---- VERTEX EDITING STATE ----
+let vertexMarkers = [];
+let vertexEditTarget = null;
+let vertexEditMarkerId = null;
+
+function clearVertexEditing() {
+    vertexMarkers.forEach(function(m) { m.remove(); });
+    vertexMarkers = [];
+    vertexEditTarget = null;
+    vertexEditMarkerId = null;
+}
+
+function showVertexHandles(polygon, markerId, markerData, backendRef) {
+    clearVertexEditing();
+    vertexEditTarget = polygon;
+    vertexEditMarkerId = markerId;
+    var isPolygonType = polygon.getLatLngs()[0] && Array.isArray(polygon.getLatLngs()[0]);
+    var latlngs = isPolygonType ? polygon.getLatLngs()[0] : polygon.getLatLngs();
+    latlngs.forEach(function(ll, idx) {
+        var handle = L.marker([ll.lat, ll.lng], {
+            draggable: true,
+            icon: L.divIcon({
+                className: 'vertex-handle',
+                iconSize: [12, 12],
+                iconAnchor: [6, 6]
+            })
+        }).addTo(mapInst);
+        handle._vertexIdx = idx;
+        handle.on('drag', function(e) {
+            var newLatLng = e.target.getLatLng();
+            var isPoly = vertexEditTarget.getLatLngs()[0] && Array.isArray(vertexEditTarget.getLatLngs()[0]);
+            var lls = isPoly ? vertexEditTarget.getLatLngs()[0] : vertexEditTarget.getLatLngs();
+            lls[idx] = newLatLng;
+            if (isPoly) vertexEditTarget.setLatLngs([lls]);
+            else vertexEditTarget.setLatLngs(lls);
+        });
+        handle.on('dragend', function() {
+            var isPoly = vertexEditTarget.getLatLngs()[0] && Array.isArray(vertexEditTarget.getLatLngs()[0]);
+            var lls = isPoly ? vertexEditTarget.getLatLngs()[0] : vertexEditTarget.getLatLngs();
+            var posFlat = lls.map(function(p) { return [p.lat, p.lng]; }).flat();
+            var md = vertexEditTarget.options.markerData;
+            md.pos = posFlat;
+            backendRef.moveMarker(vertexEditMarkerId, md);
+            // Sync all vertex handle positions
+            vertexMarkers.forEach(function(h, i) {
+                var pts = isPoly ? vertexEditTarget.getLatLngs()[0] : vertexEditTarget.getLatLngs();
+                if (pts[i]) h.setLatLng([pts[i].lat, pts[i].lng]);
+            });
+        });
+        vertexMarkers.push(handle);
+    });
+}
+
+// ---- CTRL+DRAG ROTATION STATE (Arma 3 style) ----
+let rotTarget = null;       // The Leaflet layer being rotated
+let rotMarkerId = null;     // Its marker ID
+let rotStartAngle = 0;     // Angle at rotation start (radians)
+let rotOrigAngle = 0;      // Original stored rotation (degrees)
+let rotCenter = null;       // Center point for rotation [lat, lng]
+let rotOrigLatLngs = null;  // For polygon: original points before rotation
+
+function getAngleFromCenter(center, latlng) {
+    var dx = latlng.lng - center[1];
+    var dy = latlng.lat - center[0];
+    return Math.atan2(dx, dy); // radians
+}
+
+// Helper: extract [lat, lng] from any format (LatLng object, [lat,lng] array, {lat,lng} object)
+function ptLat(p) { return Array.isArray(p) ? p[0] : p.lat; }
+function ptLng(p) { return Array.isArray(p) ? p[1] : p.lng; }
+
+// Check if latlngs is nested (polygon [[pts]] vs polyline [pts])
+function isNestedLatLngs(lls) {
+    return lls.length > 0 && Array.isArray(lls[0]);
+}
+
+function getPolygonCentroid(lls) {
+    var pts = isNestedLatLngs(lls) ? lls[0] : lls;
+    var lat = 0, lng = 0;
+    for (var i = 0; i < pts.length; i++) { lat += ptLat(pts[i]); lng += ptLng(pts[i]); }
+    return [lat / pts.length, lng / pts.length];
+}
+
+function rotatePointAround(center, point, angleDeg) {
+    var rad = angleDeg * Math.PI / 180;
+    var cos = Math.cos(rad), sin = Math.sin(rad);
+    var dy = ptLat(point) - center[0];
+    var dx = ptLng(point) - center[1];
+    return [
+        center[0] + dy * cos - dx * sin,
+        center[1] + dy * sin + dx * cos
+    ];
+}
+
+function startRotation(target, markerId, latlng) {
+    rotTarget = target;
+    rotMarkerId = markerId;
+    var md = target.options.markerData;
+
+    if (target.getLatLngs) {
+        // Polygon / Polyline
+        var lls = target.getLatLngs();
+        rotOrigLatLngs = JSON.parse(JSON.stringify(lls));
+        rotCenter = getPolygonCentroid(lls);
+        rotOrigAngle = 0;
+    } else {
+        // Point marker (mil/basic)
+        rotCenter = [target.getLatLng().lat, target.getLatLng().lng];
+        rotOrigAngle = md.config ? (md.config._rotation || 0) : 0;
+    }
+    rotStartAngle = getAngleFromCenter(rotCenter, latlng);
+    mapInst.dragging.disable();
+}
+
+function doRotation(latlng) {
+    if (!rotTarget) return;
+    var currentAngle = getAngleFromCenter(rotCenter, latlng);
+    var deltaRad = currentAngle - rotStartAngle;
+    var deltaDeg = deltaRad * 180 / Math.PI;
+
+    if (rotTarget.getLatLngs) {
+        // Rotate polygon/polyline points (rotOrigLatLngs is JSON-parsed: points are [lat,lng] arrays)
+        var orig = rotOrigLatLngs;
+        if (isNestedLatLngs(orig)) {
+            var rotated = orig.map(function(ring) {
+                return ring.map(function(pt) { return rotatePointAround(rotCenter, pt, deltaDeg); });
+            });
+            rotTarget.setLatLngs(rotated);
+        } else {
+            var rotated = orig.map(function(pt) { return rotatePointAround(rotCenter, pt, deltaDeg); });
+            rotTarget.setLatLngs(rotated);
+        }
+    } else {
+        // Point marker — apply CSS rotation to inner wrapper (not _icon, which Leaflet controls)
+        var totalDeg = rotOrigAngle + deltaDeg;
+        var wrap = rotTarget._icon ? rotTarget._icon.querySelector('.marker-rotate-wrap') : null;
+        if (wrap) wrap.style.transform = 'rotate(' + totalDeg + 'deg)';
+    }
+}
+
+function endRotation(latlng) {
+    if (!rotTarget) return;
+    var currentAngle = getAngleFromCenter(rotCenter, latlng);
+    var deltaRad = currentAngle - rotStartAngle;
+    var deltaDeg = deltaRad * 180 / Math.PI;
+    var md = rotTarget.options.markerData;
+
+    if (rotTarget.getLatLngs) {
+        // Save rotated polygon points
+        var lls = rotTarget.getLatLngs();
+        var pts = isNestedLatLngs(lls) ? lls[0] : lls;
+        var posFlat = pts.map(function(p) { return [p.lat, p.lng]; }).flat();
+        md.pos = posFlat;
+        backend.updateMarkerToLayer(rotMarkerId, null, md);
+    } else {
+        // Save rotation for point markers
+        if (!md.config) md.config = {};
+        md.config._rotation = (rotOrigAngle + deltaDeg) % 360;
+        backend.updateMarkerToLayer(rotMarkerId, null, md);
+    }
+    rotTarget = null;
+    rotMarkerId = null;
+    rotOrigLatLngs = null;
+    mapInst.dragging.enable();
+}
+
+// ---- CTRL+SHIFT+DRAG SCALE STATE ----
+let scaleTarget = null;
+let scaleMarkerId = null;
+let scaleCenter = null;
+let scaleStartDist = 0;
+let scaleOrigLatLngs = null;
+
+function getDistFromCenter(center, latlng) {
+    var dx = latlng.lng - center[1];
+    var dy = latlng.lat - center[0];
+    return Math.sqrt(dx * dx + dy * dy);
+}
+
+function scalePointAround(center, point, factor) {
+    var lat = ptLat(point), lng = ptLng(point);
+    return [
+        center[0] + (lat - center[0]) * factor,
+        center[1] + (lng - center[1]) * factor
+    ];
+}
+
+function startScale(target, markerId, latlng) {
+    scaleTarget = target;
+    scaleMarkerId = markerId;
+    var lls = target.getLatLngs();
+    scaleOrigLatLngs = JSON.parse(JSON.stringify(lls));
+    scaleCenter = getPolygonCentroid(lls);
+    scaleStartDist = getDistFromCenter(scaleCenter, latlng);
+    if (scaleStartDist < 1) scaleStartDist = 1;
+    mapInst.dragging.disable();
+}
+
+function doScale(latlng) {
+    if (!scaleTarget) return;
+    var currentDist = getDistFromCenter(scaleCenter, latlng);
+    var factor = currentDist / scaleStartDist;
+    if (factor < 0.05) factor = 0.05;
+    var orig = scaleOrigLatLngs;
+    if (isNestedLatLngs(orig)) {
+        var scaled = orig.map(function(ring) {
+            return ring.map(function(pt) { return scalePointAround(scaleCenter, pt, factor); });
+        });
+        scaleTarget.setLatLngs(scaled);
+    } else {
+        var scaled = orig.map(function(pt) { return scalePointAround(scaleCenter, pt, factor); });
+        scaleTarget.setLatLngs(scaled);
+    }
+}
+
+function endScale(latlng) {
+    if (!scaleTarget) return;
+    var lls = scaleTarget.getLatLngs();
+    var pts = isNestedLatLngs(lls) ? lls[0] : lls;
+    var posFlat = pts.map(function(p) { return [p.lat, p.lng]; }).flat();
+    var md = scaleTarget.options.markerData;
+    md.pos = posFlat;
+    backend.updateMarkerToLayer(scaleMarkerId, null, md);
+    scaleTarget = null;
+    scaleMarkerId = null;
+    scaleOrigLatLngs = null;
+    mapInst.dragging.enable();
+}
+
+// ---- POINT MARKER DRAG STATE ----
+let ptDragActiveId = null;
+
+// ---- POLY DRAG STATE (for moving lines/shapes/polygons) ----
+let polyDragTarget = null;
+let polyDragStartLatLng = null;
+let polyDragOrigLatLngs = null;
+let polyDragMoved = false;
+let polyDragLiveTimer = null;
+
+// Throttled live position broadcast during drag (so other users see movement)
+function broadcastDragPosition() {
+    if (!polyDragTarget || !polyDragMoved) return;
+    var md = polyDragTarget.options.markerData;
+    var mid = polyDragTarget.options.markerId;
+    if (!md || !md.pos) return;
+    var dlat = 0, dlng = 0;
+    if (polyDragStartLatLng && polyDragOrigLatLngs) {
+        var lls = polyDragTarget.getLatLngs ? polyDragTarget.getLatLngs() : null;
+        if (lls) {
+            // Compute flat pos from current visual latlngs
+            var flat = [];
+            var pts = lls;
+            if (Array.isArray(pts[0]) && Array.isArray(pts[0][0])) {
+                pts = pts[0]; // unwrap polygon ring
+            } else if (Array.isArray(pts[0]) && pts[0].lat !== undefined) {
+                pts = pts[0];
+            }
+            // Handle nested polygon vs polyline
+            if (pts[0] && pts[0].lat !== undefined) {
+                pts.forEach(function(p) { flat.push(p.lat, p.lng); });
+            } else if (Array.isArray(pts[0])) {
+                pts.forEach(function(p) { flat.push(ptLat(p), ptLng(p)); });
+            } else {
+                pts.forEach(function(p) { flat.push(ptLat(p), ptLng(p)); });
+            }
+            if (flat.length > 0) {
+                var liveData = JSON.parse(JSON.stringify(md));
+                liveData.pos = flat;
+                fetch('api/mission_plan.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'save_marker', map:currentMap, user_id: rtDisplayName || rtUserId, data: liveData }) });
+            }
+        }
+    }
+}
+
+const backend = {
+    addMarker: function(layerId, markerData) {
+        markerData.id = Date.now().toString() + Math.floor(Math.random()*1000);
+        fetch('api/mission_plan.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'save_marker', map:currentMap, user_id: rtDisplayName || rtUserId, data: markerData }) });
+        addOrUpdateMarker(mapInst, allMarkers, { id: markerData.id, data: markerData }, true, backend, {}, { group: drawLayer });
+    },
+    removeMarker: function(markerId) {
+        fetch('api/mission_plan.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'delete_marker', map:currentMap, password:'S2', id: markerId }) });
+        if (allMarkers[markerId]) {
+            if(allMarkers[markerId].labels) allMarkers[markerId].labels.forEach(l=>l.remove());
+            drawLayer.removeLayer(allMarkers[markerId]);
+            delete allMarkers[markerId];
+        }
+    },
+    updateMarkerToLayer: function(markerId, layerId, markerData) {
+        fetch('api/mission_plan.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'save_marker', map:currentMap, user_id: rtDisplayName || rtUserId, data: markerData }) });
+        addOrUpdateMarker(mapInst, allMarkers, { id: markerId, data: markerData }, true, backend, {}, { group: drawLayer });
+    },
+    moveMarker: function(markerId, markerData) {
+        this.updateMarkerToLayer(markerId, null, markerData);
+    }
+};
+
+function colorToCss(color) {
+    const map = {
+        "colorblack": "#000000", "colorgrey": "#7f7f7f", "colorred": "#e50000",
+        "colorbrown": "#7f3f00", "colororange": "#d86600", "coloryellow": "#d8d800",
+        "colorkhaki": "#7f9966", "colorgreen": "#00cc00", "colorblue": "#0000ff",
+        "colorpink": "#ff4c66", "colorwhite": "#ffffff", "colorunknown": "#b29900",
+        "colorblufor": "#004c99", "coloropfor": "#7f0000", "colorindependent": "#007f00",
+        "colorcivilian": "#66007f"
+    };
+    if (color && color.startsWith('#')) return color;
+    return map[(color || '').toLowerCase()] || '#000000';
+}
+
+function posToPoints(pos) {
+    var points = [];
+    for (var i = 0; i < pos.length; i += 2) {
+        var lat = Number(pos[i]), lng = Number(pos[i + 1]);
+        if (isNaN(lat) || isNaN(lng)) continue;
+        points.push([lat, lng]);
+    }
+    return points;
+}
+
+function computeDistanceAndShowTooltip(map, marker, posList, isEdit, markerId, markerData) {
+    function toLL(p) { return p.lat !== undefined ? p : L.latLng(p[0], p[1]); }
+    var totalDist = 0;
+    for (var i = 1; i < posList.length; i++) {
+        totalDist += map.distance(toLL(posList[i - 1]), toLL(posList[i]));
+    }
+    var p0 = toLL(posList[0]);
+    var p1 = toLL(posList[posList.length - 1]);
+    var dx = p1.lat - p0.lat;
+    var dy = p1.lng - p0.lng;
+    var heading = Math.round(Math.atan2(dy, dx) * 3200 / Math.PI);
+    if (heading < 0) heading = 6400 + heading;
+    var distNum = Math.round(totalDist);
+    var miles = (totalDist * 0.000621371).toFixed(3);
+    var formatedDistance = '<div class="measure-line"><i class="fas fa-arrows-left-right"></i> <span>' + distNum.toLocaleString() + ' m</span></div>' +
+        '<div class="measure-line"><i class="fas fa-arrows-left-right"></i> <span>' + miles + ' mil</span></div>';
+    if (marker.getTooltip()) {
+        marker.unbindTooltip();
+    }
+    marker.bindTooltip(formatedDistance, { direction: 'center', permanent: true, interactive: isEdit, opacity: 1, className: 'measure-tooltip' });
+}
+
+function missionLabels(marker, result, target) {
+    if (!marker.labels) {
+        marker.labels = result.labels.map(function (label, i) {
+            return L.marker(result.labelsPoints[i], {
+                icon: new L.DivIcon({ className: 'mission-text', html: '<div style="background:rgba(255,255,255,0.7);padding:2px;border:1px solid #000;color:#000;border-radius:4px;font-size:10px;font-weight:bold;">'+label+'</div>', iconAnchor: [8, 8], iconSize: [16, 16] }),
+                interactive: marker.options.interactive
+            }).addTo(target).on('click', function (ev) {
+                ev.sourceTarget = marker; ev.target = marker;
+                marker.fire('click', ev);
+            });
+        });
+        marker.on('remove', function (ev) { ev.target.labels.forEach(function (l) { l.remove(); }); });
+    } else {
+        for (var i = 0; i < result.labelsPoints.length; ++i) {
+            marker.labels[i].setLatLng(result.labelsPoints[i]);
+        }
+    }
+}
+
+function generateMission(mission, points, size) {
+    var def = typeof MilMissions !== 'undefined' ? MilMissions.missions[mission] : null;
+    if (def) {
+        var result = { labels: def.labels};
+        var sizeMeters = 1000;
+        switch (String(size)) { case '12': sizeMeters = 25; break; case '13': sizeMeters = 50; break; case '14': sizeMeters = 250; break; }
+        if (def.points > 1 && points.length < 2) {
+            result.lines = points;
+            if (def.labels) result.labelsPoints = [points[0], points[0]];
+            return result;
+        }
+        if (def.points == 4 && points.length < 4) points = MilMissions.complete4Points(points, sizeMeters);
+        result.lines = def.generate(points, sizeMeters);
+        if (def.labels) result.labelsPoints = def.generateLabels(points, sizeMeters, result.lines);
+        return result;
+    }
+    return {lines:[]};
+}
+
+// Lock button UI sync helper
+function _syncLockBtn(btnId, markerData) {
+    var btn = document.getElementById(btnId);
+    if (!btn) return;
+    btn.style.display = 'inline-flex';
+    var isLocked = markerData.config && markerData.config.locked;
+    if (isLocked) {
+        btn.classList.add('locked');
+        btn.innerHTML = '<i class="fas fa-lock"></i> Locked';
+    } else {
+        btn.classList.remove('locked');
+        btn.innerHTML = '<i class="fas fa-lock-open"></i> Unlock';
+    }
+}
+function _toggleLock() {
+    if (!modalMarkerData || !modalMarkerId) return;
+    if (!modalMarkerData.config) modalMarkerData.config = {};
+    modalMarkerData.config.locked = !modalMarkerData.config.locked;
+    backend.updateMarkerToLayer(modalMarkerId, null, modalMarkerData);
+    // Refresh the lock on the actual map marker
+    var m = allMarkers[modalMarkerId];
+    if (m) {
+        var locked = modalMarkerData.config.locked;
+        // L.marker (mil/basic) — has .dragging handler
+        if (m.dragging) {
+            if (locked) m.dragging.disable();
+            else m.dragging.enable();
+        }
+        // L.polyline/polygon — uses options._locked flag
+        if (m.options) m.options._locked = !!locked;
+    }
+}
+
+function updateMarkerHandler(e, map, backend) {
+    var marker = e.target;
+    if (!marker.options.interactive) return;
+    modalMarkerId = marker.options.markerId;
+    modalMarkerData = marker.options.markerData;
+    
+    if (modalMarkerData.type === 'mil') {
+        document.getElementById('natoDeleteBtn').style.display = 'block';
+        document.getElementById('natoInsertBtn').innerText = 'Update';
+        _syncLockBtn('natoLockBtn', modalMarkerData);
+        // ---- Pre-populate NATO form from existing marker data ----
+        var sidc = modalMarkerData.symbol || '';
+        if (sidc.length >= 20) {
+            // Parse SIDC: 10(ver) 0(sid1) identity(1) symbolSet(2) status(1) hqtf(1) echelon(2) entity(6) mod1(2) mod2(2)
+            var identity  = sidc.charAt(3);
+            var symbolSet = sidc.substring(4, 6);
+            var status    = sidc.charAt(6);
+            var hqtf      = sidc.charAt(7);
+            var echelon   = sidc.substring(8, 10);
+            var entity    = sidc.substring(10, 16);
+            var mod1      = sidc.substring(16, 18);
+            var mod2      = sidc.substring(18, 20);
+
+            // Reverse lookup: identity → affiliation key
+            var affReverse = { '0':'pending','1':'unknown','2':'assumedFriend','3':'friend','4':'neutral','5':'suspect','6':'hostile' };
+            var affKey = affReverse[identity] || 'friend';
+            document.querySelectorAll('.aff-box-btn[data-aff]').forEach(function(b) { b.classList.remove('active'); });
+            var affBtn = document.querySelector('.aff-box-btn[data-aff="' + affKey + '"]');
+            if (affBtn) affBtn.classList.add('active');
+
+            // Symbol set → triggers entity/mod dropdown repopulation
+            var ssEl = document.getElementById('natoSymbolSet');
+            if (ssEl) { ssEl.value = symbolSet; }
+            // Repopulate entity/mod1/mod2 dropdowns for this symbol set
+            var ssVal = ssEl ? ssEl.value : '10';
+            populateSelect('natoSymbolType', NATO_ENTITIES[ssVal] || NATO_ENTITIES['_default']);
+            populateSelect('natoMod1', NATO_MOD1[ssVal] || NATO_MOD1['_default']);
+            populateSelect('natoMod2', NATO_MOD2[ssVal] || NATO_MOD2['_default']);
+
+            // Set entity, status, echelon, mod1, mod2
+            var ntEl = document.getElementById('natoSymbolType');
+            if (ntEl && ntEl.querySelector('option[value="' + entity + '"]')) ntEl.value = entity;
+            var stEl = document.getElementById('natoStatus');
+            if (stEl) stEl.value = status;
+            var ecEl = document.getElementById('natoEchelon');
+            if (ecEl) ecEl.value = echelon;
+            var m1El = document.getElementById('natoMod1');
+            if (m1El && m1El.querySelector('option[value="' + mod1 + '"]')) m1El.value = mod1;
+            var m2El = document.getElementById('natoMod2');
+            if (m2El && m2El.querySelector('option[value="' + mod2 + '"]')) m2El.value = mod2;
+
+            // HQ/TF/Dummy toggles (bitfield: 1=Dummy, 2=HQ, 4=TF)
+            var hqtfNum = parseInt(hqtf) || 0;
+            document.querySelectorAll('.aff-box-btn[data-hqtf]').forEach(function(b) {
+                var bit = parseInt(b.dataset.hqtf) || 0;
+                if (hqtfNum & bit) b.classList.add('active');
+                else b.classList.remove('active');
+            });
+        }
+        // Config fields (text inputs)
+        var cfg = modalMarkerData.config || {};
+        document.getElementById('natoDesignation').value = cfg.uniqueDesignation || '';
+        document.getElementById('natoAdditional').value = cfg.additionalInformation || '';
+        if (document.getElementById('natoHigherFormation'))
+            document.getElementById('natoHigherFormation').value = cfg.higherFormation || '';
+        if (document.getElementById('natoDirection'))
+            document.getElementById('natoDirection').value = (cfg.direction !== undefined && cfg.direction !== null) ? Math.round(cfg.direction * 6400 / 360) : '';
+        if (document.getElementById('natoReinforced'))
+            document.getElementById('natoReinforced').value = cfg.reinforcedReduced || '';
+        // Scale
+        var scaleVal = modalMarkerData.scale ? Math.round(modalMarkerData.scale * 100) : 100;
+        document.getElementById('natoScale').value = scaleVal;
+
+        // Rebuild icon dropdowns and update preview
+        updateAffiliationIcons();
+        if (typeof buildAllIconDropdowns === 'function') buildAllIconDropdowns();
+        updateNatoPreview();
+        openMapModal('modalNatoSymbol');
+    } else if (modalMarkerData.type === 'line') {
+        document.getElementById('lineDeleteBtn').style.display = 'block';
+        document.getElementById('lineSaveBtn').innerText = 'Update';
+        _syncLockBtn('lineLockBtn', modalMarkerData);
+        openMapModal('modalLineProps');
+    } else if (modalMarkerData.type === 'mission') {
+        // Just delete for now to recreate
+        stormConfirm('Delete this mission?').then(function(ok) {
+            if(ok) backend.removeMarker(modalMarkerId);
+        });
+    } else if (modalMarkerData.type === 'note') {
+        openMapModal('modalNote');
+        document.getElementById('noteDeleteBtn').style.display = 'block';
+        if(tinymce.get('noteContent')) tinymce.get('noteContent').setContent(modalMarkerData.config.content || '');
+    } else if (modalMarkerData.type === 'measure') {
+        openMapModal('modalMeasure');
+        document.getElementById('measureDeleteBtn').style.display = 'block';
+    } else if (modalMarkerData.type === 'basic') {
+        if (window.basicShapeChoices) {
+            window.basicShapeChoices.setChoiceByValue(modalMarkerData.symbol || 'mil_dot');
+        } else {
+            document.getElementById('basicShape').value = modalMarkerData.symbol || 'mil_dot';
+        }
+        var colorBtns = document.querySelectorAll('#modalBasicSymbol .color-btn');
+        colorBtns.forEach(function(b) { b.classList.remove('active'); if (b.dataset.color === colorToCss(modalMarkerData.config.color)) b.classList.add('active'); });
+        document.getElementById('basicLabel').value = modalMarkerData.config.label || '';
+        document.getElementById('basicLabelSize').value = modalMarkerData.config.labelSize || 12;
+        document.getElementById('basicScale').value = Math.round((modalMarkerData.scale || 1) * 100);
+        document.getElementById('basicDeleteBtn').style.display = 'block';
+        document.getElementById('basicInsertBtn').innerText = 'Update';
+        _syncLockBtn('basicLockBtn', modalMarkerData);
+        openMapModal('modalBasicSymbol');
+    }
+}
+
+function getBasicSymbolSVG(symbol, color, size) {
+    // Use PLANOPS API images for all markers
+    if (window.PLANOPS_DATA && window.PLANOPS_DATA.markers) {
+        var markerData = window.PLANOPS_DATA.markers.find(m => m.name === symbol);
+        if (markerData) {
+            var imgUrl = planopsProxy(markerData.imageWebp || markerData.imagePng);
+            if (!markerData.isColorCompatible) {
+                // Non-color-compatible (flags etc.) — render as-is
+                return '<img src="' + imgUrl + '" width="' + size + '" height="' + size + '" style="object-fit:contain;" />';
+            }
+            // Color-compatible — use CSS mask to apply the chosen color
+            return '<div style="width:' + size + 'px;height:' + size + 'px;' +
+                   'background-color:' + color + ';' +
+                   '-webkit-mask-image:url(' + imgUrl + ');' +
+                   'mask-image:url(' + imgUrl + ');' +
+                   '-webkit-mask-size:contain;mask-size:contain;' +
+                   '-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;' +
+                   '-webkit-mask-position:center;mask-position:center;"></div>';
+        }
+    }
+    // Minimal fallback if PLANOPS data unavailable
+    return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="' + color + '"/></svg>';
+}
+
+function addOrUpdateMarker(map, markers, marker, canEdit, backend, opacity, layer) {
+    var markerId = marker.id;
+    var markerData = marker.data;
+    var existing = markers[markerId];
+
+    if (markerData.type == 'line') {
+        var posList = posToPoints(markerData.pos);
+        var color = colorToCss(markerData.config.color);
+        var isArea = markerData.symbol === 'area' || markerData.symbol === 'shape' || markerData.config.fill;
+        var fillColor = markerData.config.fillColor || color;
+        var fillOpacity = (markerData.config.fillOpacity != null) ? markerData.config.fillOpacity : 0.12;
+        var isLocked = markerData.config && markerData.config.locked;
+        if (existing) {
+            if (isArea) existing.setLatLngs([posList]); else existing.setLatLngs(posList);
+            var lineStyle = { color: color, weight: markerData.config.weight||3, fillColor: fillColor, fillOpacity: fillOpacity };
+            if (markerData.config.dashArray) lineStyle.dashArray = markerData.config.dashArray;
+            else lineStyle.dashArray = null;
+            existing.setStyle(lineStyle);
+            existing.options.markerData = markerData;
+            existing.options._locked = !!isLocked;
+        } else {
+            var mapMarker;
+            if (isArea) {
+                mapMarker = L.polygon(posList, { color: color, weight: markerData.config.weight||3, fillColor: fillColor, fillOpacity: fillOpacity, interactive: canEdit, markerId: markerId, markerData: markerData, _locked: !!isLocked }).addTo(layer.group);
+            } else {
+                var polyOpts = { color: color, weight: markerData.config.weight||3, interactive: canEdit, markerId: markerId, markerData: markerData, _locked: !!isLocked };
+                if (markerData.config.dashArray) polyOpts.dashArray = markerData.config.dashArray;
+                mapMarker = L.polyline(posList, polyOpts).addTo(layer.group);
+            }
+            if (canEdit) {
+                mapMarker.on('click', function(e) {
+                    // If we just finished dragging, don't open modal
+                    if (polyDragMoved) { polyDragMoved = false; return; }
+                    // Show vertex handles for all polygon/polyline types (single click = edit vertices)
+                    var md = e.target.options.markerData;
+                    if (md && md.type === 'line') {
+                        showVertexHandles(e.target, e.target.options.markerId, md, backend);
+                        return;
+                    }
+                    updateMarkerHandler(e, map, backend);
+                });
+                mapMarker.on('dblclick', function(e) {
+                    L.DomEvent.stopPropagation(e);
+                    updateMarkerHandler(e, map, backend);
+                });
+                // Custom drag / Ctrl+drag rotation for polylines/polygons
+                mapMarker.on('mousedown', function(ev) {
+                    if (ev.target.options._locked) return;
+                    if (currentDrawAction && currentDrawAction !== 'pan' && currentDrawAction !== 'select') return;
+                    // Don't start drag if vertex editing is active on this polygon
+                    if (vertexEditTarget === ev.target) return;
+                    // Ctrl+Shift+Click = scale, Ctrl+Click = rotation (Arma 3 style)
+                    if (ev.originalEvent.ctrlKey && ev.originalEvent.shiftKey) {
+                        L.DomEvent.stopPropagation(ev);
+                        startScale(ev.target, ev.target.options.markerId, ev.latlng);
+                        return;
+                    }
+                    if (ev.originalEvent.ctrlKey) {
+                        L.DomEvent.stopPropagation(ev);
+                        startRotation(ev.target, ev.target.options.markerId, ev.latlng);
+                        return;
+                    }
+                    polyDragTarget = ev.target;
+                    polyDragStartLatLng = ev.latlng;
+                    polyDragMoved = false;
+                    var lls = ev.target.getLatLngs();
+                    polyDragOrigLatLngs = JSON.parse(JSON.stringify(lls));
+                    map.dragging.disable();
+                });
+            }
+            markers[markerId] = existing = mapMarker;
+        }
+    } else if (markerData.type == 'measure') {
+        var posList = posToPoints(markerData.pos);
+        if (existing) {
+            existing.setLatLngs(posList);
+            computeDistanceAndShowTooltip(map, existing, posList, canEdit, markerId, markerData);
+            existing.options.markerData = markerData;
+        } else {
+            var mColor = (markerData.config && markerData.config.color) ? colorToCss(markerData.config.color) : '#ffff00';
+            var mapMarker = L.polyline(posList, { color: mColor, weight: 2, dashArray: '4,4', interactive: canEdit, markerId: markerId, markerData: markerData }).addTo(layer.group);
+            computeDistanceAndShowTooltip(map, mapMarker, posList, canEdit, markerId, markerData);
+            if (canEdit) mapMarker.on('click', e => updateMarkerHandler(e, map, backend));
+            markers[markerId] = existing = mapMarker;
+        }
+    } else if (markerData.type == 'mission') {
+        var posList = posToPoints(markerData.pos);
+        var color = colorToCss(markerData.config.color);
+        var result = generateMission(markerData.symbol, posList, markerData.config.size || '13');
+        if (existing) {
+            existing.setLatLngs(result.lines); existing.setStyle({ color: color });
+            existing.options.markerData = markerData;
+        } else {
+            var mapMarker = L.polyline(result.lines, { smoothFactor: 0.5, color: color, weight: 3, interactive: canEdit, markerId: markerId, markerData: markerData }).addTo(layer.group);
+            markers[markerId] = existing = mapMarker;
+            if (canEdit) mapMarker.on('click', e => updateMarkerHandler(e, map, backend));
+        }
+        if (result.labels) missionLabels(existing, result, layer.group);
+    } else if (markerData.type == 'note') {
+        if (existing) {
+            existing.setLatLng(markerData.pos);
+            existing.setTooltipContent(markerData.config.content);
+            existing.options.direction = markerData.config.position || 'center';
+            existing.options.markerData = markerData;
+        } else {
+            var options = { content: markerData.config.content, direction: markerData.config.position||'center', permanent: true, interactive: canEdit, markerId: markerId, markerData: markerData, className: 'stickyNote' };
+            var mapMarker = L.marker(markerData.pos, { opacity:0, interactive: canEdit, markerId: markerId, markerData: markerData }).addTo(layer.group);
+            mapMarker.bindTooltip(markerData.config.content, { permanent: true, direction: markerData.config.position||'center', className: 'stickyNote'});
+            if (canEdit) mapMarker.on('click', e => updateMarkerHandler(e, map, backend));
+            markers[markerId] = existing = mapMarker;
+        }
+    } else { // 'mil' or 'basic'
+        var size = 32;
+        if (markerData.scale) size = Number(markerData.scale) * size;
+        var isLocked = markerData.config && markerData.config.locked;
+        var canDrag = canEdit && !isLocked;
+        var rotDeg = (markerData.config && markerData.config._rotation) || 0;
+        var icon;
+        if (markerData.type == 'mil') {
+            var symbolConfig = Object.assign({ size: size }, markerData.config);
+            var sym = new ms.Symbol(markerData.symbol, symbolConfig);
+            var innerHtml = '<div class="marker-rotate-wrap" style="transform:rotate(' + rotDeg + 'deg)">' + sym.asSVG() + '</div>';
+            icon = L.divIcon({ className: 'nato-icon', html: innerHtml, iconSize: [sym.width, sym.height], iconAnchor: [sym.getAnchor().x, sym.getAnchor().y] });
+        } else {
+            var innerHtml = '<div class="marker-rotate-wrap" style="transform:rotate(' + rotDeg + 'deg)">' + getBasicSymbolSVG(markerData.symbol, colorToCss(markerData.config.color), size) + '</div>';
+            icon = L.divIcon({ className: 'basic-symbol-icon', html: innerHtml, iconSize: [size, size], iconAnchor: [size/2, size/2] });
+        }
+        
+        if (existing) {
+            existing.setIcon(icon); existing.setLatLng(markerData.pos); existing.options.markerData = markerData;
+            // Update draggable state
+            if (canDrag) {
+                if (existing.dragging) existing.dragging.enable();
+                else { existing.options.draggable = true; if (existing._map) { existing.dragging = new L.Handler.MarkerDrag(existing); existing.dragging.enable(); } }
+            } else {
+                if (existing.dragging) existing.dragging.disable();
+            }
+            if (markerData.type === 'basic' && markerData.config && markerData.config.label) {
+                var lblSize = markerData.config.labelSize || 12;
+                var lblColor = colorToCss(markerData.config.color) || '#000';
+                if (existing.getTooltip()) {
+                    existing.setTooltipContent(markerData.config.label);
+                    var tip = existing.getTooltip().getElement();
+                    if (tip) { tip.style.fontSize = lblSize + 'px'; tip.style.color = lblColor; }
+                } else {
+                    existing.bindTooltip(markerData.config.label, { permanent: true, direction: 'right', className: 'marker-text' });
+                    existing.on('tooltipopen', function() { var el = this.getTooltip().getElement(); if (el) { el.style.fontSize = lblSize + 'px'; el.style.color = lblColor; } });
+                }
+            } else if (markerData.type === 'basic' && existing.getTooltip()) {
+                existing.unbindTooltip();
+            }
+        } else {
+            var mapMarker = L.marker(markerData.pos, { icon: icon, draggable: canDrag, interactive: canEdit, markerId: markerId, markerData: markerData }).addTo(layer.group);
+            if (markerData.config && markerData.config.label) {
+                var lblSize = markerData.config.labelSize || 12;
+                var lblColor = colorToCss(markerData.config.color) || '#000';
+                mapMarker.bindTooltip(markerData.config.label, { permanent: true, direction: 'right', className: 'marker-text' });
+                mapMarker.on('tooltipopen', function() { var el = this.getTooltip().getElement(); if (el) { el.style.fontSize = lblSize + 'px'; el.style.color = lblColor; } });
+            }
+            if (canEdit) {
+                mapMarker.on('click', e => updateMarkerHandler(e, map, backend));
+                var ptDragTimer = null;
+                mapMarker.on('dragstart', function(e) {
+                    var marker = e.target;
+                    ptDragActiveId = marker.options.markerId;
+                    ptDragTimer = setInterval(function() {
+                        var ll = marker.getLatLng();
+                        var liveData = JSON.parse(JSON.stringify(marker.options.markerData));
+                        liveData.pos = [ll.lat, ll.lng];
+                        fetch('api/mission_plan.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'save_marker', map:currentMap, user_id: rtDisplayName || rtUserId, data: liveData }) });
+                    }, 400);
+                });
+                mapMarker.on('dragend', function (e) {
+                    if (ptDragTimer) { clearInterval(ptDragTimer); ptDragTimer = null; }
+                    ptDragActiveId = null;
+                    var marker = e.target;
+                    if (marker.options.markerData.config && marker.options.markerData.config.locked) {
+                        // Revert position if locked
+                        marker.setLatLng(marker.options.markerData.pos);
+                        return;
+                    }
+                    marker.options.markerData.pos = [marker.getLatLng().lat, marker.getLatLng().lng];
+                    backend.moveMarker(marker.options.markerId, marker.options.markerData);
+                });
+                // Ctrl+Click = rotation (Arma 3 style) for point markers
+                mapMarker.on('mousedown', function(ev) {
+                    if (ev.originalEvent.ctrlKey) {
+                        if (ev.target.options.markerData.config && ev.target.options.markerData.config.locked) return;
+                        L.DomEvent.stopPropagation(ev);
+                        if (ev.target.dragging) ev.target.dragging.disable();
+                        startRotation(ev.target, ev.target.options.markerId, ev.latlng);
+                    }
+                });
+            }
+            markers[markerId] = existing = mapMarker;
+        }
+    }
+}
+
+// Cancel pending line/area draw
+function cancelLineDraw() {
+    if (currentLine) { currentLine.remove(); currentLine = null; }
+    if (currentArea) { currentArea.remove(); currentArea = null; }
+    closeMapModal('modalLineProps');
+    setTool('pan', document.getElementById('toolPan'));
+}
+
+// Map Click Logic for drawing
+function onMapClick(e) {
+    var latlng = e.latlng;
+    var tool = currentDrawAction;
+    // Clear vertex editing when clicking on empty map area
+    if (vertexEditTarget) { clearVertexEditing(); }
+    if (!tool || tool === 'pan') return;
+    
+    if (tool === 'line') {
+        var point = [latlng.lat, latlng.lng];
+        var append = e.originalEvent.ctrlKey || e.originalEvent.shiftKey;
+        var lineColor = '#000000';
+        if (!currentLine) {
+            currentLine = L.polyline([point, point], { color: lineColor, weight: 3, interactive: false }).addTo(mapInst);
+        } else if (append) {
+            var data = currentLine.getLatLngs();
+            data[data.length - 1] = L.latLng(point[0], point[1]);
+            data.push(L.latLng(point[0], point[1]));
+            currentLine.setLatLngs(data);
+        } else {
+            var data = currentLine.getLatLngs();
+            data[data.length - 1] = L.latLng(point[0], point[1]);
+            currentLine.remove(); currentLine = null;
+            backend.addMarker(null, { type: 'line', symbol: 'line', config: { color: lineColor }, pos: data.map(function (p) { var ll = L.latLng(p); return [ll.lat, ll.lng]; }).flat() });
+        }
+    } else if (tool === 'measure') {
+        var point = [latlng.lat, latlng.lng];
+        var measureColor = '#ffff00';
+        var append = e.originalEvent.ctrlKey;
+        if (!currentMeasure) {
+            currentMeasure = L.polyline([point, point], { color: measureColor, weight: 2, dashArray: '4', interactive: false }).addTo(mapInst);
+        } else if (append) {
+            // Ctrl+Click: add waypoint and continue
+            var data = currentMeasure.getLatLngs();
+            data[data.length - 1] = L.latLng(point[0], point[1]);
+            data.push(L.latLng(point[0], point[1]));
+            currentMeasure.setLatLngs(data);
+        } else {
+            // Normal click: finalize
+            var data = currentMeasure.getLatLngs();
+            data[data.length - 1] = L.latLng(point[0], point[1]);
+            currentMeasure.remove(); currentMeasure = null;
+            backend.addMarker(null, { type: 'measure', symbol: 'measure', config: { color: measureColor }, pos: data.map(function (p) { var ll = L.latLng(p); return [ll.lat, ll.lng]; }).flat() });
+            setTool('pan', document.getElementById('toolPan'));
+        }
+    } else if (tool === 'mission') {
+        if (!missionSelection) return;
+        if (!missionSelection.points) {
+            missionSelection.points = [[latlng.lat, latlng.lng]];
+        } else {
+            missionSelection.points.push([latlng.lat, latlng.lng]);
+        }
+        var def = MilMissions.missions[missionSelection.mission];
+        if (def && def.points == missionSelection.points.length) {
+            if (currentMission) { currentMission.remove(); currentMission = null; }
+            backend.addMarker(null, {
+                type: 'mission', symbol: missionSelection.mission,
+                config: { size: missionSelection.size, color: missionSelection.color },
+                pos: missionSelection.points.flat()
+            });
+            missionSelection = null;
+            setTool('pan', document.getElementById('toolPan'));
+        } else {
+            var result = generateMission(missionSelection.mission, missionSelection.points, missionSelection.size);
+            if (!currentMission) {
+                currentMission = L.polyline(result.lines, { smoothFactor: 0.5, color: missionSelection.color, weight: 3, interactive: false }).addTo(mapInst);
+            } else { currentMission.setLatLngs(result.lines); }
+            if (result.labels) missionLabels(currentMission, result, mapInst);
+        }
+    } else if (tool === 'note') {
+        clickPosition = [latlng.lat, latlng.lng];
+        modalMarkerId = null;
+        document.getElementById('noteDeleteBtn').style.display = 'none';
+        openMapModal('modalNote');
+        if(tinymce.get('noteContent')) tinymce.get('noteContent').setContent('');
+        setTool('pan', document.getElementById('toolPan'));
+    } else if (tool === 'natoSymbol') {
+        clickPosition = [latlng.lat, latlng.lng];
+        modalMarkerId = null;
+        document.getElementById('natoInsertBtn').innerText = 'Insert';
+        document.getElementById('natoDeleteBtn').style.display = 'none';
+        var a = latLngToArma(latlng);
+        var grid = String(Math.floor(a.x / 10)).padStart(4, '0') + ' - ' + String(Math.floor(a.y / 10)).padStart(4, '0');
+        document.getElementById('natoModalTitle').innerText = grid + ' : NATO APP-6 (D) Symbol';
+        openMapModal('modalNatoSymbol');
+        setTool('pan', document.getElementById('toolPan'));
+    } else if (tool === 'basicSymbol') {
+        clickPosition = [latlng.lat, latlng.lng];
+        modalMarkerId = null;
+        document.getElementById('basicDeleteBtn').style.display = 'none';
+        document.getElementById('basicInsertBtn').innerText = 'Insert';
+        openMapModal('modalBasicSymbol');
+        setTool('pan', document.getElementById('toolPan'));
+    } else if (tool === 'area') {
+        var point = [latlng.lat, latlng.lng];
+        if (!currentArea) {
+            currentArea = L.polygon([point, point, point], { color: '#0066ff', weight: 3, fillOpacity: 0.12, interactive: false }).addTo(mapInst);
+        } else if (e.originalEvent.shiftKey) {
+            var data = currentArea.getLatLngs()[0];
+            data[data.length - 1] = L.latLng(point[0], point[1]);
+            data.push(L.latLng(point[0], point[1]));
+            currentArea.setLatLngs([data]);
+        } else {
+            var data = currentArea.getLatLngs()[0];
+            data[data.length - 1] = L.latLng(point[0], point[1]);
+            var posFlat = data.map(function(p) { return [p.lat, p.lng]; }).flat();
+            currentArea.remove(); currentArea = null;
+            var color = document.querySelector('#lineColorPicker .active') ? document.querySelector('#lineColorPicker .active').dataset.color : '#0066ff';
+            backend.addMarker(null, { type: 'line', symbol: 'area', config: { color: color, fill: true }, pos: posFlat });
+            setTool('pan', document.getElementById('toolPan'));
+        }
+    } else if (tool === 'point') {
+        clickPosition = [latlng.lat, latlng.lng];
+        backend.addMarker(null, { type: 'basic', symbol: 'mil_dot', config: { color: '#ff0000', label: '' }, scale: 1, pos: clickPosition });
+    } else if (tool === 'flag') {
+        clickPosition = [latlng.lat, latlng.lng];
+        var label = prompt('Enter label text:');
+        if (label) {
+            backend.addMarker(null, { type: 'basic', symbol: 'mil_dot', config: { color: '#ffff00', label: label }, scale: 0.8, pos: clickPosition });
+        }
+    } else if (tool === 'select') {
+        // Select mode: do nothing on empty map click, markers handle their own click
+    }
+}
+
+// Map Mousemove for rubberbanding
+function onMapMouseMove(e) {
+    var latlng = e.latlng;
+    if (currentLine) {
+        var data = currentLine.getLatLngs();
+        data[data.length - 1] = L.latLng(latlng.lat, latlng.lng);
+        currentLine.setLatLngs(data);
+    }
+    if (currentArea) {
+        var data = currentArea.getLatLngs()[0];
+        data[data.length - 1] = L.latLng(latlng.lat, latlng.lng);
+        currentArea.setLatLngs([data]);
+    }
+    if (currentMeasure) {
+        var data = currentMeasure.getLatLngs();
+        data[data.length - 1] = L.latLng(latlng.lat, latlng.lng);
+        currentMeasure.setLatLngs(data);
+        computeDistanceAndShowTooltip(mapInst, currentMeasure, data, false);
+    }
+    if (currentMission && missionSelection && missionSelection.points) {
+        var pts = missionSelection.points.slice();
+        pts.push([latlng.lat, latlng.lng]);
+        var result = generateMission(missionSelection.mission, pts, missionSelection.size);
+        currentMission.setLatLngs(result.lines);
+    }
+}
+
+// ---- FREEHAND DRAW LOGIC ----
+function getDrawLineSettings() {
+    var toolColorBtn = document.querySelector('#freehandColorPicker .color-btn.active');
+    var color = toolColorBtn ? toolColorBtn.dataset.color : '#000000';
+    var dashBtn = document.querySelector('.draw-dash-btn.active');
+    var dashBase = dashBtn ? dashBtn.dataset.dash : '';
+    var gap = parseInt(document.getElementById('drawDashGap').value) || 8;
+    var weight = parseInt(document.getElementById('drawLineWeight').value) || 3;
+    var dashArray = '';
+    if (dashBase) {
+        dashArray = dashBase.split(',').map(function(v) {
+            return Math.max(1, Math.round(parseInt(v) * gap / 8));
+        }).join(',');
+    }
+    return { color: color, weight: weight, dashArray: dashArray };
+}
+
+function freehandMouseDown(e) {
+    if (currentDrawAction !== 'freehand') return;
+    freehandDrawing = true;
+    freehandStraight = e.originalEvent.ctrlKey && e.originalEvent.shiftKey;
+    freehandStartPoint = [e.latlng.lat, e.latlng.lng];
+    freehandPoints = [freehandStartPoint];
+    var s = getDrawLineSettings();
+    var opts = { color: s.color, weight: s.weight, interactive: false };
+    if (s.dashArray) opts.dashArray = s.dashArray;
+    freehandLine = L.polyline(freehandPoints, opts).addTo(mapInst);
+}
+function freehandMouseMove(e) {
+    if (!freehandDrawing || !freehandLine) return;
+    var pt = [e.latlng.lat, e.latlng.lng];
+    if (freehandStraight) {
+        freehandLine.setLatLngs([freehandStartPoint, pt]);
+        freehandPoints = [freehandStartPoint, pt];
+    } else {
+        freehandPoints.push(pt);
+        freehandLine.addLatLng(pt);
+    }
+}
+function freehandMouseUp(e) {
+    if (!freehandDrawing || !freehandLine) return;
+    freehandDrawing = false;
+    if (freehandPoints.length < 2) {
+        freehandLine.remove(); freehandLine = null; return;
+    }
+    var s = getDrawLineSettings();
+    var posFlat = freehandPoints.flat();
+    freehandLine.remove(); freehandLine = null;
+    var cfg = { color: s.color, weight: s.weight };
+    if (s.dashArray) cfg.dashArray = s.dashArray;
+    backend.addMarker(null, { type: 'line', symbol: 'freehand', config: cfg, pos: posFlat });
+    freehandPoints = [];
+}
+
+// ---- SHAPE DRAW LOGIC ----
+function generateRegularPolygon(center, radius, sides, rotationDeg) {
+    var pts = [];
+    var rotRad = (rotationDeg || 0) * Math.PI / 180;
+    if (sides === 0) {
+        // Circle approximation with 36 points
+        for (var i = 0; i < 36; i++) {
+            var angle = (i / 36) * 2 * Math.PI - Math.PI / 2 + rotRad;
+            pts.push([center[0] + radius * Math.sin(angle), center[1] + radius * Math.cos(angle)]);
+        }
+    } else {
+        for (var i = 0; i < sides; i++) {
+            var angle = (i / sides) * 2 * Math.PI - Math.PI / 2 + rotRad;
+            pts.push([center[0] + radius * Math.sin(angle), center[1] + radius * Math.cos(angle)]);
+        }
+    }
+    return pts;
+}
+
+function shapeMouseDown(e) {
+    if (currentDrawAction !== 'shapeDraw') return;
+    shapeDragging = true;
+    shapeCenter = [e.latlng.lat, e.latlng.lng];
+    var fillColor = shapeConfig.fillColor === 'none' ? 'transparent' : shapeConfig.fillColor;
+    var fillOpacity = shapeConfig.fillColor === 'none' ? 0 : shapeConfig.fillOpacity;
+    var pts;
+    if (shapeConfig.sides === 4) {
+        // Rectangle: start as a point (corner-to-corner)
+        pts = [shapeCenter, shapeCenter, shapeCenter, shapeCenter];
+    } else {
+        pts = generateRegularPolygon(shapeCenter, 0, shapeConfig.sides, 0);
+    }
+    shapePreview = L.polygon(pts, {
+        color: shapeConfig.strokeColor, weight: shapeConfig.weight,
+        fillColor: fillColor, fillOpacity: fillOpacity, interactive: false
+    }).addTo(mapInst);
+}
+function shapeMouseMove(e) {
+    if (!shapeDragging || !shapePreview) return;
+    if (shapeConfig.sides === 4) {
+        // Rectangle: corner1 = shapeCenter, corner2 = mouse position (axis-aligned)
+        var lat1 = shapeCenter[0], lng1 = shapeCenter[1];
+        var lat2 = e.latlng.lat, lng2 = e.latlng.lng;
+        var pts = [
+            [lat1, lng1], [lat1, lng2],
+            [lat2, lng2], [lat2, lng1]
+        ];
+        shapePreview.setLatLngs([pts]);
+    } else {
+        var dx = e.latlng.lng - shapeCenter[1];
+        var dy = e.latlng.lat - shapeCenter[0];
+        var radius = Math.sqrt(dx * dx + dy * dy);
+        var pts = generateRegularPolygon(shapeCenter, radius, shapeConfig.sides, 0);
+        shapePreview.setLatLngs([pts]);
+    }
+}
+function shapeMouseUp(e) {
+    if (!shapeDragging || !shapePreview) return;
+    shapeDragging = false;
+    var pts;
+    if (shapeConfig.sides === 4) {
+        var lat1 = shapeCenter[0], lng1 = shapeCenter[1];
+        var lat2 = e.latlng.lat, lng2 = e.latlng.lng;
+        if (Math.abs(lat2 - lat1) < 5 && Math.abs(lng2 - lng1) < 5) {
+            shapePreview.remove(); shapePreview = null; return;
+        }
+        pts = [[lat1, lng1], [lat1, lng2], [lat2, lng2], [lat2, lng1]];
+    } else {
+        var dx = e.latlng.lng - shapeCenter[1];
+        var dy = e.latlng.lat - shapeCenter[0];
+        var radius = Math.sqrt(dx * dx + dy * dy);
+        if (radius < 10) { shapePreview.remove(); shapePreview = null; return; }
+        pts = generateRegularPolygon(shapeCenter, radius, shapeConfig.sides, 0);
+    }
+    var posFlat = pts.flat();
+    shapePreview.remove(); shapePreview = null;
+    var fillColor = shapeConfig.fillColor === 'none' ? 'transparent' : shapeConfig.fillColor;
+    var fillOpacity = shapeConfig.fillColor === 'none' ? 0 : shapeConfig.fillOpacity;
+    backend.addMarker(null, {
+        type: 'line', symbol: 'shape', config: {
+            color: shapeConfig.strokeColor, fill: true, fillColor: fillColor,
+            fillOpacity: fillOpacity, weight: shapeConfig.weight, sides: shapeConfig.sides
+        }, pos: posFlat
+    });
+}
+
+// ---- INIT MAP ----
+async function initIntelMap() {
+    if (mapInst) { mapInst.remove(); mapInst = null; }
+    if (drawPollTimer) clearTimeout(drawPollTimer);
+    drawLayer = L.featureGroup();
+
+    var bounds = [[0, 0], [MAP_CONFIG.worldSize, MAP_CONFIG.worldSize]];
+    var pad = MAP_CONFIG.worldSize * 0.1;
+    var paddedBounds = [[-pad, -pad], [MAP_CONFIG.worldSize + pad, MAP_CONFIG.worldSize + pad]];
+
+    mapInst = L.map('intelMap', {
+        crs: ArmaCRS, minZoom: MAP_CONFIG.minZoom, maxZoom: MAP_CONFIG.maxZoom + 1,
+        attributionControl: false, zoomControl: false,
+        doubleClickZoom: false, zoomSnap: 0.2, zoomDelta: 0.2,
+        maxBounds: paddedBounds, maxBoundsViscosity: 0.8
+    });
+    
+    // Create a custom pane for the white background so it sits behind the tiles (tilePane z-index is 200)
+    mapInst.createPane('bgPane');
+    mapInst.getPane('bgPane').style.zIndex = 100;
+    L.rectangle(bounds, { color: 'none', fillColor: '#fff', fillOpacity: 1, interactive: false, pane: 'bgPane' }).addTo(mapInst);
+
+    L.tileLayer(MAP_CONFIG.tileUrl, { tileSize: MAP_CONFIG.tileSize, noWrap: true, bounds: bounds, maxNativeZoom: MAP_CONFIG.maxZoom }).addTo(mapInst);
+    mapInst.fitBounds(bounds);
+    
+    drawLayer.addTo(mapInst);
+
+    // PLANOPS graticule (replaces custom grid)
+    // Make grid lines transparent (weight: 0) but keep the grid labels (fontColor)
+    var graticuleZooms = [];
+    if (MAP_CONFIG.maxZoom > 4) {
+        graticuleZooms.push({ start: 0, end: MAP_CONFIG.maxZoom - 4, interval: 10000 });
+        graticuleZooms.push({ start: MAP_CONFIG.maxZoom - 4, end: 10, interval: 1000 });
+    } else {
+        graticuleZooms.push({ start: 0, end: 10, interval: 1000 });
+    }
+    gridLayer = L.latlngGraticule({ weight: 0, color: 'transparent', fontColor: '#444', zoomInterval: graticuleZooms }).addTo(mapInst);
+
+    // PLANOPS coordinate display (bottom-right)
+    L.control.gridMousePosition({ precision: 4 }).addTo(mapInst);
+    L.control.scale({ maxWidth: 200, imperial: false }).addTo(mapInst);
+
+    mapInst.on('click', onMapClick);
+    mapInst.on('mousemove', onMapMouseMove);
+    var isPointing = false;
+    var pointingMarker = null;
+    mapInst.on('mousedown', function(e) {
+        if (currentDrawAction === 'select') {
+            isPointing = true;
+            if (!pointingMarker) {
+                pointingMarker = L.circleMarker(e.latlng, { radius: 12, color: '#ff0000', weight: 3, fillColor: '#ff0000', fillOpacity: 0.3, interactive: false, className: 'pointing-pulse' }).addTo(mapInst);
+            } else {
+                pointingMarker.setLatLng(e.latlng);
+            }
+        }
+        freehandMouseDown(e);
+        shapeMouseDown(e);
+    });
+    mapInst.on('mousemove', function(e) {
+        if (isPointing && pointingMarker) {
+            pointingMarker.setLatLng(e.latlng);
+        }
+        // Ctrl+Shift+Drag scale / Ctrl+Drag rotation
+        if (scaleTarget) { doScale(e.latlng); return; }
+        if (rotTarget) { doRotation(e.latlng); return; }
+        freehandMouseMove(e);
+        shapeMouseMove(e);
+        // PolyDrag move
+        if (polyDragTarget && polyDragStartLatLng) {
+            var dlat = e.latlng.lat - polyDragStartLatLng.lat;
+            var dlng = e.latlng.lng - polyDragStartLatLng.lng;
+            // Only count as drag if moved more than a small threshold (prevents blocking click)
+            if (!polyDragMoved && Math.abs(dlat) < 3 && Math.abs(dlng) < 3) return;
+            polyDragMoved = true;
+            if (!polyDragLiveTimer) { polyDragLiveTimer = setInterval(broadcastDragPosition, 400); }
+            var orig = polyDragOrigLatLngs;
+            // Detect nested: polygon [[pts]] vs polyline [pts]
+            // orig[0] is array AND its first element is not a number → nested polygon ring
+            var isNested = Array.isArray(orig[0]) && orig[0].length > 0 && typeof orig[0][0] !== 'number';
+            if (isNested) {
+                var moved = orig.map(function(ring) {
+                    return ring.map(function(pt) { return [ptLat(pt) + dlat, ptLng(pt) + dlng]; });
+                });
+                polyDragTarget.setLatLngs(moved);
+            } else {
+                var moved = orig.map(function(pt) { return [ptLat(pt) + dlat, ptLng(pt) + dlng]; });
+                polyDragTarget.setLatLngs(moved);
+            }
+        }
+    });
+    mapInst.on('mouseup', function(e) {
+        if (isPointing) {
+            isPointing = false;
+            if (pointingMarker) { pointingMarker.remove(); pointingMarker = null; }
+        }
+        // End Ctrl+Shift+Drag scale
+        if (scaleTarget) { endScale(e.latlng); return; }
+        // End Ctrl+Drag rotation
+        if (rotTarget) {
+            var wasMarker = !rotTarget.getLatLngs;
+            var target = rotTarget;
+            endRotation(e.latlng);
+            // Re-enable dragging for point markers
+            if (wasMarker && target.dragging) target.dragging.enable();
+            return;
+        }
+        freehandMouseUp(e);
+        shapeMouseUp(e);
+        // PolyDrag end — save new position only if actually dragged
+        if (polyDragTarget && polyDragStartLatLng) {
+            if (polyDragMoved) {
+                var dlat = e.latlng.lat - polyDragStartLatLng.lat;
+                var dlng = e.latlng.lng - polyDragStartLatLng.lng;
+                var md = polyDragTarget.options.markerData;
+                if (md && md.pos) {
+                    var newPos = [];
+                    for (var i = 0; i < md.pos.length; i += 2) {
+                        newPos.push(md.pos[i] + dlat);
+                        newPos.push(md.pos[i + 1] + dlng);
+                    }
+                    md.pos = newPos;
+                    backend.moveMarker(polyDragTarget.options.markerId, md);
+                }
+            }
+            if (polyDragLiveTimer) { clearInterval(polyDragLiveTimer); polyDragLiveTimer = null; }
+            polyDragTarget = null;
+            polyDragStartLatLng = null;
+            polyDragOrigLatLngs = null;
+            mapInst.dragging.enable();
+        }
+    });
+    mapInst.on('mouseout', function(e) {
+        if (isPointing) {
+            isPointing = false;
+            if (pointingMarker) { pointingMarker.remove(); pointingMarker = null; }
+        }
+        // Cancel scale/rotation on mouseout
+        if (scaleTarget) {
+            scaleTarget = null; scaleMarkerId = null; scaleOrigLatLngs = null;
+            mapInst.dragging.enable();
+        }
+        if (rotTarget) {
+            rotTarget = null; rotMarkerId = null; rotOrigLatLngs = null;
+            mapInst.dragging.enable();
+        }
+        // Cancel polyDrag on mouseout
+        if (polyDragTarget) {
+            polyDragTarget = null;
+            polyDragStartLatLng = null;
+            polyDragOrigLatLngs = null;
+            mapInst.dragging.enable();
+        }
+    });
+    mapInst.on('contextmenu', function(e) {
+        if (currentLine) {
+            var data = currentLine.getLatLngs().slice(0, -1);
+            if (data.length > 1) { currentLine.setLatLngs(data); }
+            else { currentLine.remove(); currentLine = null; }
+        }
+        if (currentArea) { currentArea.remove(); currentArea = null; }
+        if (currentMeasure) { currentMeasure.remove(); currentMeasure = null; }
+    });
+    document.querySelectorAll('.map-tool-btn[data-tool]').forEach(btn => {
+        btn.addEventListener('click', function() { setTool(this.dataset.tool, this); });
+    });
+    document.getElementById('toolZoomIn').onclick = () => mapInst.zoomIn();
+    document.getElementById('toolZoomOut').onclick = () => mapInst.zoomOut();
+    
+    document.querySelectorAll('#freehandColorPicker .color-btn').forEach(btn => {
+        btn.onclick = function() {
+            document.querySelectorAll('#freehandColorPicker .color-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+        };
+    });
+    document.querySelectorAll('.draw-dash-btn').forEach(btn => {
+        btn.onclick = function() {
+            document.querySelectorAll('.draw-dash-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+        };
+    });
+    document.getElementById('freehandDrawBtn').onclick = function() {
+        closeMapModal('modalFreehandDraw');
+    };
+    document.getElementById('toolFullscreen').onclick = () => {
+        var mapEl = document.querySelector('.map-editor-wrap');
+        if (!document.fullscreenElement) { if(mapEl.requestFullscreen) mapEl.requestFullscreen(); } 
+        else { if(document.exitFullscreen) document.exitFullscreen(); }
+    };
+
+    // Layers panel toggle
+    document.getElementById('toolLayers').onclick = () => {
+        var panel = document.getElementById('layersPanel');
+        if (panel) panel.classList.toggle('show');
+    };
+
+    // Export to JSON
+    document.getElementById('toolExport').onclick = () => {
+        var exportData = { map: currentMap, timestamp: new Date().toISOString(), markers: [] };
+        Object.keys(allMarkers).forEach(id => {
+            var m = allMarkers[id];
+            if (m.options && m.options.markerData) {
+                exportData.markers.push({ id: id, data: m.options.markerData });
+            }
+        });
+        var blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url; a.download = 'intel_map_export_' + Date.now() + '.json';
+        a.click(); URL.revokeObjectURL(url);
+    };
+
+    // Layers panel: toggle layer visibility
+    document.getElementById('layerDrawings').onclick = function() {
+        this.classList.toggle('active');
+        var icon = this.querySelector('.layer-vis i');
+        if (this.classList.contains('active')) {
+            mapInst.addLayer(drawLayer); icon.className = 'fas fa-eye';
+        } else {
+            mapInst.removeLayer(drawLayer); icon.className = 'fas fa-eye-slash';
+        }
+    };
+    document.getElementById('layerGrid').onclick = function() {
+        this.classList.toggle('active');
+        var icon = this.querySelector('.layer-vis i');
+        if (this.classList.contains('active')) {
+            if (gridLayer) mapInst.addLayer(gridLayer); icon.className = 'fas fa-eye';
+        } else {
+            if (gridLayer) mapInst.removeLayer(gridLayer); icon.className = 'fas fa-eye-slash';
+        }
+    };
+
+    // Clear All markers
+    document.getElementById('btnClearAll').onclick = function() {
+        stormConfirm('CLEAR ALL MARKERS? This cannot be undone.').then(function(ok) {
+        if (!ok) return;
+        fetch('api/mission_plan.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'clear', map:currentMap, password:'S2' }) })
+        .then(r => r.json()).then(d => {
+            if (d.success) {
+                Object.keys(allMarkers).forEach(id => {
+                    if(allMarkers[id].labels) allMarkers[id].labels.forEach(l=>l.remove());
+                    drawLayer.removeLayer(allMarkers[id]);
+                });
+                allMarkers = {};
+            }
+        });
+        });
+    };
+
+    // Import JSON markers
+    document.getElementById('btnImportMarkers').onclick = function() {
+        var input = document.createElement('input');
+        input.type = 'file'; input.accept = '.json';
+        input.onchange = function(ev) {
+            var file = ev.target.files[0];
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    var data = JSON.parse(e.target.result);
+                    if (data.markers && Array.isArray(data.markers)) {
+                        data.markers.forEach(function(m) {
+                            backend.addMarker(null, m.data);
+                        });
+                    }
+                } catch(err) { stormAlert('Invalid JSON file', 'error'); }
+            };
+            reader.readAsText(file);
+        };
+        input.click();
+    };
+
+    pollPlayers();
+    pollDrawings();
+    
+    // ---- Real-Time Cursor Layer ----
+    rtCursorLayer = L.layerGroup().addTo(mapInst);
+    
+    // Track mouse position on map
+    mapInst.on('mousemove', function(e) {
+        rtCursorPos = { lat: e.latlng.lat, lng: e.latlng.lng };
+    });
+    mapInst.on('mouseout', function() {
+        rtCursorPos = null;
+    });
+    
+    // Start real-time presence system
+    startRealTimePresence();
+    
+    // Init TinyMCE for notes
+    tinymce.init({
+        selector: '#noteContent',
+        menubar: false,
+        toolbar: 'bold italic forecolor | alignleft aligncenter alignright',
+        height: 200, skin: 'oxide-dark', content_css: 'dark'
+    });
+}
+
+// ---- MODAL LOGIC ----
+function openMapModal(id) { document.getElementById(id).classList.add('show'); }
+function closeMapModal(id) { 
+    document.getElementById(id).classList.remove('show'); 
+}
+
+// --- SIDC Generation & Preview ---
+const NATO_AFF = { pending:'0', unknown:'1', assumedFriend:'2', friend:'3', neutral:'4', suspect:'5', hostile:'6' };
+
+// Entity data per symbol set — exact codes from milsymbol source (matches PLANOPS Maps)
+const NATO_ENTITIES = {
+    '10': [ // Land Unit
+        {v:'110000',t:'Command and Control'},
+        {v:'110100',t:'Broadcast Transmitter Antenna'},
+        {v:'110200',t:'Civil Affairs'},
+        {v:'110300',t:'Civil-Military Cooperation'},
+        {v:'110400',t:'Information Operations'},
+        {v:'110500',t:'Liaison'},
+        {v:'110600',t:'MISO (PSYOP)'},
+        {v:'110700',t:'Radio'},
+        {v:'110800',t:'Radio Relay'},
+        {v:'110900',t:'Radio Teletype Centre'},
+        {v:'111000',t:'Signal'},
+        {v:'111100',t:'Satellite'},
+        {v:'111200',t:'Video Imagery'},
+        {v:'111300',t:'Space'},
+        {v:'111400',t:'Special Troops'},
+        {v:'120100',t:'Air Assault'},
+        {v:'120200',t:'Air Traffic Services'},
+        {v:'120300',t:'Amphibious'},
+        {v:'120400',t:'Anti-Armor / Anti-Tank'},
+        {v:'120500',t:'Armour'},
+        {v:'120501',t:'Armour, Reconnaissance'},
+        {v:'120502',t:'Armour, Amphibious'},
+        {v:'120600',t:'Aviation, Rotary Wing'},
+        {v:'120601',t:'Aviation, Rotary Wing Recon'},
+        {v:'120700',t:'Aviation, Composite'},
+        {v:'120800',t:'Aviation, Fixed Wing'},
+        {v:'120801',t:'Aviation, Fixed Wing Recon'},
+        {v:'120900',t:'Combat'},
+        {v:'121000',t:'Combined Arms'},
+        {v:'121100',t:'Infantry'},
+        {v:'121101',t:'Infantry, Amphibious'},
+        {v:'121102',t:'Infantry, Armoured'},
+        {v:'121103',t:'Infantry, Mechanized'},
+        {v:'121104',t:'Infantry, Motorized'},
+        {v:'121106',t:'Main Gun System'},
+        {v:'121200',t:'Observer / Observation'},
+        {v:'121300',t:'Reconnaissance'},
+        {v:'121301',t:'Reconnaissance, Surveillance'},
+        {v:'121302',t:'Reconnaissance, Amphibious'},
+        {v:'121303',t:'Reconnaissance, Motorized'},
+        {v:'121400',t:'Sea-Air-Land (SEAL)'},
+        {v:'121500',t:'Sniper'},
+        {v:'121600',t:'Surveillance'},
+        {v:'121700',t:'Special Forces'},
+        {v:'121800',t:'Special Operations Forces'},
+        {v:'121900',t:'Unmanned Systems'},
+        {v:'122000',t:'Ranger'},
+        {v:'130100',t:'Air Defence'},
+        {v:'130101',t:'Air Defence, Gun'},
+        {v:'130102',t:'Air Defence, Missile'},
+        {v:'130200',t:'Field Arty Aerial Obs'},
+        {v:'130300',t:'Field Artillery'},
+        {v:'130301',t:'Field Artillery, Self-Propelled'},
+        {v:'130302',t:'Field Arty, Target Acquisition'},
+        {v:'130400',t:'Field Artillery Observer'},
+        {v:'130500',t:'Joint Fire Support'},
+        {v:'130600',t:'Meteorological'},
+        {v:'130700',t:'Missile'},
+        {v:'130800',t:'Mortar'},
+        {v:'130900',t:'Survey'},
+        {v:'140100',t:'CBRN'},
+        {v:'140200',t:'Combat Support (Manoeuvre Enhancement)'},
+        {v:'140300',t:'Criminal Investigation'},
+        {v:'140400',t:'Diver'},
+        {v:'140500',t:'Dog'},
+        {v:'140600',t:'Drilling'},
+        {v:'140700',t:'Engineer'},
+        {v:'140701',t:'Engineer, Mechanized'},
+        {v:'140702',t:'Engineer, Motorized'},
+        {v:'140800',t:'Explosive Ordnance Disposal'},
+        {v:'140900',t:'Field Camp Construction'},
+        {v:'141000',t:'Fire Protection'},
+        {v:'141100',t:'Geospatial Support'},
+        {v:'141200',t:'Military Police'},
+        {v:'141300',t:'Mine'},
+        {v:'141400',t:'Mine Clearing'},
+        {v:'141500',t:'Mine Launching'},
+        {v:'141600',t:'Mine Laying'},
+        {v:'141700',t:'Security'},
+        {v:'141800',t:'Search and Rescue'},
+        {v:'141900',t:'Security Police (Air)'},
+        {v:'142000',t:'Shore Patrol'},
+        {v:'142100',t:'Topographic'},
+        {v:'142200',t:'Air and Missile Defense'},
+        {v:'150100',t:'Analysis'},
+        {v:'150200',t:'Counter-Intelligence'},
+        {v:'150300',t:'Direction Finding'},
+        {v:'150400',t:'Electronic Ranging'},
+        {v:'150500',t:'Electronic Warfare'},
+        {v:'150600',t:'Intercept'},
+        {v:'150700',t:'Interrogation'},
+        {v:'150800',t:'Jamming'},
+        {v:'150900',t:'Joint Intelligence Centre'},
+        {v:'151000',t:'Military Intelligence'},
+        {v:'151100',t:'Search'},
+        {v:'151200',t:'Sensor'},
+        {v:'160000',t:'Sustainment'},
+        {v:'160100',t:'Administrative'},
+        {v:'160200',t:'All Class Supply'},
+        {v:'160400',t:'Ammunition'},
+        {v:'160500',t:'Band'},
+        {v:'160600',t:'Combat Service Support'},
+        {v:'160700',t:'Finance'},
+        {v:'160800',t:'Judge Advocate General'},
+        {v:'160900',t:'Labour'},
+        {v:'161000',t:'Laundry/Bath'},
+        {v:'161100',t:'Maintenance'},
+        {v:'161200',t:'Materiel'},
+        {v:'161300',t:'Medical'},
+        {v:'161400',t:'Medical Treatment Facility'},
+        {v:'161500',t:'Morale, Welfare, Recreation'},
+        {v:'161600',t:'Mortuary Affairs'},
+        {v:'162300',t:'Ordnance'},
+        {v:'162400',t:'Personnel Services'},
+        {v:'162500',t:'Petroleum, Oil, Lubricants'},
+        {v:'162600',t:'Pipeline'},
+        {v:'162700',t:'Postal'},
+        {v:'162800',t:'Public Affairs'},
+        {v:'162900',t:'Quartermaster'},
+        {v:'163000',t:'Railhead'},
+        {v:'163100',t:'Religious Support'},
+        {v:'163200',t:'Replacement Holding Unit'},
+        {v:'163400',t:'Supply'},
+        {v:'163600',t:'Transportation'},
+        {v:'164700',t:'Water'},
+        {v:'164800',t:'Water Purification'},
+        {v:'170100',t:'Naval'},
+        {v:'180100',t:'Allied Command Europe Rapid Reaction Corps (ARRC)'},
+        {v:'180200',t:'Allied Command Operations'},
+        {v:'180300',t:'ISAF'},
+        {v:'180400',t:'Multinational'},
+        {v:'190000',t:'Emergency Operation'},
+        {v:'200000',t:'Law Enforcement'},
+        {v:'200700',t:'Law Enforcement Unit'},
+        {v:'210000',t:'Cyber'}
+    ],
+    '01': [ // Air
+        {v:'110100',t:'Fixed-Wing'},
+        {v:'110200',t:'Military Rotary Wing'},
+        {v:'110300',t:'UAV'},
+        {v:'110400',t:'VT-UAV'},
+        {v:'110500',t:'Military Balloon'},
+        {v:'110600',t:'Military Airship'},
+        {v:'110700',t:'Tethered Lighter Than Air'},
+        {v:'120100',t:'Civilian Fixed-Wing'},
+        {v:'120200',t:'Civilian Rotary Wing'},
+        {v:'120300',t:'Civilian UAV'},
+        {v:'120400',t:'Civilian Balloon'},
+        {v:'120500',t:'Civilian Airship'},
+        {v:'120600',t:'Civilian Tethered LTA'},
+        {v:'130100',t:'Bomb'},
+        {v:'130200',t:'Underwater Decoy'},
+        {v:'140000',t:'Manual Track'}
+    ],
+    '02': [ // Air Missile
+        {v:'110000',t:'Missile'}
+    ],
+    '05': [ // Space
+        {v:'110100',t:'Military'},
+        {v:'110200',t:'Civilian'}
+    ],
+    '11': [ // Land civilian unit/Organization
+        {v:'110000',t:'Civilian'},
+        {v:'110100',t:'Enterprise/Business'},
+        {v:'110200',t:'Government Organization'},
+        {v:'110300',t:'Non-Government Organization (NGO)'}
+    ],
+    '15': [ // Land Equipment
+        {v:'110100',t:'Weapon'},
+        {v:'110101',t:'Rifle/Automatic Weapon'},
+        {v:'110102',t:'Machine Gun'},
+        {v:'110103',t:'Grenade Launcher'},
+        {v:'110200',t:'Anti-Tank Gun'},
+        {v:'110300',t:'Direct Fire Gun'},
+        {v:'110400',t:'Recoilless Gun'},
+        {v:'110500',t:'Anti-Tank Missile Launcher'},
+        {v:'110600',t:'Anti-Tank Rocket Launcher'},
+        {v:'110700',t:'Howitzer'},
+        {v:'110800',t:'Missile Launcher'},
+        {v:'110900',t:'Mortar'},
+        {v:'111000',t:'Single Rocket Launcher'},
+        {v:'111100',t:'Multiple Rocket Launcher'},
+        {v:'111200',t:'Anti-Tank Heavy'},
+        {v:'111300',t:'Air Defence Gun'},
+        {v:'111400',t:'Air Defence Missile Launcher'},
+        {v:'120000',t:'Vehicle'},
+        {v:'120100',t:'Armoured Fighting Vehicle'},
+        {v:'120101',t:'Armoured Fighting Vehicle (Command)'},
+        {v:'120200',t:'Tank'},
+        {v:'120300',t:'Light Armoured Vehicle'},
+        {v:'120400',t:'Armoured Personnel Carrier'},
+        {v:'120500',t:'Infantry Fighting Vehicle'},
+        {v:'120600',t:'Armoured Utility Vehicle'},
+        {v:'120700',t:'Engineering Vehicle'},
+        {v:'130000',t:'Utility Vehicle'},
+        {v:'130100',t:'Bus'},
+        {v:'130200',t:'Semi-Trailer Truck'},
+        {v:'130300',t:'Tow Truck'},
+        {v:'130400',t:'Ambulance'},
+        {v:'140000',t:'Train / Locomotive'},
+        {v:'150000',t:'Sensor'},
+        {v:'150100',t:'Radar'},
+        {v:'150200',t:'JTIDS/MIDS'},
+        {v:'160000',t:'Missile'},
+        {v:'170000',t:'Civilian Vehicle'}
+    ],
+    '20': [ // Land Installation
+        {v:'110100',t:'Aircraft Production & Assembly'},
+        {v:'110200',t:'Ammunition'},
+        {v:'110300',t:'Ammunition & Supply'},
+        {v:'110400',t:'Tank/Armour'},
+        {v:'110500',t:'Black List Location'},
+        {v:'110600',t:'CBRN'},
+        {v:'110700',t:'Engineer/Dozer'},
+        {v:'110701',t:'Bridge'},
+        {v:'110800',t:'Equipment Manufacture'},
+        {v:'110900',t:'Government'},
+        {v:'111000',t:'Gray List Location'},
+        {v:'111100',t:'Mass Grave Location'}
+    ],
+    '27': [ // Dismounted individual
+        {v:'110100',t:'Personnel'},
+        {v:'110200',t:'Leader'},
+        {v:'110300',t:'Sniper'},
+        {v:'110400',t:'Scout'}
+    ],
+    '30': [ // Sea Surface
+        {v:'120000',t:'Combatant'},
+        {v:'120100',t:'Carrier'},
+        {v:'120200',t:'Surface Combatant, Line'},
+        {v:'120300',t:'Amphibious Warfare Ship'},
+        {v:'130000',t:'Noncombatant'},
+        {v:'130100',t:'Auxiliary Ship'}
+    ],
+    '35': [ // Sea Subsurface
+        {v:'110100',t:'Submarine'},
+        {v:'110101',t:'SSN (Nuclear Attack)'},
+        {v:'110102',t:'SSBN (Ballistic Missile)'},
+        {v:'110103',t:'SSGN (Guided Missile)'},
+        {v:'120000',t:'UUV/Unmanned Underwater Vehicle'},
+        {v:'130000',t:'Diver'}
+    ],
+    '36': [ // Mine Warfare
+        {v:'110100',t:'Mine'},
+        {v:'110200',t:'Mine — Moored'},
+        {v:'110300',t:'Mine — Floating'},
+        {v:'110400',t:'Mine — Bottom'},
+        {v:'110500',t:'Mine — Rising'},
+        {v:'120000',t:'Mine Countermeasure Vessel'}
+    ],
+    '40': [ // Activity/Event
+        {v:'110100',t:'Criminal Activity Incident'},
+        {v:'110200',t:'Bomb'}
+    ],
+    '_default': [{v:'110000',t:'Default'}]
+};
+
+// Modifier 1 — exact codes from milsymbol landunit.js
+const NATO_MOD1 = {
+    '10': [
+        {v:'00',t:'Unspecified'},
+        {v:'01',t:'Airmobile / Air Assault'},
+        {v:'02',t:'Area'},
+        {v:'03',t:'Attack'},
+        {v:'04',t:'Biological'},
+        {v:'05',t:'Border'},
+        {v:'06',t:'Bridging'},
+        {v:'07',t:'Chemical'},
+        {v:'08',t:'Close Protection'},
+        {v:'09',t:'Combat'},
+        {v:'10',t:'Command and Control'},
+        {v:'11',t:'Communications Contingency'},
+        {v:'12',t:'Construction'},
+        {v:'13',t:'Cross Cultural Communication'},
+        {v:'14',t:'Crowd and Riot Control'},
+        {v:'15',t:'Decontamination'},
+        {v:'16',t:'Detention'},
+        {v:'17',t:'Direct Communications'},
+        {v:'18',t:'Diving'},
+        {v:'19',t:'Division'},
+        {v:'20',t:'Dog'},
+        {v:'21',t:'Drilling'},
+        {v:'22',t:'Electro-Optical'},
+        {v:'23',t:'Enhanced'},
+        {v:'24',t:'Explosive Ordnance Disposal'},
+        {v:'25',t:'Fire Direction Centre'},
+        {v:'26',t:'Force'},
+        {v:'27',t:'Forward'},
+        {v:'29',t:'Landing Support'},
+        {v:'31',t:'Maintenance'},
+        {v:'32',t:'Meteorological'},
+        {v:'33',t:'Mine Countermeasure'},
+        {v:'34',t:'Missile'},
+        {v:'35',t:'Mobile Advisor and Support'},
+        {v:'37',t:'Mobility Support'},
+        {v:'38',t:'Movement Control Centre'},
+        {v:'39',t:'Multinational'},
+        {v:'41',t:'Multiple Rocket Launcher'},
+        {v:'42',t:'NATO Medical Role 1'},
+        {v:'43',t:'NATO Medical Role 2'},
+        {v:'44',t:'NATO Medical Role 3'},
+        {v:'45',t:'NATO Medical Role 4'},
+        {v:'46',t:'Naval'},
+        {v:'48',t:'Nuclear'},
+        {v:'49',t:'Operations'},
+        {v:'50',t:'Radar'},
+        {v:'52',t:'Radiological'},
+        {v:'53',t:'Search and Rescue'},
+        {v:'54',t:'Security'},
+        {v:'55',t:'Sensor'},
+        {v:'57',t:'Signals Intelligence'},
+        {v:'59',t:'Single Rocket Launcher'},
+        {v:'60',t:'Smoke'},
+        {v:'61',t:'Sniper'},
+        {v:'62',t:'Sound Ranging'},
+        {v:'63',t:'Special Operations Forces (SOF)'},
+        {v:'64',t:'Special Weapons and Tactics'},
+        {v:'65',t:'Survey'},
+        {v:'66',t:'Tactical Exploitation'},
+        {v:'67',t:'Target Acquisition'},
+        {v:'68',t:'Topographic'},
+        {v:'69',t:'Utility'},
+        {v:'70',t:'Video Imagery'},
+        {v:'75',t:'MEDEVAC'},
+        {v:'76',t:'Ranger'},
+        {v:'77',t:'Support'},
+        {v:'78',t:'Aviation'},
+        {v:'79',t:'Route, Recon, and Clearance'},
+        {v:'80',t:'Tilt-Rotor'},
+        {v:'84',t:'Assault'},
+        {v:'85',t:'Weapons'},
+        {v:'93',t:'Independent Command'},
+        {v:'97',t:'Brigade'},
+        {v:'98',t:'Headquarters Element'}
+    ],
+    '_default': [{v:'00',t:'Unspecified'}]
+};
+
+// Modifier 2 — exact codes from milsymbol landunit.js
+const NATO_MOD2 = {
+    '10': [
+        {v:'00',t:'Unspecified'},
+        {v:'01',t:'Airborne'},
+        {v:'02',t:'Arctic'},
+        {v:'03',t:'Battle Damage Repair'},
+        {v:'04',t:'Bicycle Equipped'},
+        {v:'05',t:'Casualty Staging'},
+        {v:'06',t:'Clearing'},
+        {v:'07',t:'Close Range'},
+        {v:'08',t:'Control'},
+        {v:'09',t:'Decontamination'},
+        {v:'10',t:'Demolition'},
+        {v:'11',t:'Dental'},
+        {v:'12',t:'Digital'},
+        {v:'14',t:'Equipment'},
+        {v:'15',t:'Heavy'},
+        {v:'16',t:'High Altitude'},
+        {v:'17',t:'Intermodal'},
+        {v:'18',t:'Intensive Care'},
+        {v:'19',t:'Light'},
+        {v:'20',t:'Laboratory'},
+        {v:'21',t:'Launcher'},
+        {v:'22',t:'Long Range'},
+        {v:'23',t:'Low Altitude'},
+        {v:'24',t:'Medium'},
+        {v:'25',t:'Medium Altitude'},
+        {v:'26',t:'Medium Range'},
+        {v:'27',t:'Mountain'},
+        {v:'29',t:'Multi-Channel'},
+        {v:'31',t:'Pack Animal'},
+        {v:'34',t:'Psychological'},
+        {v:'36',t:'Railroad'},
+        {v:'40',t:'Riverine'},
+        {v:'42',t:'Ski'},
+        {v:'43',t:'Short Range'},
+        {v:'44',t:'Strategic'},
+        {v:'45',t:'Support'},
+        {v:'46',t:'Tactical'},
+        {v:'47',t:'Towed'},
+        {v:'48',t:'Troop'},
+        {v:'49',t:'V/STOL'},
+        {v:'50',t:'Veterinary'},
+        {v:'51',t:'Wheeled'},
+        {v:'54',t:'Attack'},
+        {v:'55',t:'Refuel'},
+        {v:'56',t:'Utility'},
+        {v:'57',t:'Combat Search and Rescue'},
+        {v:'58',t:'Guerilla'},
+        {v:'59',t:'Air Assault'},
+        {v:'60',t:'Amphibious'},
+        {v:'61',t:'Very Heavy'},
+        {v:'74',t:'Composite'},
+        {v:'76',t:'Light and Medium'},
+        {v:'77',t:'Self-Propelled'},
+        {v:'89',t:'Air Defence'}
+    ],
+    '_default': [{v:'00',t:'Unspecified'}]
+};
+
+// Populate a <select> element from an array of {v,t}
+function populateSelect(selId, items, keepValue) {
+    var sel = document.getElementById(selId);
+    if (!sel) return;
+    var prev = keepValue ? sel.value : null;
+    sel.innerHTML = '';
+    items.forEach(function(item) {
+        var opt = document.createElement('option');
+        opt.value = item.v; opt.textContent = item.t;
+        sel.appendChild(opt);
+    });
+    if (prev && sel.querySelector('option[value="'+prev+'"]')) sel.value = prev;
+}
+
+// When symbol set changes, repopulate entity, mod1, mod2 dropdowns
+function onSymbolSetChange() {
+    var ss = document.getElementById('natoSymbolSet').value;
+    populateSelect('natoSymbolType', NATO_ENTITIES[ss] || NATO_ENTITIES['_default']);
+    populateSelect('natoMod1', NATO_MOD1[ss] || NATO_MOD1['_default']);
+    populateSelect('natoMod2', NATO_MOD2[ss] || NATO_MOD2['_default']);
+    // Rebuild icon dropdowns for repopulated selects
+    if (typeof buildAllIconDropdowns === 'function') buildAllIconDropdowns();
+    updateNatoPreview();
+}
+
+function getHqTfDummyValue() {
+    var v = 0;
+    document.querySelectorAll('.aff-box-btn[data-hqtf].active').forEach(function(b) {
+        v += parseInt(b.dataset.hqtf) || 0;
+    });
+    return String(v);
+}
+
+function generateSIDC() {
+    var affBtn = document.querySelector('.aff-box-btn[data-aff].active');
+    var affKey = affBtn ? affBtn.dataset.aff : 'friend';
+    var symbolSet = document.getElementById('natoSymbolSet').value;
+    var entity = document.getElementById('natoSymbolType').value;
+    var status = document.getElementById('natoStatus').value;
+    var hqtf = getHqTfDummyValue();
+    var echelon = document.getElementById('natoEchelon').value;
+    var mod1 = document.getElementById('natoMod1').value;
+    var mod2 = document.getElementById('natoMod2').value;
+    var identity = NATO_AFF[affKey] || '3';
+    return '10' + '0' + identity + symbolSet + status + hqtf + echelon + entity + mod1 + mod2;
+}
+
+function updateNatoPreview() {
+    var sidc = generateSIDC();
+    var desig = document.getElementById('natoDesignation').value;
+    var info = document.getElementById('natoAdditional').value;
+    var hf = document.getElementById('natoHigherFormation') ? document.getElementById('natoHigherFormation').value : '';
+    var dirMil = document.getElementById('natoDirection') ? parseInt(document.getElementById('natoDirection').value) : undefined;
+    var reinf = document.getElementById('natoReinforced') ? document.getElementById('natoReinforced').value : '';
+    var scale = parseInt(document.getElementById('natoScale').value) || 100;
+    
+    document.getElementById('sidcCode').value = sidc;
+
+    if (typeof ms !== 'undefined') {
+        var opts = { size: scale * 0.3 };
+        if (desig) opts.uniqueDesignation = desig;
+        if (info) opts.additionalInformation = info;
+        if (hf) opts.higherFormation = hf;
+        if (dirMil && !isNaN(dirMil)) opts.direction = Math.round(dirMil * 360 / 6400);
+        if (reinf) opts.reinforcedReduced = reinf;
+        var sym = new ms.Symbol(sidc, opts);
+        document.getElementById('natoPreview').innerHTML = '';
+        document.getElementById('natoPreview').appendChild(sym.asDOM());
+    }
+    if (typeof refreshAllIconDropdowns === 'function') refreshAllIconDropdowns();
+}
+
+// Init dropdowns on page load
+document.getElementById('natoSymbolSet').addEventListener('change', onSymbolSetChange);
+['natoSymbolType', 'natoStatus', 'natoEchelon', 'natoMod1', 'natoMod2',
+ 'natoDesignation', 'natoAdditional', 'natoHigherFormation', 'natoDirection',
+ 'natoReinforced', 'natoScale'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) {
+        el.addEventListener('input', updateNatoPreview);
+        el.addEventListener('change', updateNatoPreview);
+    }
+});
+// Affiliation buttons (radio — exclusive)
+document.querySelectorAll('.aff-box-btn[data-aff]').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.aff-box-btn[data-aff]').forEach(b=>b.classList.remove('active'));
+        this.classList.add('active');
+        updateAffiliationIcons();
+        updateNatoPreview();
+    });
+});
+// HQ/TF/Dummy buttons (toggle — multiple selectable)
+document.querySelectorAll('.aff-box-btn[data-hqtf]').forEach(btn => {
+    btn.addEventListener('click', function() {
+        this.classList.toggle('active');
+        updateNatoPreview();
+    });
+});
+
+// Render affiliation SVG icons dynamically using milsymbol
+function updateAffiliationIcons() {
+    if (typeof ms === 'undefined') return;
+    var activeAffBtn = document.querySelector('.aff-box-btn[data-aff].active');
+    var activeAff = activeAffBtn ? (NATO_AFF[activeAffBtn.dataset.aff] || '3') : '3';
+    
+    // Main affiliations (render only the frame)
+    document.querySelectorAll('.aff-box-btn[data-aff]').forEach(function(btn) {
+        var ident = NATO_AFF[btn.dataset.aff] || '3';
+        // 10(version) 0(sid1) ident(sid2) 10(set) 0(status) 0(hqtf) 00(ech) 000000(entity) 00(mod1) 00(mod2)
+        var sidc = '10' + '0' + ident + '10' + '0' + '0' + '00' + '000000' + '00' + '00';
+        try {
+            btn.querySelector('.aff-icon').innerHTML = new ms.Symbol(sidc, { size: 24, icon: false }).asSVG();
+        } catch(e){}
+    });
+    // HQ/TF/Dummy modifiers (render frame using active affiliation + specific modifier)
+    document.querySelectorAll('.aff-box-btn[data-hqtf]').forEach(function(btn) {
+        var hqtf = btn.dataset.hqtf;
+        // 10(version) 0(sid1) activeAff(sid2) 10(set) 0(status) hqtf 00(ech) 000000(entity) 00(mod1) 00(mod2)
+        var sidc = '10' + '0' + activeAff + '10' + '0' + hqtf + '00' + '000000' + '00' + '00';
+        try {
+            btn.querySelector('.aff-icon').innerHTML = new ms.Symbol(sidc, { size: 24, icon: false }).asSVG();
+        } catch(e){}
+    });
+}
+updateAffiliationIcons();
+
+// Initialize entity lists for default symbol set
+onSymbolSetChange();
+
+// Reusable icon dropdown builder for all NATO selects (PLANOPS style)
+// type: 'entity' | 'status' | 'mod1' | 'mod2' | 'echelon'
+function buildIconDropdown(selId, type) {
+    if (typeof ms === 'undefined') return;
+    var sel = document.getElementById(selId);
+    if (!sel) return;
+
+    // Destroy old wrapper if exists (fixes duplicate bug)
+    var oldWrap = sel.closest('.nato-icon-dropdown-wrap');
+    if (oldWrap) {
+        var parent = oldWrap.parentNode;
+        parent.insertBefore(sel, oldWrap);
+        oldWrap.remove();
+    }
+    sel.style.display = 'none';
+
+    var wrap = document.createElement('div');
+    wrap.className = 'nato-icon-dropdown-wrap';
+    sel.parentNode.insertBefore(wrap, sel);
+    wrap.appendChild(sel);
+
+    var display = document.createElement('div');
+    display.className = 'nato-icon-dropdown-display nato-select';
+    display.style.cursor = 'pointer';
+    display.style.display = 'flex';
+    display.style.alignItems = 'center';
+    display.style.gap = '6px';
+    wrap.appendChild(display);
+
+    var list = document.createElement('div');
+    list.className = 'nato-icon-dropdown-list';
+    list.style.display = 'none';
+    wrap.appendChild(list);
+
+    var searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.placeholder = 'Search...';
+    searchInput.className = 'nato-input';
+    searchInput.style.cssText = 'margin:4px;width:calc(100% - 8px);box-sizing:border-box;';
+
+    function renderSidc(val) {
+        try {
+            var affBtn = document.querySelector('.aff-box-btn[data-aff].active');
+            var ident = affBtn ? (NATO_AFF[affBtn.dataset.aff] || '3') : '3';
+            var ss = (type === 'symbolset') ? val : document.getElementById('natoSymbolSet').value;
+            var entityVal = (type === 'symbolset') ? '000000' : ((type === 'entity') ? val : document.getElementById('natoSymbolType').value);
+            var statusVal = (type === 'symbolset') ? '0' : ((type === 'status') ? val : document.getElementById('natoStatus').value);
+            var echelonVal = (type === 'symbolset') ? '00' : ((type === 'echelon') ? val : document.getElementById('natoEchelon').value);
+            var mod1Val = (type === 'symbolset') ? '00' : ((type === 'mod1') ? val : document.getElementById('natoMod1').value);
+            var mod2Val = (type === 'symbolset') ? '00' : ((type === 'mod2') ? val : document.getElementById('natoMod2').value);
+            var hqtf = (type === 'symbolset') ? '0' : getHqTfDummyValue();
+            
+            // If we are just previewing symbol sets, render only the frame
+            var sidc = '100' + ident + ss + statusVal + hqtf + echelonVal + entityVal + mod1Val + mod2Val;
+            var opts = { size: 22 };
+            if (type === 'symbolset') opts.icon = false; // Only show frame for Symbol Set dropdown
+            return new ms.Symbol(sidc, opts).asSVG();
+        } catch(e) { return ''; }
+    }
+
+    function buildList(filter) {
+        list.innerHTML = '';
+        list.appendChild(searchInput);
+        Array.from(sel.options).forEach(function(opt) {
+            if (filter && opt.text.toLowerCase().indexOf(filter.toLowerCase()) < 0) return;
+            var item = document.createElement('div');
+            item.className = 'nato-icon-dropdown-item';
+            item.innerHTML = renderSidc(opt.value) + '<span>' + opt.text + '</span>';
+            item.dataset.value = opt.value;
+            item.onclick = function() {
+                sel.value = this.dataset.value;
+                refreshDisplay();
+                list.style.display = 'none';
+                sel.dispatchEvent(new Event('change'));
+            };
+            list.appendChild(item);
+        });
+    }
+
+    function refreshDisplay() {
+        var opt = sel.options[sel.selectedIndex];
+        if (opt) display.innerHTML = renderSidc(opt.value) + '<span>' + opt.text + '</span>';
+    }
+
+    display.onclick = function(e) {
+        e.stopPropagation();
+        // Close all other open dropdowns
+        document.querySelectorAll('.nato-icon-dropdown-list').forEach(function(l) { if (l !== list) l.style.display = 'none'; });
+        var isOpen = list.style.display !== 'none';
+        list.style.display = isOpen ? 'none' : 'block';
+        if (!isOpen) { buildList(''); searchInput.value = ''; searchInput.focus(); }
+    };
+    searchInput.oninput = function() { buildList(this.value); };
+    searchInput.onclick = function(e) { e.stopPropagation(); };
+
+    refreshDisplay();
+    sel._iconDropdown = { refreshDisplay: refreshDisplay };
+}
+// Close all dropdowns on outside click
+document.addEventListener('click', function() { document.querySelectorAll('.nato-icon-dropdown-list').forEach(function(l) { l.style.display = 'none'; }); });
+
+// Build all icon dropdowns
+function buildAllIconDropdowns() {
+    buildIconDropdown('natoSymbolSet', 'symbolset');
+    buildIconDropdown('natoSymbolType', 'entity');
+    buildIconDropdown('natoStatus', 'status');
+    buildIconDropdown('natoMod1', 'mod1');
+    buildIconDropdown('natoMod2', 'mod2');
+    buildIconDropdown('natoEchelon', 'echelon');
+}
+buildAllIconDropdowns();
+
+// Refresh all icon dropdown displays
+function refreshAllIconDropdowns() {
+    ['natoSymbolSet','natoSymbolType','natoStatus','natoMod1','natoMod2','natoEchelon'].forEach(function(id) {
+        var sel = document.getElementById(id);
+        if (sel && sel._iconDropdown) sel._iconDropdown.refreshDisplay();
+    });
+}
+
+// Copy code button
+document.getElementById('natoCopyCodeBtn').onclick = function() {
+    var code = document.getElementById('sidcCode').value;
+    navigator.clipboard.writeText(code).then(function() {
+        var btn = document.getElementById('natoCopyCodeBtn');
+        btn.textContent = 'Copied!'; setTimeout(function(){ btn.textContent = 'Copy code'; }, 1500);
+    });
+};
+// Copy image button
+document.getElementById('natoCopyImageBtn').onclick = function() {
+    var svgEl = document.querySelector('#natoPreview svg');
+    if (!svgEl) return;
+    var svgData = new XMLSerializer().serializeToString(svgEl);
+    var canvas = document.createElement('canvas');
+    var img = new Image();
+    img.onload = function() {
+        canvas.width = img.width; canvas.height = img.height;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+        canvas.toBlob(function(blob) {
+            navigator.clipboard.write([new ClipboardItem({'image/png': blob})]);
+        });
+    };
+    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+};
+// All symbols link
+document.getElementById('natoAllSymbolsLink').onclick = function(e) {
+    e.preventDefault();
+    window.open('https://maps.plan-ops.fr/Symbols/All', '_blank');
+};
+
+// MODAL SAVES
+document.getElementById('natoDeleteBtn').onclick = function() {
+    if(modalMarkerId) backend.removeMarker(modalMarkerId);
+    closeMapModal('modalNatoSymbol');
+};
+document.getElementById('natoInsertBtn').onclick = function() {
+    var sidc = generateSIDC();
+    var desig = document.getElementById('natoDesignation').value;
+    var info = document.getElementById('natoAdditional').value;
+    var hf = document.getElementById('natoHigherFormation') ? document.getElementById('natoHigherFormation').value : '';
+    var dirMil = document.getElementById('natoDirection') ? parseInt(document.getElementById('natoDirection').value) : undefined;
+    var reinf = document.getElementById('natoReinforced') ? document.getElementById('natoReinforced').value : '';
+    var scale = parseInt(document.getElementById('natoScale').value) || 100;
+    var config = { uniqueDesignation: desig, additionalInformation: info };
+    if (hf) config.higherFormation = hf;
+    if (dirMil && !isNaN(dirMil)) config.direction = Math.round(dirMil * 360 / 6400);
+    if (reinf) config.reinforcedReduced = reinf;
+
+    if(modalMarkerId) {
+        var locked = modalMarkerData.config && modalMarkerData.config.locked;
+        var savedRotation = modalMarkerData.config && modalMarkerData.config._rotation;
+        modalMarkerData.symbol = sidc; modalMarkerData.config = config; modalMarkerData.scale = scale/100;
+        if (locked) modalMarkerData.config.locked = true;
+        if (savedRotation) modalMarkerData.config._rotation = savedRotation;
+        backend.updateMarkerToLayer(modalMarkerId, null, modalMarkerData);
+    } else {
+        backend.addMarker(null, { type: 'mil', symbol: sidc, config: config, scale: scale/100, pos: clickPosition });
+    }
+    closeMapModal('modalNatoSymbol');
+};
+
+// Lock button handlers
+document.getElementById('natoLockBtn').onclick = function() { _toggleLock(); _syncLockBtn('natoLockBtn', modalMarkerData); };
+document.getElementById('basicLockBtn').onclick = function() { _toggleLock(); _syncLockBtn('basicLockBtn', modalMarkerData); };
+document.getElementById('lineLockBtn').onclick = function() { _toggleLock(); _syncLockBtn('lineLockBtn', modalMarkerData); };
+
+document.getElementById('basicDeleteBtn').onclick = function() {
+    if(modalMarkerId) backend.removeMarker(modalMarkerId);
+    closeMapModal('modalBasicSymbol');
+};
+document.getElementById('basicInsertBtn').onclick = function() {
+    var shape = document.getElementById('basicShape').value;
+    var color = document.querySelector('#modalBasicSymbol .color-btn.active').dataset.color;
+    var text = document.getElementById('basicLabel').value;
+    var scale = parseInt(document.getElementById('basicScale').value) || 100;
+    var labelSize = parseInt(document.getElementById('basicLabelSize').value) || 12;
+
+    if(modalMarkerId) {
+        modalMarkerData.symbol = shape; modalMarkerData.config.color = color; modalMarkerData.config.label = text; modalMarkerData.config.labelSize = labelSize; modalMarkerData.scale = scale/100;
+        backend.updateMarkerToLayer(modalMarkerId, null, modalMarkerData);
+    } else {
+        backend.addMarker(null, { type: 'basic', symbol: shape, config: {color: color, label: text, labelSize: labelSize}, scale: scale/100, pos: clickPosition });
+    }
+    closeMapModal('modalBasicSymbol');
+};
+
+document.getElementById('lineSaveBtn').onclick = function() {
+    var color = document.querySelector('#modalLineProps .color-btn.active').dataset.color;
+    var weight = document.getElementById('lineWeight').value;
+    if(modalMarkerId) {
+        modalMarkerData.config.color = color; modalMarkerData.config.weight = weight;
+        backend.updateMarkerToLayer(modalMarkerId, null, modalMarkerData);
+    }
+    closeMapModal('modalLineProps');
+};
+document.getElementById('lineDeleteBtn').onclick = function() {
+    if(modalMarkerId) backend.removeMarker(modalMarkerId);
+    closeMapModal('modalLineProps');
+};
+
+// ---- SHAPE MODAL HANDLERS ----
+document.querySelectorAll('#shapeSidesPicker .shape-side-btn').forEach(function(btn) {
+    btn.onclick = function() {
+        document.querySelectorAll('#shapeSidesPicker .shape-side-btn').forEach(function(b) { b.classList.remove('active'); });
+        this.classList.add('active');
+    };
+});
+document.querySelectorAll('#shapeStrokeColorPicker .color-btn').forEach(function(btn) {
+    btn.onclick = function() {
+        document.querySelectorAll('#shapeStrokeColorPicker .color-btn').forEach(function(b) { b.classList.remove('active'); b.style.border = ''; });
+        this.classList.add('active'); this.style.border = '2px solid #fff';
+    };
+});
+document.querySelectorAll('#shapeFillColorPicker .color-btn').forEach(function(btn) {
+    btn.onclick = function() {
+        document.querySelectorAll('#shapeFillColorPicker .color-btn').forEach(function(b) { b.classList.remove('active'); b.style.border = ''; });
+        this.classList.add('active'); this.style.border = '2px solid #fff';
+    };
+});
+document.getElementById('shapeStartBtn').onclick = function() {
+    var sidesBtn = document.querySelector('#shapeSidesPicker .shape-side-btn.active');
+    shapeConfig.sides = sidesBtn ? parseInt(sidesBtn.dataset.sides) : 4;
+    shapeConfig.strokeColor = (document.querySelector('#shapeStrokeColorPicker .color-btn.active') || {}).dataset.color || '#000000';
+    shapeConfig.fillColor = (document.querySelector('#shapeFillColorPicker .color-btn.active') || {}).dataset.color || '#0066ff';
+    shapeConfig.fillOpacity = (parseInt(document.getElementById('shapeFillOpacity').value) || 20) / 100;
+    shapeConfig.weight = parseInt(document.getElementById('shapeStrokeWeight').value) || 3;
+    closeMapModal('modalShapeTool');
+    setTool('shapeDraw', document.getElementById('toolShape'));
+};
+
+document.querySelectorAll('.mission-btn').forEach(btn => {
+    btn.onclick = function() {
+        var mission = this.dataset.mission;
+        var size = document.getElementById('missionSize').value;
+        var color = document.querySelector('#missionColorPicker .color-btn.active').dataset.color || '#000000';
+        missionSelection = { mission: mission, size: size, color: color, points: null };
+        closeMapModal('modalMissionSelector');
+        // Now click on map to add points
+    }
+});
+
+document.getElementById('noteSaveBtn').onclick = function() {
+    var content = tinymce.get('noteContent').getContent();
+    var pos = document.getElementById('notePosition').value;
+    if(modalMarkerId) {
+        modalMarkerData.config.content = content; modalMarkerData.config.position = pos;
+        backend.updateMarkerToLayer(modalMarkerId, null, modalMarkerData);
+    } else {
+        backend.addMarker(null, { type: 'note', symbol: 'note', config: {content: content, position: pos}, pos: clickPosition });
+    }
+    closeMapModal('modalNote');
+};
+document.getElementById('noteDeleteBtn').onclick = function() {
+    if(modalMarkerId) backend.removeMarker(modalMarkerId);
+    closeMapModal('modalNote');
+};
+document.getElementById('measureDeleteBtn').onclick = function() {
+    if(modalMarkerId) backend.removeMarker(modalMarkerId);
+    closeMapModal('modalMeasure');
+};
+
+// Selection Helpers
+document.querySelectorAll('.color-btn').forEach(btn => {
+    btn.onclick = function() { this.parentElement.querySelectorAll('.color-btn').forEach(b=>b.classList.remove('active')); this.classList.add('active'); }
+});
+
+// Search
+document.getElementById('toolSearch').onclick = () => openMapModal('modalSearch');
+document.getElementById('searchGoBtn').onclick = () => {
+    var x = parseInt(document.getElementById('searchX').value);
+    var y = parseInt(document.getElementById('searchY').value);
+    if (!isNaN(x) && !isNaN(y)) { mapInst.setView(armaToLatLng(x, y), 5); closeMapModal('modalSearch'); }
+};
+
+// --- POLLERS ---
+async function pollPlayers() {
+    try {
+        var r = await fetch('api/mock_players.php?map='+currentMap);
+        var d = await r.json();
+        if (d.success) {
+            var currentIds = new Set(d.data.map(function(p){ return p.id; }));
+            Object.keys(playerMarkers).forEach(function(id) {
+                if (!currentIds.has(parseInt(id))) { playerLayer.removeLayer(playerMarkers[id]); delete playerMarkers[id]; }
+            });
+            d.data.forEach(function(p) {
+                var latlng = armaToLatLng(p.x, p.y);
+                if (playerMarkers[p.id]) {
+                    playerMarkers[p.id].setLatLng(latlng);
+                } else {
+                    var m = L.marker(latlng, { icon: L.divIcon({ className:'player-marker', iconSize:[12,12] }) });
+                    playerMarkers[p.id] = m;
+                    playerLayer.addLayer(m);
+                }
+            });
+        }
+    } catch(e) { }
+    playerPollTimer = setTimeout(pollPlayers, 2000);
+}
+
+async function pollDrawings() {
+    try {
+        var r = await fetch('api/mission_plan.php?map='+currentMap);
+        var d = await r.json();
+        if (d.success && d.markers) {
+            var currentIds = new Set(d.markers.map(function(m){ return m.id; }));
+            Object.keys(allMarkers).forEach(function(id) {
+                if (!currentIds.has(id)) {
+                    if(allMarkers[id].labels) allMarkers[id].labels.forEach(l=>l.remove());
+                    drawLayer.removeLayer(allMarkers[id]); delete allMarkers[id]; 
+                }
+            });
+            d.markers.forEach(function(m) {
+                // Skip marker currently being dragged/rotated/scaled to avoid overwriting visual position
+                var dragId = polyDragTarget ? polyDragTarget.options.markerId : null;
+                var rotId = rotTarget ? (rotTarget.options ? rotTarget.options.markerId : rotMarkerId) : null;
+                var scaleId = scaleTarget ? scaleTarget.options.markerId : null;
+                if (m.id === dragId || m.id === rotId || m.id === scaleId || m.id === ptDragActiveId) return;
+                addOrUpdateMarker(mapInst, allMarkers, { id: m.id, data: m }, true, backend, {}, { group: drawLayer });
+            });
+        }
+    } catch(e) {}
+    drawPollTimer = setTimeout(pollDrawings, 1000);
+}
+
+// ---- REAL-TIME PRESENCE SYSTEM ----
+function startRealTimePresence() {
+    sendHeartbeat();
+    pollPresence();
+}
+
+async function sendHeartbeat() {
+    try {
+        await fetch('api/map_presence.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'heartbeat',
+                user_id: rtUserId,
+                display_name: rtDisplayName,
+                user_color: rtUserColor,
+                map: currentMap,
+                cursor_lat: rtCursorPos ? rtCursorPos.lat : null,
+                cursor_lng: rtCursorPos ? rtCursorPos.lng : null
+            })
+        });
+    } catch (e) { }
+    rtHeartbeatTimer = setTimeout(sendHeartbeat, 2000);
+}
+
+async function pollPresence() {
+    try {
+        var r = await fetch('api/map_presence.php?map=' + currentMap);
+        var d = await r.json();
+        if (d.success && d.users) {
+            var activeIds = new Set();
+            var onlineCount = 0;
+            
+            d.users.forEach(function(u) {
+                activeIds.add(u.user_id);
+                onlineCount++;
+                
+                // Skip self cursor
+                if (u.user_id === rtUserId) return;
+                
+                if (u.cursor_lat != null && u.cursor_lng != null && rtCursorLayer) {
+                    var latlng = L.latLng(u.cursor_lat, u.cursor_lng);
+                    if (rtCursorMarkers[u.user_id]) {
+                        rtCursorMarkers[u.user_id].setLatLng(latlng);
+                        // Update tooltip
+                        rtCursorMarkers[u.user_id].setTooltipContent(u.display_name);
+                    } else {
+                        var cursorIcon = L.divIcon({
+                            className: 'rt-cursor-marker',
+                            html: '<div class="rt-cursor-dot" style="background:' + u.user_color + ';box-shadow:0 0 8px ' + u.user_color + '"></div>' +
+                                  '<div class="rt-cursor-label" style="color:' + u.user_color + '">' + u.display_name + '</div>',
+                            iconSize: [0, 0],
+                            iconAnchor: [0, 0]
+                        });
+                        var marker = L.marker(latlng, { icon: cursorIcon, interactive: false, zIndexOffset: 9000 });
+                        marker.bindTooltip(u.display_name, { permanent: false, direction: 'right', offset: [12, 0], className: 'rt-cursor-tooltip' });
+                        rtCursorLayer.addLayer(marker);
+                        rtCursorMarkers[u.user_id] = marker;
+                    }
+                } else if (rtCursorMarkers[u.user_id]) {
+                    // User has no cursor position — remove marker
+                    rtCursorLayer.removeLayer(rtCursorMarkers[u.user_id]);
+                    delete rtCursorMarkers[u.user_id];
+                }
+            });
+            
+            // Remove cursors for users who left
+            Object.keys(rtCursorMarkers).forEach(function(uid) {
+                if (!activeIds.has(uid)) {
+                    rtCursorLayer.removeLayer(rtCursorMarkers[uid]);
+                    delete rtCursorMarkers[uid];
+                }
+            });
+            
+            // Update connected users indicator
+            updateOnlineIndicator(onlineCount, d.users);
+        }
+    } catch (e) { }
+    rtPresenceTimer = setTimeout(pollPresence, 2000);
+}
+
+function updateOnlineIndicator(count, users) {
+    var el = document.getElementById('rtOnlineCount');
+    if (el) el.textContent = count;
+    var dot = document.getElementById('rtOnlineDot');
+    if (dot) dot.style.background = count > 1 ? '#00ff41' : '#ffaa00';
+    
+    // Update user list panel
+    var listEl = document.getElementById('rtUserList');
+    if (listEl) {
+        listEl.innerHTML = users.map(function(u) {
+            var isSelf = u.user_id === rtUserId;
+            return '<div class="rt-user-item' + (isSelf ? ' self' : '') + '">' +
+                   '<span class="rt-user-dot" style="background:' + u.user_color + '"></span>' +
+                   '<span class="rt-user-name">' + (u.display_name || 'Unknown') + (isSelf ? ' (You)' : '') + '</span>' +
+                   '</div>';
+        }).join('');
+    }
+}
+
+// Send leave signal when user closes tab
+window.addEventListener('beforeunload', function() {
+    var blob = new Blob([JSON.stringify({
+        action: 'leave',
+        user_id: rtUserId,
+        map: currentMap
+    })], { type: 'application/json' });
+    navigator.sendBeacon('api/map_presence.php', blob);
+});
+
+// Hook map init
+document.querySelectorAll('[data-tab="sorties"]').forEach(function(el) {
+    el.addEventListener('click', function() {
+        if (!mapInst) { setTimeout(initIntelMap, 300); }
+        else { setTimeout(function(){ mapInst.invalidateSize(); }, 300); }
+    });
+});
+// Auto-init map if restored tab is sorties
+if(localStorage.getItem('intel_active_tab')==='sorties'){
+    setTimeout(initIntelMap, 400);
+}
+
+// ==========================================
+// DOCUMENT VIEWER LOGIC
+// ==========================================
+let currentPdfLang = 'EN';
+const pdfPaths = {
+    'EN': 'assets/Role/Joint%20OPS%20plan%20[%20Edit-t%20].pdf',
+    'TH': 'assets/Role/Joint%20OPS%20plan%20[%20Edit-t%20]_TH.pdf'
+};
+
+function togglePdfLanguage() {
+    currentPdfLang = currentPdfLang === 'EN' ? 'TH' : 'EN';
+    const btn = document.getElementById('btnPdfLang');
+    if (btn) btn.innerHTML = `<i class="fas fa-language"></i> ${currentPdfLang}`;
+    
+    const iframe = document.getElementById('documentPdfViewer');
+    if (iframe) {
+        iframe.src = pdfPaths[currentPdfLang] + '#toolbar=0&navpanes=0&scrollbar=0&view=FitH';
+    }
+}
+
+function togglePdfFullscreen() {
+    const container = document.getElementById('pdfViewerContainer');
+    if (!container) return;
+    
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        if (container.requestFullscreen) {
+            container.requestFullscreen();
+        } else if (container.webkitRequestFullscreen) {
+            container.webkitRequestFullscreen();
+        }
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+        }
+    }
+}

@@ -59,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file'])) {
         // Current script is in /admin/, uploads are in /assets/
         // URL should be ../assets/uploads/filename for relative, or /assets/uploads/filename
 
-        $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
+        $protocol = isset($_SERVER['HTTP_X_FORWARDED_PROTO']) ? $_SERVER['HTTP_X_FORWARDED_PROTO'] : (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http");
         $host = $_SERVER['HTTP_HOST'];
         // Construct full URL so Discord can reach it (if accessible)
         // For local docker, it might be localhost:8080. 

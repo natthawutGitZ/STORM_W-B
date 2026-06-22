@@ -10,6 +10,43 @@ class SteamAuth
         $this->domain = $domain;
     }
 
+    private function doCurlViaBotProxy($url, $postData = null)
+    {
+        // Define bot API URL (same as bot_api.php)
+        $botApiUrl = defined('DISCORD_BOT_API_URL') ? DISCORD_BOT_API_URL : 'http://bot:5000';
+        
+        $proxyUrl = $botApiUrl . '/proxy/steam?url=' . urlencode($url);
+
+        $ch = curl_init($proxyUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+
+        // Include API key for bot authentication if set
+        $headers = [];
+        if (defined('BOT_API_KEY') && BOT_API_KEY) {
+            $headers[] = 'X-API-Key: ' . BOT_API_KEY;
+        }
+
+        if ($postData !== null) {
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
+            $headers[] = "Content-type: application/x-www-form-urlencoded";
+            $headers[] = "Content-Length: " . strlen($postData);
+        }
+
+        if (!empty($headers)) {
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        }
+
+        $result = curl_exec($ch);
+        if ($result === false) {
+            error_log("Steam Proxy Curl Error: " . curl_error($ch));
+        }
+        curl_close($ch);
+
+        return $result;
+    }
+
     public function loginUrl()
     {
         $params = [
@@ -41,19 +78,9 @@ class SteamAuth
         }
 
         $data = http_build_query($params);
-        $context = stream_context_create([
-            'http' => [
-                'method' => 'POST',
-                'header' => "Accept-language: en\r\n" .
-                    "Content-type: application/x-www-form-urlencoded\r\n" .
-                    "Content-Length: " . strlen($data) . "\r\n",
-                'content' => $data,
-            ],
-        ]);
+        $result = $this->doCurlViaBotProxy('https://steamcommunity.com/openid/login', $data);
 
-        $result = file_get_contents('https://steamcommunity.com/openid/login', false, $context);
-
-        if (preg_match("#is_valid:true#i", $result)) {
+        if ($result && preg_match("#is_valid:true#i", $result)) {
             preg_match('#^https://steamcommunity.com/openid/id/([0-9]{17,25})#', $_GET['openid_claimed_id'], $matches);
             $steamID64 = is_numeric($matches[1]) ? $matches[1] : 0;
             return $steamID64;
@@ -65,7 +92,12 @@ class SteamAuth
     public function getUserInfo($steamid)
     {
         $url = "https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={$this->apikey}&steamids={$steamid}";
-        $json = file_get_contents($url);
+        $json = $this->doCurlViaBotProxy($url);
+        
+        if (!$json) {
+            return null;
+        }
+        
         $data = json_decode($json, true);
         return isset($data['response']['players'][0]) ? $data['response']['players'][0] : null;
     }

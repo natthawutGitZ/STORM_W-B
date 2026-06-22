@@ -1,6 +1,8 @@
 <?php
 require_once ROOT_PATH . '/includes/db.php';
 require_once ROOT_PATH . '/includes/functions.php';
+require_once ROOT_PATH . '/includes/track_pageview.php';
+trackPageView($pdo, 'Campaigns');
 
 // Fetch public campaigns
 try {
@@ -10,7 +12,11 @@ try {
     $campaigns = [];
 }
 
-include ROOT_PATH . '/includes/header.php';
+if (isAdmin()) {
+    include 'admin/includes/admin_header.php';
+} else {
+    include ROOT_PATH . '/includes/profile_header.php';
+}
 ?>
 
 <style>
@@ -167,8 +173,13 @@ include ROOT_PATH . '/includes/header.php';
     }
 </style>
 
-<div class="campaigns-hero">
-    <h1><i class="fas fa-globe-americas"></i> Operation Campaigns</h1>
+<div class="dashboard-container <?php echo isAdmin() ? 'admin-view' : 'member-view'; ?>">
+    <?php if (!isAdmin() && isLoggedIn()): ?>
+        <?php include ROOT_PATH . '/includes/user_tabs.php'; ?>
+    <?php endif; ?>
+
+    <div class="campaigns-hero">
+        <h1><i class="fas fa-globe-americas"></i> Operation Campaigns</h1>
     <p>Explore ongoing and past strategic operations of our unit.</p>
 </div>
 
@@ -206,8 +217,12 @@ include ROOT_PATH . '/includes/header.php';
         </div>
     <?php endif; ?>
 </div>
+</div>
 
-<?php include ROOT_PATH . '/includes/footer.php'; ?>
-</body>
-
-</html>
+<?php
+if (isAdmin()) {
+    include 'admin/includes/admin_footer.php';
+} else {
+    include ROOT_PATH . '/includes/profile_footer.php';
+}
+?>

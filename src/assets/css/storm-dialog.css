@@ -1,0 +1,438 @@
+/* ================================================================
+   STORM DIALOG SYSTEM — Custom Themed Confirm & Alert
+   Military CRT / Ghost Terminal Theme
+   ================================================================ */
+
+/* ---- Overlay ---- */
+.storm-dialog-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0);
+    z-index: 99999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+    transition: background 0.3s ease, backdrop-filter 0.3s ease;
+}
+
+.storm-dialog-overlay.show {
+    display: flex;
+    background: rgba(0, 0, 0, 0.82);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    animation: stormOverlayIn 0.25s ease forwards;
+}
+
+@keyframes stormOverlayIn {
+    from {
+        background: rgba(0, 0, 0, 0);
+        backdrop-filter: blur(0px);
+    }
+    to {
+        background: rgba(0, 0, 0, 0.82);
+        backdrop-filter: blur(8px);
+    }
+}
+
+/* ---- Dialog Box ---- */
+.storm-dialog {
+    background: rgba(8, 10, 8, 0.96);
+    border: 1px solid rgba(0, 255, 65, 0.3);
+    border-radius: 6px;
+    width: 440px;
+    max-width: 92vw;
+    position: relative;
+    overflow: hidden;
+    box-shadow:
+        0 0 40px rgba(0, 255, 65, 0.08),
+        0 20px 60px rgba(0, 0, 0, 0.7),
+        inset 0 1px 0 rgba(0, 255, 65, 0.1);
+    animation: stormDialogIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes stormDialogIn {
+    from {
+        opacity: 0;
+        transform: translateY(-24px) scale(0.94);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* ---- Top accent line (animated gradient) ---- */
+.storm-dialog::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #00ff41, transparent);
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.4);
+    animation: stormLineGlow 2s ease-in-out infinite;
+}
+
+.storm-dialog.type-warning::before {
+    background: linear-gradient(90deg, transparent, #ffab00, transparent);
+    box-shadow: 0 0 10px rgba(255, 171, 0, 0.4);
+}
+
+.storm-dialog.type-danger::before {
+    background: linear-gradient(90deg, transparent, #ff4444, transparent);
+    box-shadow: 0 0 10px rgba(255, 68, 68, 0.4);
+}
+
+.storm-dialog.type-error::before {
+    background: linear-gradient(90deg, transparent, #ff4444, transparent);
+    box-shadow: 0 0 10px rgba(255, 68, 68, 0.4);
+}
+
+.storm-dialog.type-success::before {
+    background: linear-gradient(90deg, transparent, #00cc44, transparent);
+    box-shadow: 0 0 10px rgba(0, 204, 68, 0.4);
+}
+
+@keyframes stormLineGlow {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+}
+
+/* ---- Left accent bar ---- */
+.storm-dialog::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 3px;
+    height: 100%;
+    background: #00ff41;
+    opacity: 0.5;
+}
+
+.storm-dialog.type-warning::after { background: #ffab00; }
+.storm-dialog.type-danger::after { background: #ff4444; }
+.storm-dialog.type-error::after { background: #ff4444; }
+.storm-dialog.type-success::after { background: #00cc44; }
+
+/* ---- Internal scanline effect ---- */
+.storm-dialog-scanline {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: rgba(0, 255, 65, 0.06);
+    animation: stormScan 4s linear infinite;
+    pointer-events: none;
+    z-index: 10;
+}
+
+@keyframes stormScan {
+    0% { top: -3px; }
+    100% { top: 100%; }
+}
+
+/* ---- Header ---- */
+.storm-dialog-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px 14px;
+    border-bottom: 1px solid rgba(0, 255, 65, 0.15);
+    background: rgba(0, 255, 65, 0.03);
+    position: relative;
+}
+
+.storm-dialog-header.type-warning {
+    border-bottom-color: rgba(255, 171, 0, 0.15);
+    background: rgba(255, 171, 0, 0.03);
+}
+
+.storm-dialog-header.type-danger,
+.storm-dialog-header.type-error {
+    border-bottom-color: rgba(255, 68, 68, 0.15);
+    background: rgba(255, 68, 68, 0.03);
+}
+
+.storm-dialog-header.type-success {
+    border-bottom-color: rgba(0, 204, 68, 0.15);
+    background: rgba(0, 204, 68, 0.03);
+}
+
+.storm-dialog-header-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 255, 65, 0.3);
+    background: rgba(0, 255, 65, 0.08);
+    color: #00ff41;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+    animation: stormIconPulse 2.5s ease-in-out infinite;
+}
+
+.type-warning .storm-dialog-header-icon {
+    border-color: rgba(255, 171, 0, 0.3);
+    background: rgba(255, 171, 0, 0.08);
+    color: #ffab00;
+}
+
+.type-danger .storm-dialog-header-icon,
+.type-error .storm-dialog-header-icon {
+    border-color: rgba(255, 68, 68, 0.3);
+    background: rgba(255, 68, 68, 0.08);
+    color: #ff4444;
+}
+
+.type-success .storm-dialog-header-icon {
+    border-color: rgba(0, 204, 68, 0.3);
+    background: rgba(0, 204, 68, 0.08);
+    color: #00cc44;
+}
+
+@keyframes stormIconPulse {
+    0%, 100% { box-shadow: 0 0 8px rgba(0, 255, 65, 0.1); }
+    50% { box-shadow: 0 0 20px rgba(0, 255, 65, 0.25); }
+}
+
+.type-warning .storm-dialog-header-icon {
+    animation-name: stormIconPulseWarn;
+}
+@keyframes stormIconPulseWarn {
+    0%, 100% { box-shadow: 0 0 8px rgba(255, 171, 0, 0.1); }
+    50% { box-shadow: 0 0 20px rgba(255, 171, 0, 0.25); }
+}
+
+.type-danger .storm-dialog-header-icon,
+.type-error .storm-dialog-header-icon {
+    animation-name: stormIconPulseDanger;
+}
+@keyframes stormIconPulseDanger {
+    0%, 100% { box-shadow: 0 0 8px rgba(255, 68, 68, 0.1); }
+    50% { box-shadow: 0 0 20px rgba(255, 68, 68, 0.25); }
+}
+
+.storm-dialog-header-title {
+    font-family: var(--mono, 'Share Tech Mono', monospace);
+    font-size: 0.82rem;
+    color: #00ff41;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    font-weight: 700;
+    text-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+}
+
+.type-warning .storm-dialog-header-title {
+    color: #ffab00;
+    text-shadow: 0 0 10px rgba(255, 171, 0, 0.3);
+}
+
+.type-danger .storm-dialog-header-title,
+.type-error .storm-dialog-header-title {
+    color: #ff4444;
+    text-shadow: 0 0 10px rgba(255, 68, 68, 0.3);
+}
+
+.type-success .storm-dialog-header-title {
+    color: #00cc44;
+    text-shadow: 0 0 10px rgba(0, 204, 68, 0.3);
+}
+
+.storm-dialog-header-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(0, 255, 65, 0.3), transparent);
+    margin-left: 8px;
+}
+
+.type-warning .storm-dialog-header-line {
+    background: linear-gradient(90deg, rgba(255, 171, 0, 0.3), transparent);
+}
+
+.type-danger .storm-dialog-header-line,
+.type-error .storm-dialog-header-line {
+    background: linear-gradient(90deg, rgba(255, 68, 68, 0.3), transparent);
+}
+
+/* ---- Body ---- */
+.storm-dialog-body {
+    padding: 20px 24px;
+    position: relative;
+}
+
+.storm-dialog-body p {
+    font-family: var(--mono, 'Share Tech Mono', monospace);
+    font-size: 0.82rem;
+    color: #d4d4d4;
+    line-height: 1.7;
+    letter-spacing: 0.5px;
+    word-break: break-word;
+}
+
+/* ---- Footer ---- */
+.storm-dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 14px 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(0, 0, 0, 0.2);
+}
+
+/* ---- Buttons ---- */
+.storm-dialog-btn {
+    font-family: var(--mono, 'Share Tech Mono', monospace);
+    font-size: 0.72rem;
+    padding: 9px 22px;
+    border-radius: 3px;
+    cursor: pointer;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    transition: all 0.2s ease;
+    border: 1px solid;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    outline: none;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Cancel button */
+.storm-dialog-btn.cancel {
+    background: transparent;
+    border-color: rgba(255, 255, 255, 0.15);
+    color: #888;
+}
+
+.storm-dialog-btn.cancel:hover {
+    border-color: rgba(255, 76, 102, 0.4);
+    color: #ff4c66;
+    background: rgba(255, 76, 102, 0.06);
+    box-shadow: 0 0 12px rgba(255, 76, 102, 0.1);
+}
+
+.storm-dialog-btn.cancel:focus-visible {
+    border-color: rgba(255, 76, 102, 0.5);
+    box-shadow: 0 0 0 2px rgba(255, 76, 102, 0.15);
+}
+
+/* Confirm button — default green */
+.storm-dialog-btn.confirm {
+    background: rgba(0, 255, 65, 0.08);
+    border-color: rgba(0, 255, 65, 0.35);
+    color: #00ff41;
+}
+
+.storm-dialog-btn.confirm:hover {
+    background: rgba(0, 255, 65, 0.18);
+    border-color: rgba(0, 255, 65, 0.6);
+    box-shadow: 0 0 16px rgba(0, 255, 65, 0.2);
+    text-shadow: 0 0 8px rgba(0, 255, 65, 0.4);
+}
+
+.storm-dialog-btn.confirm:focus-visible {
+    border-color: rgba(0, 255, 65, 0.6);
+    box-shadow: 0 0 0 2px rgba(0, 255, 65, 0.15);
+}
+
+/* Confirm button — danger variant (red) */
+.storm-dialog-btn.confirm.danger {
+    background: rgba(255, 68, 68, 0.08);
+    border-color: rgba(255, 68, 68, 0.35);
+    color: #ff4444;
+}
+
+.storm-dialog-btn.confirm.danger:hover {
+    background: rgba(255, 68, 68, 0.18);
+    border-color: rgba(255, 68, 68, 0.6);
+    box-shadow: 0 0 16px rgba(255, 68, 68, 0.2);
+    text-shadow: 0 0 8px rgba(255, 68, 68, 0.4);
+}
+
+.storm-dialog-btn.confirm.danger:focus-visible {
+    border-color: rgba(255, 68, 68, 0.6);
+    box-shadow: 0 0 0 2px rgba(255, 68, 68, 0.15);
+}
+
+/* Button hover shimmer effect */
+.storm-dialog-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.04), transparent);
+    transition: left 0.4s ease;
+}
+
+.storm-dialog-btn:hover::before {
+    left: 100%;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 480px) {
+    .storm-dialog {
+        width: 95vw;
+        border-radius: 4px;
+    }
+
+    .storm-dialog-header {
+        padding: 12px 14px 10px;
+        gap: 10px;
+    }
+
+    .storm-dialog-header-icon {
+        width: 30px;
+        height: 30px;
+        font-size: 0.75rem;
+    }
+
+    .storm-dialog-header-title {
+        font-size: 0.72rem;
+        letter-spacing: 2px;
+    }
+
+    .storm-dialog-body {
+        padding: 16px 18px;
+    }
+
+    .storm-dialog-body p {
+        font-size: 0.75rem;
+    }
+
+    .storm-dialog-footer {
+        padding: 12px 14px;
+        gap: 8px;
+    }
+
+    .storm-dialog-btn {
+        padding: 8px 16px;
+        font-size: 0.65rem;
+    }
+}
+
+/* ---- CRT overlay effect on dialog ---- */
+.storm-dialog-overlay.show::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 1px,
+        rgba(0, 0, 0, 0.03) 1px,
+        rgba(0, 0, 0, 0.03) 2px
+    );
+    pointer-events: none;
+    z-index: 100000;
+}

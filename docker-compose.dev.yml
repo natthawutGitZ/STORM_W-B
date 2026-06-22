@@ -1,0 +1,87 @@
+# =============================================================================
+# STORM Web Platform — Development Override
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Web — Expose port directly for local dev (bypass nginx)
+  # ---------------------------------------------------------------------------
+  web:
+    ports:
+      - "8888:80"
+
+  # ---------------------------------------------------------------------------
+  # MySQL — Expose port for local tools (MySQL Workbench, DBeaver, etc.)
+  # ---------------------------------------------------------------------------
+  db:
+    ports:
+      - "3306:3306"
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL — Expose port for local tools
+  # ---------------------------------------------------------------------------
+  postgres:
+    ports:
+      - "5432:5432"
+
+  # ---------------------------------------------------------------------------
+  # Redis — Expose port for local tools
+  # ---------------------------------------------------------------------------
+  redis:
+    ports:
+      - "6379:6379"
+
+  # ---------------------------------------------------------------------------
+  # phpMyAdmin (Database Management GUI)
+  # ---------------------------------------------------------------------------
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: db
+      PMA_USER: root
+      PMA_PASSWORD: root
+      UPLOAD_LIMIT: 100M
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+
+  # ---------------------------------------------------------------------------
+  # ngrok (Public Tunnel for Testing Webhooks / External Access)
+  # Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile tunnel up -d
+  # ---------------------------------------------------------------------------
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: ngrok_tunnel
+    restart: unless-stopped
+    command:
+      - "http"
+      - "web:80"
+      - "--log=stdout"
+    ports:
+      - "4040:4040"
+    env_file: .env
+    environment:
+      NGROK_AUTHTOKEN: "${NGROK_AUTHTOKEN}"
+    depends_on:
+      - web
+    networks:
+      - app-network
+    profiles:
+      - tunnel
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
