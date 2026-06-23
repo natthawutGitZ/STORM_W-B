@@ -164,8 +164,8 @@ class ServerStatus(commands.Cog):
                 else:
                     fps_char = "🟥"
 
-                fps_fill = min(round((server_fps / 50) * 15), 15)
-                fps_bar = " ".join([fps_char] * fps_fill + ["⬛"] * (15 - fps_fill)) + f" **{server_fps} FPS**"
+                fps_fill = min(round((server_fps / 60) * 20), 20)
+                fps_bar = " ".join([fps_char] * fps_fill + ["⬛"] * (20 - fps_fill)) + f" **{server_fps} FPS**"
 
                 # Fields Row 1
                 embed.add_field(name="🗺️  Map", value=f"`{map_name}`", inline=True)
@@ -180,17 +180,17 @@ class ServerStatus(commands.Cog):
                 embed.add_field(name="\u200b", value="\u200b", inline=True)
 
                 # Bars divider
-                embed.add_field(name="▬▬▬▬▬▬▬▬▬▬▬▬▬▬Analyze▬▬▬▬▬▬▬▬▬▬▬▬▬▬", value="** **", inline=False)
+                embed.add_field(name="▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬Analyze▬▬▬▬▬▬▬▬▬▬▬▬▬▬", value="** **", inline=False)
 
                 # Bars
-                player_fill = min(round((player_count / max_players) * 15), 15)
-                player_bar = " ".join(["🟩"] * player_fill + ["⬛"] * (15 - player_fill)) + f" **{player_count}/{max_players}**"
+                player_fill = min(round((player_count / max_players) * 20), 20)
+                player_bar = " ".join(["🟩"] * player_fill + ["⬛"] * (20 - player_fill)) + f" **{player_count}/{max_players}**"
                 embed.add_field(name="👥  ผู้เล่น", value=player_bar, inline=False)
                 
                 embed.add_field(name="⚡  Server FPS", value=fps_bar, inline=False)
 
-                uptime_fill = min(round((uptime_hours / 24) * 15), 15)
-                uptime_bar = " ".join(["🟦"] * uptime_fill + ["⬛"] * (15 - uptime_fill)) + f" **{int(uptime_hours)}h {round((uptime_hours % 1) * 60)}m**"
+                uptime_fill = min(round((uptime_hours / 24) * 20), 20)
+                uptime_bar = " ".join(["🟦"] * uptime_fill + ["⬛"] * (20 - uptime_fill)) + f" **{int(uptime_hours)}h {round((uptime_hours % 1) * 60)}m**"
                 embed.add_field(name="⏱️  Uptime วันนี้", value=uptime_bar, inline=False)
 
                 # Player List - Divider and format like image 
@@ -262,9 +262,9 @@ class ServerStatus(commands.Cog):
                 embed.add_field(name="⏳  ออฟไลน์มา", value=f"🔴 **{offline_time_str}**", inline=True)
 
                 # Uptime Bar
-                uptime_fill = min(round((uptime_percent / 100.0) * 15), 15)
+                uptime_fill = min(round((uptime_percent / 100.0) * 20), 20)
                 uptime_color = "🟦" if uptime_percent >= 90 else ("🟨" if uptime_percent >= 70 else "🟥")
-                uptime_bar = " ".join([uptime_color] * uptime_fill + ["⬛"] * (15 - uptime_fill)) + f" **{uptime_percent:.1f}%**"
+                uptime_bar = " ".join([uptime_color] * uptime_fill + ["⬛"] * (20 - uptime_fill)) + f" **{uptime_percent:.1f}%**"
                 embed.add_field(name="📊  Uptime วันนี้", value=uptime_bar, inline=False)
 
                 # Last Players - Divider and code block format
