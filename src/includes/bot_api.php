@@ -334,5 +334,43 @@ class BotAPI
             'buttons' => $buttons
         ]);
     }
+
+    // ========== ARMA 3 SERVER STATUS ==========
+
+    /**
+     * Get Server Status Configuration
+     */
+    public function getServerStatusConfig()
+    {
+        $response = $this->request('/server_status', [], 'GET');
+        if ($response['success'] && isset($response['data']['data'])) {
+            return $response['data']['data'];
+        }
+        return ['ip' => '', 'port' => 2303, 'channel_id' => '', 'is_active' => false];
+    }
+
+    /**
+     * Save Server Status Configuration
+     */
+    public function saveServerStatusConfig($data)
+    {
+        return $this->request('/server_status', $data, 'POST');
+    }
+
+    /**
+     * Get Arma Player Logs for a given date
+     */
+    public function getArmaPlayerLogs($date = null)
+    {
+        $endpoint = '/server_status/logs';
+        if ($date) {
+            $endpoint .= '?date=' . urlencode($date);
+        }
+        $response = $this->request($endpoint, [], 'GET');
+        if ($response['success'] && isset($response['data']['data'])) {
+            return $response['data']['data'];
+        }
+        return [];
+    }
 }
 ?>

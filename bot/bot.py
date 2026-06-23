@@ -32,7 +32,7 @@ class CoreBot(commands.Bot):
         self.add_view(HelpView())
 
         # Load Cogs
-        cogs_to_load = ['cogs.commands', 'cogs.tasks', 'cogs.events']
+        cogs_to_load = ['cogs.commands', 'cogs.tasks', 'cogs.events', 'cogs.server_status']
         for cog in cogs_to_load:
             try:
                 await self.load_extension(cog)
@@ -57,6 +57,7 @@ class CoreBot(commands.Bot):
             DatabaseService.ensure_schema()
             DatabaseService.ensure_reminder_schema()
             DatabaseService.ensure_role_panels_schema()
+            DatabaseService.ensure_server_status_schema()
         except Exception as e:
             print(f"Schema Check Failed: {e}")
 

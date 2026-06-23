@@ -2100,6 +2100,60 @@ async def handle_dm_verify(request):
         print(f"Error in handle_dm_verify: {e}", flush=True)
         return web.json_response({'error': str(e)}, status=500)
 
+# --- SERVER STATUS ROUTES ---
+async def handle_get_server_status(request):
+    try:
+        config = DatabaseService.get_server_status_config()
+        if config:
+            if 'updated_at' in config and config['updated_at']:
+                config['updated_at'] = config['updated_at'].isoformat()
+            return web.json_response({'success': True, 'data': config})
+        else:
+            return web.json_response({'success': True, 'data': {'ip': '', 'port': 2303, 'channel_id': '', 'is_active': False}})
+    except Exception as e:
+        print(f"Error get server status: {e}")
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+async def handle_get_server_status_logs(request):
+    try:
+        date_str = request.query.get('date', datetime.now(BANGKOK_TZ).strftime('%Y-%m-%d'))
+        logs = DatabaseService.get_player_logs(date_str)
+        # Format timestamps
+        for log in logs:
+            if 'timestamp' in log and log['timestamp']:
+                log['timestamp'] = log['timestamp'].isoformat()
+        return web.json_response({'success': True, 'data': logs})
+    except Exception as e:
+        print(f"Error get server status logs: {e}")
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+async def handle_save_server_status(request):
+    try:
+        data = await request.json()
+        success = DatabaseService.save_server_status_config(data)
+        if success:
+            return web.json_response({'success': True})
+        else:
+            return web.json_response({'success': False, 'error': 'Database error'}, status=500)
+    except Exception as e:
+        print(f"Error save server status: {e}")
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
+async def handle_send_server_status_now(request):
+    try:
+        bot = request.app['bot']
+        cog = bot.get_cog("ServerStatus")
+        if cog:
+            # We must await the loop coroutine to run once immediately.
+            # update_server_status is a Loop object, we can call its underlying coroutine.
+            await cog.force_update()
+            return web.json_response({'success': True})
+        else:
+            return web.json_response({'success': False, 'error': 'ServerStatus cog not loaded'}, status=500)
+    except Exception as e:
+        print(f"Error force update server status: {e}")
+        return web.json_response({'success': False, 'error': str(e)}, status=500)
+
 async def start_server(bot):
     try:
         app = web.Application(client_max_size=50 * 1024 * 1024, middlewares=[api_key_middleware])
@@ -2180,6 +2234,12 @@ async def start_server(bot):
         # Steam Proxy
         app.router.add_get('/proxy/steam', handle_steam_proxy)
         app.router.add_post('/proxy/steam', handle_steam_proxy)
+        
+        # Server Status API
+        app.router.add_get('/server_status', handle_get_server_status)
+        app.router.add_get('/server_status/logs', handle_get_server_status_logs)
+        app.router.add_post('/server_status', handle_save_server_status)
+        app.router.add_post('/server_status/send_now', handle_send_server_status_now)
         
         runner = web.AppRunner(app)
         await runner.setup()

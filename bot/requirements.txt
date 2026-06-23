@@ -6,3 +6,4 @@ redis
 aioredis
 PyNaCl
 davey
+python-a2s

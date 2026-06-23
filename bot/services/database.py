@@ -411,3 +411,150 @@ class DatabaseService:
         finally:
             cur.close()
             conn.close()
+
+    # ========== ARMA 3 SERVER STATUS ==========
+
+    @staticmethod
+    def ensure_server_status_schema():
+        """Create arma_server_status table if not exists"""
+        conn = DatabaseService.get_connection()
+        conn.autocommit = True
+        cur = conn.cursor()
+        try:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS arma_server_status (
+                    id SERIAL PRIMARY KEY,
+                    ip VARCHAR(100) NOT NULL,
+                    port INTEGER NOT NULL DEFAULT 2303,
+                    channel_id VARCHAR(50),
+                    message_id VARCHAR(50),
+                    is_active BOOLEAN DEFAULT false,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            print("Schema Migration: arma_server_status table ready.", flush=True)
+
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS arma_player_logs (
+                    id SERIAL PRIMARY KEY,
+                    player_name VARCHAR(255) NOT NULL,
+                    action VARCHAR(50) NOT NULL,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            print("Schema Migration: arma_player_logs table ready.", flush=True)
+        except Exception as e:
+            print(f"Server Status Schema Error: {e}", flush=True)
+        finally:
+            cur.close()
+            conn.close()
+
+    @staticmethod
+    def get_server_status_config():
+        """Get the Arma 3 server status config (assuming 1 row)"""
+        conn = DatabaseService.get_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        try:
+            cur.execute("SELECT * FROM arma_server_status ORDER BY id ASC LIMIT 1")
+            return cur.fetchone()
+        finally:
+            cur.close()
+            conn.close()
+
+    @staticmethod
+    def save_server_status_config(data):
+        """Create or update server status config"""
+        conn = DatabaseService.get_connection()
+        cur = conn.cursor()
+        try:
+            # Check if exists
+            cur.execute("SELECT id FROM arma_server_status ORDER BY id ASC LIMIT 1")
+            row = cur.fetchone()
+            
+            if row:
+                cur.execute("""
+                    UPDATE arma_server_status SET
+                        ip = %s,
+                        port = %s,
+                        channel_id = %s,
+                        is_active = %s,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = %s
+                """, (
+                    data.get('ip', ''),
+                    int(data.get('port', 2303)),
+                    data.get('channel_id', ''),
+                    data.get('is_active', False),
+                    row[0]
+                ))
+            else:
+                cur.execute("""
+                    INSERT INTO arma_server_status (ip, port, channel_id, is_active)
+                    VALUES (%s, %s, %s, %s)
+                """, (
+                    data.get('ip', ''),
+                    int(data.get('port', 2303)),
+                    data.get('channel_id', ''),
+                    data.get('is_active', False)
+                ))
+            conn.commit()
+            return True
+        except Exception as e:
+            print(f"Save Server Status Config Error: {e}", flush=True)
+            return False
+        finally:
+            cur.close()
+            conn.close()
+
+    @staticmethod
+    def update_server_status_message_id(message_id):
+        """Update the message_id after sending to Discord"""
+        conn = DatabaseService.get_connection()
+        cur = conn.cursor()
+        try:
+            cur.execute("""
+                UPDATE arma_server_status 
+                SET message_id = %s, updated_at = CURRENT_TIMESTAMP 
+                WHERE id = (SELECT id FROM arma_server_status ORDER BY id ASC LIMIT 1)
+            """, (str(message_id),))
+            conn.commit()
+        finally:
+            cur.close()
+            conn.close()
+
+    @staticmethod
+    def log_player_action(player_name, action):
+        """Log player join/leave"""
+        conn = DatabaseService.get_connection()
+        cur = conn.cursor()
+        try:
+            cur.execute("""
+                INSERT INTO arma_player_logs (player_name, action)
+                VALUES (%s, %s)
+            """, (player_name, action))
+            conn.commit()
+        except Exception as e:
+            print(f"Player Log Error: {e}", flush=True)
+        finally:
+            cur.close()
+            conn.close()
+
+    @staticmethod
+    def get_player_logs(date_str):
+        """Get logs for a specific date (YYYY-MM-DD)"""
+        conn = DatabaseService.get_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        try:
+            cur.execute("""
+                SELECT player_name, action, timestamp
+                FROM arma_player_logs
+                WHERE DATE(timestamp) = %s
+                ORDER BY timestamp DESC
+            """, (date_str,))
+            return cur.fetchall()
+        except Exception as e:
+            print(f"Get Player Logs Error: {e}", flush=True)
+            return []
+        finally:
+            cur.close()
+            conn.close()

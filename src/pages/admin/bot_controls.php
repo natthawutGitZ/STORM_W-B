@@ -576,8 +576,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = "Failed to leave: " . ($result['error'] ?? 'Unknown error');
             }
         }
+
+        /* --- ACTION: SAVE SERVER STATUS --- */ elseif ($_POST['action'] === 'save_server_status') {
+            $data = [
+                'ip' => $_POST['server_ip'] ?? '',
+                'port' => (int)($_POST['server_port'] ?? 2303),
+                'channel_id' => $_POST['server_channel_id'] ?? '',
+                'is_active' => isset($_POST['server_is_active']) ? true : false
+            ];
+            $result = $api->saveServerStatusConfig($data);
+            if ($result['success']) {
+                $message = "Server Status configuration saved!";
+            } else {
+                $error = "Failed to save config: " . ($result['error'] ?? 'Unknown error');
+            }
+        }
+
+        /* --- ACTION: FORCE UPDATE SERVER STATUS --- */ elseif ($_POST['action'] === 'send_server_status_now') {
+            // First save config just in case
+            $data = [
+                'ip' => $_POST['server_ip'] ?? '',
+                'port' => (int)($_POST['server_port'] ?? 2303),
+                'channel_id' => $_POST['server_channel_id'] ?? '',
+                'is_active' => isset($_POST['server_is_active']) ? true : false
+            ];
+            $api->saveServerStatusConfig($data);
+
+            $result = $api->request('/server_status/send_now', [], 'POST');
+            if ($result['success']) {
+                $message = "Server Status update triggered successfully!";
+            } else {
+                $error = "Failed to trigger update: " . ($result['error'] ?? 'Unknown error');
+            }
+        }
     }
 }
+
+// Fetch Server Status Config
+$serverStatusConfig = $api->getServerStatusConfig();
 
 // Fetch Active Events
 $activeEvents = $api->getActiveEvents();
@@ -928,6 +964,8 @@ $activeTab = $_GET['tab'] ?? 'embed';
             onclick="openTab(event, 'tab-tickets')"><i class="fas fa-ticket-alt"></i> Tickets</button>
         <button class="tab-btn <?php echo $activeTab === 'roles' ? 'active' : ''; ?>"
             onclick="openTab(event, 'tab-roles')"><i class="fas fa-id-badge"></i> Role Panels</button>
+        <button class="tab-btn <?php echo $activeTab === 'Server_Status' ? 'active' : ''; ?>"
+            onclick="openTab(event, 'tab-Server_Status')"><i class="fas fa-server"></i> Server Status</button>
     </div>
 
     <!-- TAB 1: EMBED BUILDER -->
@@ -3740,6 +3778,124 @@ $activeTab = $_GET['tab'] ?? 'embed';
         </div>
     </div>
 
+    <!-- TAB 7: SERVER STATUS -->
+    <div id="tab-Server_Status" class="tab-content <?php echo $activeTab === 'Server_Status' ? 'active' : ''; ?>">
+        <div class="glass-panel" style="margin-bottom: 25px;">
+            <h3 style="margin-bottom: 20px;"><i class="fas fa-server"></i> Arma 3 Server Status Configuration</h3>
+            <form method="POST" action="" style="max-width: 800px;">
+                <input type="hidden" name="action" value="save_server_status">
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <div class="form-group">
+                        <label style="color: #b5bac1; font-size: 0.85rem; display: block; margin-bottom: 5px;"><i class="fas fa-network-wired"></i> Server IP</label>
+                        <input type="text" name="server_ip" class="modern-input" style="width: 100%;" value="<?php echo htmlspecialchars($serverStatusConfig['ip'] ?? ''); ?>" required placeholder="e.g. 143.20.142.34">
+                    </div>
+                    <div class="form-group">
+                        <label style="color: #b5bac1; font-size: 0.85rem; display: block; margin-bottom: 5px;"><i class="fas fa-plug"></i> Query Port</label>
+                        <input type="number" name="server_port" class="modern-input" style="width: 100%;" value="<?php echo htmlspecialchars($serverStatusConfig['port'] ?? '2303'); ?>" required placeholder="e.g. 2303">
+                    </div>
+                </div>
+
+                <?php
+                $currentServerChannelId = $serverStatusConfig['channel_id'] ?? '';
+                $currentServerChannelName = 'Select a channel...';
+                if ($currentServerChannelId) {
+                    foreach ($channels as $c) {
+                        if ($c['id'] == $currentServerChannelId) {
+                            $currentServerChannelName = '<i class="fas fa-hashtag" style="color: #5865f2;"></i> ' . htmlspecialchars($c['name']);
+                            break;
+                        }
+                    }
+                }
+                ?>
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label style="color: #b5bac1; font-size: 0.85rem; display: block; margin-bottom: 8px;">
+                        <i class="fas fa-hashtag"></i> Discord Channel
+                    </label>
+                    <div class="feed-dropdown-container" id="serverStatusChannelDropdown">
+                        <input type="hidden" name="server_channel_id" id="serverStatusChannelInput" class="real-channel-input" value="<?php echo htmlspecialchars($currentServerChannelId); ?>">
+                        <div class="feed-dropdown-selected" onclick="toggleFeedDropdown('serverStatusChannelDropdown')">
+                            <span class="feed-selected-text" id="serverStatusChannelText"><?php echo $currentServerChannelName; ?></span>
+                            <i class="fas fa-chevron-down feed-dropdown-arrow"></i>
+                        </div>
+                        <div class="feed-dropdown-menu">
+                            <div class="feed-dropdown-search">
+                                <i class="fas fa-search"></i>
+                                <input type="text" placeholder="Search a channel..." oninput="filterFeedChannels('serverStatusChannelDropdown', this.value)">
+                            </div>
+                            <div class="feed-dropdown-list" id="serverStatusChannelList">
+                                <?php renderFeedChannelOptions($channels); ?>
+                            </div>
+                        </div>
+                    </div>
+                    <small style="color: #aaa; margin-top: 8px; display: block;">The bot will send and edit a single embed message in this channel.</small>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label class="modern-checkbox-label">
+                        <input type="checkbox" name="server_is_active" <?php echo !empty($serverStatusConfig['is_active']) ? 'checked' : ''; ?>>
+                        Enable Auto-Update (Every 60s)
+                    </label>
+                </div>
+
+                <div class="form-actions" style="margin-top: 20px; display: flex; gap: 10px;">
+                    <button type="submit" class="btn primary"><i class="fas fa-save"></i> Save Configuration</button>
+                    <button type="submit" name="action" value="send_server_status_now" class="btn secondary"><i class="fas fa-paper-plane"></i> Force Update Now</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- PLAYER CONNECTION LOGS -->
+        <div class="glass-panel" style="margin-bottom: 25px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0;"><i class="fas fa-users" style="color: #5865F2;"></i> Player Connection Logs</h3>
+                <form method="GET" action="" style="display: flex; gap: 10px; align-items: center;">
+                    <input type="hidden" name="tab" value="Server_Status">
+                    <input type="date" name="log_date" class="modern-input" value="<?php echo htmlspecialchars($_GET['log_date'] ?? date('Y-m-d')); ?>">
+                    <button type="submit" class="btn primary">View Logs</button>
+                </form>
+            </div>
+            
+            <div style="background: rgba(43, 45, 49, 0.5); border-radius: 8px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.05);">
+                <?php
+                $logDate = $_GET['log_date'] ?? date('Y-m-d');
+                $playerLogs = $api->getArmaPlayerLogs($logDate);
+                
+                if (empty($playerLogs)) {
+                    echo '<div style="text-align: center; padding: 30px; color: #b5bac1;">No connection logs found for this date.</div>';
+                } else {
+                    echo '<table style="width: 100%; border-collapse: collapse; text-align: left;">';
+                    echo '<thead>';
+                    echo '<tr style="background: rgba(30, 31, 34, 0.6);">';
+                    echo '<th style="padding: 12px 15px; color: #b5bac1; font-size: 0.85em; font-weight: 600; text-transform: uppercase;">Time</th>';
+                    echo '<th style="padding: 12px 15px; color: #b5bac1; font-size: 0.85em; font-weight: 600; text-transform: uppercase;">Player</th>';
+                    echo '<th style="padding: 12px 15px; color: #b5bac1; font-size: 0.85em; font-weight: 600; text-transform: uppercase;">Action</th>';
+                    echo '</tr>';
+                    echo '</thead>';
+                    echo '<tbody>';
+                    foreach ($playerLogs as $log) {
+                        $actionColor = $log['action'] === 'join' ? '#43b581' : '#f04747';
+                        $actionIcon = $log['action'] === 'join' ? 'fa-sign-in-alt' : 'fa-sign-out-alt';
+                        $actionText = $log['action'] === 'join' ? 'Joined' : 'Left';
+                        
+                        // Parse timestamp to local time
+                        $time = date('H:i:s', strtotime($log['timestamp']));
+                        
+                        echo '<tr style="border-top: 1px solid rgba(255, 255, 255, 0.05);">';
+                        echo '<td style="padding: 12px 15px; color: #b5bac1; font-family: monospace;">' . htmlspecialchars($time) . '</td>';
+                        echo '<td style="padding: 12px 15px; color: #fff; font-weight: 500;">' . htmlspecialchars($log['player_name']) . '</td>';
+                        echo '<td style="padding: 12px 15px; color: ' . $actionColor . ';">';
+                        echo '<i class="fas ' . $actionIcon . '"></i> ' . $actionText;
+                        echo '</td>';
+                        echo '</tr>';
+                    }
+                    echo '</tbody>';
+                    echo '</table>';
+                }
+                ?>
+            </div>
+        </div>
+    </div>
 </div>
 
 <?php
@@ -3864,6 +4020,7 @@ function renderFeedRoleOptions($roles, $includeNoneOption = true)
     }
 }
 ?>
+
 
 <!-- SCRIPTS -->
 <script>
@@ -5133,9 +5290,10 @@ function renderFeedRoleOptions($roles, $includeNoneOption = true)
         } else if (containerId === 'voiceLogsChannelDropdown') {
             hiddenInput = document.getElementById('voiceLogsChannelId');
             selectedText = document.getElementById('voiceLogsChannelText');
-        }
-
-        else if (containerId === 'eventPingRoleDropdown') {
+        } else if (containerId === 'serverStatusChannelDropdown') {
+            hiddenInput = document.getElementById('serverStatusChannelInput');
+            selectedText = document.getElementById('serverStatusChannelText');
+        } else if (containerId === 'eventPingRoleDropdown') {
             hiddenInput = document.getElementById('eventPingRoleInput');
             selectedText = document.getElementById('eventPingRoleText');
         }
