@@ -3,11 +3,24 @@ from discord.ext import commands, tasks
 from services.database import DatabaseService
 from datetime import datetime, timezone, timedelta
 import a2s
+import logging
+import redis
+import os
+import json
 
 BANGKOK_TZ = timezone(timedelta(hours=7))
-import logging
+
+REDIS_HOST = os.getenv('REDIS_HOST', 'redis')
+r = redis.Redis(host=REDIS_HOST, port=6379, db=0, decode_responses=True)
 
 log = logging.getLogger(__name__)
+
+def format_duration(seconds):
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    if hours > 0:
+        return f"{hours}h {minutes}m"
+    return f"{minutes}m"
 
 class ServerStatus(commands.Cog):
     def __init__(self, bot):
@@ -35,12 +48,25 @@ class ServerStatus(commands.Cog):
 
             channel = self.bot.get_channel(channel_id)
             if not channel:
-                # Fallback to fetch if not in cache
                 try:
                     channel = await self.bot.fetch_channel(channel_id)
                 except discord.NotFound:
                     print(f"[ServerStatus] Channel {channel_id} not found.", flush=True)
                     return
+
+            guild = channel.guild
+            icon_url = None
+            if guild and guild.icon:
+                icon_url = guild.icon.url
+            elif self.bot.user and self.bot.user.avatar:
+                icon_url = self.bot.user.avatar.url
+
+            server_display_name = "S.T.O.R.M. 12th SFG [TH]"
+
+            is_online = False
+            info = None
+            players = []
+            ping = 0
 
             try:
                 # Query server via a2s
@@ -62,54 +88,179 @@ class ServerStatus(commands.Cog):
                     self.last_players = current_player_names
                     
                 except Exception:
-                    # Sometimes players query fails or times out even if info succeeds
                     players = []
-                    
-                status_emoji = "✅"
-                embed_color = 0x2ecc71 # Green
+                
+                is_online = True
+                ping = round(info.ping * 1000) if hasattr(info, 'ping') else 33
             except Exception as e:
-                info = None
-                players = []
-                status_emoji = "❌ Offline"
-                embed_color = 0xe74c3c # Red
+                is_online = False
 
-            # Construct Embed
-            embed = discord.Embed(color=embed_color)
-            if info:
-                # Use standard A2S fields
-                server_name = info.server_name if info.server_name else f"Arma 3 Server"
-                embed.title = f"{server_name} [{info.player_count}/{info.max_players}]"
+            # Uptime history tracking (runs every 60s check)
+            history_key = 'arma_status_history'
+            r.rpush(history_key, '1' if is_online else '0')
+            r.ltrim(history_key, -1440, -1) # Keep last 24 hours (1440 minutes)
+
+            history = r.lrange(history_key, 0, -1)
+            total_checks = len(history)
+            online_checks = history.count('1')
+            uptime_percent = (online_checks / total_checks * 100.0) if total_checks > 0 else 100.0
+
+            if is_online:
+                # Clear offline timestamp
+                r.delete('arma_offline_since')
+
+                # Calculate uptime
+                online_since_key = 'arma_online_since'
+                if not r.exists(online_since_key):
+                    r.set(online_since_key, datetime.now(BANGKOK_TZ).isoformat())
                 
-                mission_name = info.game if info.game else "N/A"
-                embed.description = f"**Mission:** \"{mission_name}\" || {status_emoji}\n"
+                online_since = datetime.fromisoformat(r.get(online_since_key))
+                uptime_seconds = (datetime.now(BANGKOK_TZ) - online_since).total_seconds()
+                uptime_hours = uptime_seconds / 3600.0
+
+                # Cache last known info
+                mission = info.game if info.game else "N/A"
+                map_name = info.map_name if info.map_name else "Unknown"
+                version = info.version if info.version else "Unknown"
+                max_players = info.max_players if info.max_players else 32
+
+                r.set('arma_last_mission', mission)
+                r.set('arma_last_map', map_name)
+                r.set('arma_last_version', version)
+                r.set('arma_last_max_players', str(max_players))
                 
-                # Info Fields
-                embed.add_field(name="MAP", value=info.map_name or "Unknown", inline=True)
-                embed.add_field(name="IP / Port", value=f"{ip}:{port}", inline=True)
-                embed.add_field(name="Game Version", value=info.version or "Unknown", inline=True)
-                
-                # Analyze / Performance section
-                embed.add_field(name="------------------Analyze------------------", value="** **", inline=False)
-                ping = round(info.ping * 1000) if hasattr(info, 'ping') else "N/A"
-                embed.add_field(name="Server Ping", value=f"`{ping} ms`", inline=True)
-                
-                # Player section
-                embed.add_field(name="------------------Player------------------", value="** **", inline=False)
-                
+                # Cache players
                 player_names = [p.name for p in players if p.name]
-                if player_names:
-                    # Discord embed field values are limited to 1024 characters
-                    players_str = "\n".join(player_names)
-                    if len(players_str) > 1000:
-                        players_str = players_str[:997] + "..."
-                    embed.add_field(name="Player", value=f"```\n{players_str}\n```", inline=False)
-                else:
-                    embed.add_field(name="Player", value="```\nNo players online\n```", inline=False)
-            else:
-                embed.title = f"Server Offline [{ip}:{port}]"
-                embed.description = f"**Status:** {status_emoji}"
+                r.set('arma_last_players', json.dumps(player_names))
 
-            embed.set_footer(text=f"System Time: {datetime.now(BANGKOK_TZ).strftime('%Y-%m-%d || %H:%M:%S')}")
+                # Build Online Embed
+                embed = discord.Embed(
+                    color=0x3ba55c,
+                    title="🟢  เซิร์ฟเวอร์ออนไลน์",
+                    description=f"> **Mission:** `{mission}`\n> 🔗 discord.gg/djtw8g9tDC"
+                )
+                if icon_url:
+                    embed.set_author(name=server_display_name, icon_url=icon_url)
+                else:
+                    embed.set_author(name=server_display_name)
+
+                # Tags parsing from keywords, defaulting to ["Milsim", "TH"]
+                keywords = getattr(info, 'keywords', '')
+                tags_list = [t.strip() for t in keywords.split(',') if t.strip()] if keywords else []
+                tags_list = tags_list[:3] if tags_list else ["Milsim", "TH"]
+
+                # Fields Row 1
+                embed.add_field(name="🗺️  Map", value=f"`{map_name}`", inline=True)
+                embed.add_field(name="🎮  Game Version", value=f"`{version}`", inline=True)
+                
+                ping_emoji = "🟢" if ping < 50 else ("🟡" if ping < 100 else "🔴")
+                embed.add_field(name="📡  Server Ping", value=f"{ping_emoji} `{ping} ms`", inline=True)
+
+                # Fields Row 2
+                embed.add_field(name="🌐  IP / Port", value=f"`{ip}:{port}`", inline=True)
+                embed.add_field(name="🏷️  Tags", value="  ".join(f"`{t}`" for t in tags_list), inline=True)
+                embed.add_field(name="\u200b", value="\u200b", inline=True)
+
+                # Bars
+                player_count = len(players)
+                player_fill = min(round((player_count / max_players) * 10), 10)
+                player_bar = "🟩" * player_fill + "⬛" * (10 - player_fill) + f" **{player_count}/{max_players}**"
+                embed.add_field(name="👥  ผู้เล่น", value=player_bar, inline=False)
+
+                uptime_fill = min(round((uptime_hours / 24) * 10), 10)
+                uptime_bar = "🟦" * uptime_fill + "⬛" * (10 - uptime_fill) + f" **{int(uptime_hours)}h {round((uptime_hours % 1) * 60)}m**"
+                embed.add_field(name="⏱️  Uptime วันนี้", value=uptime_bar, inline=False)
+
+                # Player List
+                if players:
+                    # Sort players by join duration descending (longest first)
+                    sorted_players = sorted(players, key=lambda p: getattr(p, 'duration', 0), reverse=True)
+                    player_lines = []
+                    for i, p in enumerate(sorted_players[:20]):
+                        dur_str = format_duration(getattr(p, 'duration', 0))
+                        p_name = p.name if p.name else "Unknown"
+                        player_lines.append(f"`{i+1:02d}` 🟢 **{p_name}** — {dur_str}")
+                    player_list_str = "\n".join(player_lines)
+                else:
+                    player_list_str = "*ยังไม่มีผู้เล่นในเซิร์ฟ*"
+                
+                embed.add_field(name=f"\n🪖  รายชื่อผู้เล่น ({player_count} คน)", value=player_list_str, inline=False)
+
+            else:
+                # Server is Offline
+                r.delete('arma_online_since')
+
+                # Calculate offline duration
+                offline_since_key = 'arma_offline_since'
+                if not r.exists(offline_since_key):
+                    r.set(offline_since_key, datetime.now(BANGKOK_TZ).isoformat())
+                
+                offline_since = datetime.fromisoformat(r.get(offline_since_key))
+                offline_seconds = (datetime.now(BANGKOK_TZ) - offline_since).total_seconds()
+                offline_minutes = int(offline_seconds // 60)
+
+                offline_time_str = (
+                    f"{offline_minutes // 60}h {offline_minutes % 60}m"
+                    if offline_minutes >= 60 else f"{offline_minutes}m"
+                )
+
+                # Retrieve last known info
+                last_mission = r.get('arma_last_mission') or "N/A"
+                last_map = r.get('arma_last_map') or "Unknown"
+                last_version = r.get('arma_last_version') or "Unknown"
+                last_max_players = r.get('arma_last_max_players') or "32"
+                
+                try:
+                    last_players = json.loads(r.get('arma_last_players') or '[]')
+                except Exception:
+                    last_players = []
+
+                reason = "Restart / Maintenance"
+
+                # Build Offline Embed
+                embed = discord.Embed(
+                    color=0xed4245,
+                    title="🔴  เซิร์ฟเวอร์ออฟไลน์",
+                    description=(
+                        f"> ⚠️ **ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้**\n"
+                        f"> 📋 สาเหตุ: **{reason}**\n"
+                        f"> 🔗 discord.gg/djtw8g9tDC"
+                    )
+                )
+                if icon_url:
+                    embed.set_author(name=server_display_name, icon_url=icon_url)
+                else:
+                    embed.set_author(name=server_display_name)
+
+                # Fields Row 1
+                embed.add_field(name="🗺️  Map (ล่าสุด)", value=f"`{last_map}`", inline=True)
+                embed.add_field(name="🎮  Version (ล่าสุด)", value=f"`{last_version}`", inline=True)
+                embed.add_field(name="🌐  IP / Port", value=f"`{ip}:{port}`", inline=True)
+
+                # Fields Row 2
+                embed.add_field(name="📡  Server Ping", value="🔴  `Timeout`", inline=True)
+                embed.add_field(name="👥  ผู้เล่น", value=f"`— / {last_max_players}`", inline=True)
+                embed.add_field(name="⏳  ออฟไลน์มา", value=f"🔴 **{offline_time_str}**", inline=True)
+
+                # Uptime Bar
+                uptime_fill = min(round(uptime_percent / 10), 10)
+                uptime_color = "🟦" if uptime_percent >= 90 else ("🟨" if uptime_percent >= 70 else "🟥")
+                uptime_bar = uptime_color * uptime_fill + "⬛" * (10 - uptime_fill) + f" **{uptime_percent:.1f}%**"
+                embed.add_field(name="📊  Uptime วันนี้", value=uptime_bar, inline=False)
+
+                # Last Players
+                if last_players:
+                    player_lines = [f"`{i+1:02d}` ⚫ ~~{name}~~" for i, name in enumerate(last_players[:10])]
+                    last_player_str = "\n".join(player_lines)
+                else:
+                    last_player_str = "*ไม่มีข้อมูลผู้เล่นก่อนหน้า*"
+                
+                embed.add_field(name="🪖  ผู้เล่นก่อนเซิร์ฟออฟไลน์", value=last_player_str, inline=False)
+
+            # Footer and timestamp
+            update_time_str = datetime.now(BANGKOK_TZ).strftime('%d/%m/%Y, %H:%M:%S')
+            embed.set_footer(text=f"🕐 อัพเดตล่าสุด • {update_time_str}")
+            embed.timestamp = datetime.now(timezone.utc)
 
             # Send or Edit Message
             if message_id:
