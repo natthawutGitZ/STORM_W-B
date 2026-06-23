@@ -144,10 +144,26 @@ class ServerStatus(commands.Cog):
                 else:
                     embed.set_author(name=server_display_name)
 
-                # Tags parsing from keywords, defaulting to ["Milsim", "TH"]
-                keywords = getattr(info, 'keywords', '')
-                tags_list = [t.strip() for t in keywords.split(',') if t.strip()] if keywords else []
-                tags_list = tags_list[:3] if tags_list else ["Milsim", "TH"]
+                # Parse FPS from keywords
+                server_fps = 0
+                keywords = getattr(info, 'keywords', '') or ''
+                if keywords:
+                    for tag in keywords.split(','):
+                        tag = tag.strip()
+                        if tag.startswith('f') and tag[1:].isdigit():
+                            server_fps = int(tag[1:])
+                            break
+
+                # Count FPS by color
+                if server_fps >= 40:
+                    fps_char = "🟩"
+                elif server_fps >= 20:
+                    fps_char = "🟨"
+                else:
+                    fps_char = "🟥"
+
+                fps_fill = min(round((server_fps / 50) * 10), 10)
+                fps_bar = fps_char * fps_fill + "⬛" * (10 - fps_fill) + f" **{server_fps} FPS**"
 
                 # Fields Row 1
                 embed.add_field(name="🗺️  Map", value=f"`{map_name}`", inline=True)
@@ -158,7 +174,7 @@ class ServerStatus(commands.Cog):
 
                 # Fields Row 2
                 embed.add_field(name="🌐  IP / Port", value=f"`{ip}:{port}`", inline=True)
-                embed.add_field(name="🏷️  Tags", value="  ".join(f"`{t}`" for t in tags_list), inline=True)
+                embed.add_field(name="\u200b", value="\u200b", inline=True)
                 embed.add_field(name="\u200b", value="\u200b", inline=True)
 
                 # Bars
@@ -166,25 +182,24 @@ class ServerStatus(commands.Cog):
                 player_fill = min(round((player_count / max_players) * 10), 10)
                 player_bar = "🟩" * player_fill + "⬛" * (10 - player_fill) + f" **{player_count}/{max_players}**"
                 embed.add_field(name="👥  ผู้เล่น", value=player_bar, inline=False)
+                
+                embed.add_field(name="⚡  Server FPS", value=fps_bar, inline=False)
 
                 uptime_fill = min(round((uptime_hours / 24) * 10), 10)
                 uptime_bar = "🟦" * uptime_fill + "⬛" * (10 - uptime_fill) + f" **{int(uptime_hours)}h {round((uptime_hours % 1) * 60)}m**"
                 embed.add_field(name="⏱️  Uptime วันนี้", value=uptime_bar, inline=False)
 
-                # Player List
-                if players:
-                    # Sort players by join duration descending (longest first)
-                    sorted_players = sorted(players, key=lambda p: getattr(p, 'duration', 0), reverse=True)
-                    player_lines = []
-                    for i, p in enumerate(sorted_players[:20]):
-                        dur_str = format_duration(getattr(p, 'duration', 0))
-                        p_name = p.name if p.name else "Unknown"
-                        player_lines.append(f"`{i+1:02d}` 🟢 **{p_name}** — {dur_str}")
-                    player_list_str = "\n".join(player_lines)
+                # Player List - Divider and format like image
+                embed.add_field(name="------------------Player------------------", value="** **", inline=False)
+
+                player_names = [p.name for p in players if p.name]
+                if player_names:
+                    players_str = "\n".join(player_names)
+                    if len(players_str) > 1000:
+                        players_str = players_str[:997] + "..."
+                    embed.add_field(name="Player", value=f"```\n{players_str}\n```", inline=False)
                 else:
-                    player_list_str = "*ยังไม่มีผู้เล่นในเซิร์ฟ*"
-                
-                embed.add_field(name=f"\n🪖  รายชื่อผู้เล่น ({player_count} คน)", value=player_list_str, inline=False)
+                    embed.add_field(name="Player", value="```\nNo players online\n```", inline=False)
 
             else:
                 # Server is Offline
@@ -248,14 +263,15 @@ class ServerStatus(commands.Cog):
                 uptime_bar = uptime_color * uptime_fill + "⬛" * (10 - uptime_fill) + f" **{uptime_percent:.1f}%**"
                 embed.add_field(name="📊  Uptime วันนี้", value=uptime_bar, inline=False)
 
-                # Last Players
+                # Last Players - Divider and code block format
+                embed.add_field(name="------------------Player------------------", value="** **", inline=False)
                 if last_players:
-                    player_lines = [f"`{i+1:02d}` ⚫ ~~{name}~~" for i, name in enumerate(last_players[:10])]
-                    last_player_str = "\n".join(player_lines)
+                    players_str = "\n".join(last_players)
+                    if len(players_str) > 1000:
+                        players_str = players_str[:997] + "..."
+                    embed.add_field(name="ผู้เล่นก่อนเซิร์ฟออฟไลน์", value=f"```\n{players_str}\n```", inline=False)
                 else:
-                    last_player_str = "*ไม่มีข้อมูลผู้เล่นก่อนหน้า*"
-                
-                embed.add_field(name="🪖  ผู้เล่นก่อนเซิร์ฟออฟไลน์", value=last_player_str, inline=False)
+                    embed.add_field(name="ผู้เล่นก่อนเซิร์ฟออฟไลน์", value="```\nไม่มีข้อมูลผู้เล่นก่อนหน้า\n```", inline=False)
 
             # Footer and timestamp
             update_time_str = datetime.now(BANGKOK_TZ).strftime('%d/%m/%Y, %H:%M:%S')
