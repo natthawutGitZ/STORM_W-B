@@ -147,19 +147,19 @@ class ServerStatus(commands.Cog):
 
                 # Simulate a highly realistic Arma 3 server FPS
                 player_count = len(players)
-                base_fps = 50.0
+                base_fps = 60.0
                 if player_count > 0:
                     base_fps -= (player_count * 0.4)
                 
                 # Use current minute as seed so it stays stable within the same minute
                 random.seed(datetime.now().minute)
                 fps_fluctuation = random.uniform(-1.5, 1.5)
-                server_fps = round(max(min(base_fps + fps_fluctuation, 50.0), 10.0), 1)
+                server_fps = round(max(min(base_fps + fps_fluctuation, 60.0), 10.0), 1)
 
                 # Count FPS by color
-                if server_fps >= 40:
+                if server_fps >= 48:
                     fps_char = "🟩"
-                elif server_fps >= 20:
+                elif server_fps >= 24:
                     fps_char = "🟨"
                 else:
                     fps_char = "🟥"
