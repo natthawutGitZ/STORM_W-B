@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const menuToggle = document.querySelector('.menu-toggle');
     const nav = document.querySelector('nav');
 
-    if (menuToggle) {
+    if (menuToggle && nav) {
         menuToggle.addEventListener('click', () => {
             nav.classList.toggle('active');
             menuToggle.style.transform = nav.classList.contains('active') ? 'rotate(90deg)' : 'rotate(0)';
@@ -12,13 +12,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Header Scroll Effect
     const header = document.querySelector('header');
-    window.addEventListener('scroll', () => {
-        if (window.scrollY > 50) {
-            header.classList.add('scrolled');
-        } else {
-            header.classList.remove('scrolled');
-        }
-    });
+    if (header) {
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 50) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+        });
+    }
 
     // ===== Modern Bidirectional Scroll Reveal =====
     const revealElements = document.querySelectorAll('.reveal');
@@ -147,7 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 target.scrollIntoView({
                     behavior: 'smooth'
                 });
-                if (nav.classList.contains('active')) {
+                if (nav && nav.classList.contains('active')) {
                     nav.classList.remove('active');
                 }
             }
