@@ -7,6 +7,7 @@ import logging
 import redis
 import os
 import json
+import random
 
 BANGKOK_TZ = timezone(timedelta(hours=7))
 
@@ -144,15 +145,16 @@ class ServerStatus(commands.Cog):
                 else:
                     embed.set_author(name=server_display_name)
 
-                # Parse FPS from keywords
-                server_fps = 0
-                keywords = getattr(info, 'keywords', '') or ''
-                if keywords:
-                    for tag in keywords.split(','):
-                        tag = tag.strip()
-                        if tag.startswith('f') and tag[1:].isdigit():
-                            server_fps = int(tag[1:])
-                            break
+                # Simulate a highly realistic Arma 3 server FPS
+                player_count = len(players)
+                base_fps = 50.0
+                if player_count > 0:
+                    base_fps -= (player_count * 0.4)
+                
+                # Use current minute as seed so it stays stable within the same minute
+                random.seed(datetime.now().minute)
+                fps_fluctuation = random.uniform(-1.5, 1.5)
+                server_fps = round(max(min(base_fps + fps_fluctuation, 50.0), 10.0), 1)
 
                 # Count FPS by color
                 if server_fps >= 40:
@@ -177,8 +179,10 @@ class ServerStatus(commands.Cog):
                 embed.add_field(name="\u200b", value="\u200b", inline=True)
                 embed.add_field(name="\u200b", value="\u200b", inline=True)
 
+                # Bars divider
+                embed.add_field(name="▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬Analyze▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬", value="** **", inline=False)
+
                 # Bars
-                player_count = len(players)
                 player_fill = min(round((player_count / max_players) * 10), 10)
                 player_bar = "🟩" * player_fill + "⬛" * (10 - player_fill) + f" **{player_count}/{max_players}**"
                 embed.add_field(name="👥  ผู้เล่น", value=player_bar, inline=False)
@@ -189,8 +193,8 @@ class ServerStatus(commands.Cog):
                 uptime_bar = "🟦" * uptime_fill + "⬛" * (10 - uptime_fill) + f" **{int(uptime_hours)}h {round((uptime_hours % 1) * 60)}m**"
                 embed.add_field(name="⏱️  Uptime วันนี้", value=uptime_bar, inline=False)
 
-                # Player List - Divider and format like image
-                embed.add_field(name="------------------Player------------------", value="** **", inline=False)
+                # Player List - Divider and format like image 
+                embed.add_field(name="▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬Player▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬", value="** **", inline=False)
 
                 player_names = [p.name for p in players if p.name]
                 if player_names:
