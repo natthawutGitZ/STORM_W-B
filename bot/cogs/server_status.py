@@ -205,7 +205,7 @@ class ServerStatus(commands.Cog):
                     simulated_ping = ping + (name_hash % 41) + 5
                     ping_str = f"{simulated_ping} ms"
                     
-                    total_width = 40
+                    total_width = 52
                     spaces_count = max(total_width - len(p.name) - len(ping_str), 2)
                     player_lines.append(f"{p.name}{' ' * spaces_count}{ping_str}")
 
